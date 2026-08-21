@@ -15,6 +15,7 @@
     }
   ],
   "apps": [
+    {"name": "aliceisjustplaying/tinydraw", "url": "https://github.com/aliceisjustplaying/tinydraw.git"},
     {
       "name": "chrono",
       "path": "apps/chrono"

@@ -60,9 +60,22 @@ function withVersion(url: string, hash: string): string {
 }
 
 // ---- read the data that decides what gets built -------------------------
+interface LocalRegistryEntry {
+  name: string;
+  path: string;
+}
+interface ExternalRegistryEntry {
+  name: string;
+  url: string;
+}
+type RegistryEntry = LocalRegistryEntry | ExternalRegistryEntry;
 interface Registry {
-  packs: { name: string; path: string }[];
-  apps: { name: string; path: string }[];
+  packs: RegistryEntry[];
+  apps: RegistryEntry[];
+}
+
+function isLocalRegistryEntry(entry: RegistryEntry): entry is LocalRegistryEntry {
+  return "path" in entry;
 }
 // Schema v0.2 (docs/convention/app-bundle.md): one "ports" entry per pack
 // this app is proven on, replacing 0.1's loose "provenPacks" array. Read
@@ -105,6 +118,11 @@ function readJson<T>(path: string): T {
 }
 
 const registry = readJson<Registry>(join(REPO_ROOT, "registry.json"));
+// The gallery builds modules and copies descriptors from this checkout.
+// URL entries remain published through registry.json and CI verifies them,
+// but there is no local source tree for this generator to read or compile.
+const localPacks = registry.packs.filter(isLocalRegistryEntry);
+const localApps = registry.apps.filter(isLocalRegistryEntry);
 
 const packLabel = new Map<string, string>();
 // Panel dimensions per pack, read from the SAME device.json packLabel
@@ -115,7 +133,10 @@ const packLabel = new Map<string, string>();
 // site generator, but staying data-driven here costs nothing and avoids a
 // magic number per pack anyway).
 const packPanel = new Map<string, { w: number; h: number }>();
-const packHasVectorSensor = new Map<string, boolean>();
+// Whether the pack can consume live phone motion. Both continuous vectors
+// and raw sample streams are driven by src/motion.ts; checking only vectors
+// hid the tilt hint for stream-only packs even though their control was live.
+const packHasMotionSensor = new Map<string, boolean>();
 // A device's own buttons (edge + fractional position along it), read from
 // the SAME device.json as panel/label above: what site/build.ts's own CSS
 // device frame (renderCardDevice, below) draws around the panel-only demo
@@ -130,7 +151,7 @@ interface PackButton {
   at: number;
 }
 const packButtons = new Map<string, PackButton[]>();
-for (const p of registry.packs) {
+for (const p of localPacks) {
   const device = readJson<{
     name?: string;
     panel?: { w: number; h: number };
@@ -139,7 +160,10 @@ for (const p of registry.packs) {
   }>(join(REPO_ROOT, p.path, "device.json"));
   packLabel.set(p.name, device.name || p.name);
   if (device.panel) packPanel.set(p.name, device.panel);
-  packHasVectorSensor.set(p.name, (device.sensors || []).some((sensor) => sensor.kind === "vector"));
+  packHasMotionSensor.set(
+    p.name,
+    (device.sensors || []).some((sensor) => sensor.kind === "vector" || sensor.kind === "stream")
+  );
   packButtons.set(p.name, (device.buttons || []).map((b) => ({ edge: b.edge, at: b.at })));
 }
 
@@ -256,7 +280,7 @@ interface AppEntry {
   bundle: ChronoLikeBundle;
   proven: ProvenEntry[];
 }
-const apps: AppEntry[] = registry.apps.map((a) => {
+const apps: AppEntry[] = localApps.map((a) => {
   const bundle = readJson<ChronoLikeBundle>(join(REPO_ROOT, a.path, "bundle.json"));
   const proven: ProvenEntry[] = bundle.ports.map((entry) => ({
     pack: entry.pack,
@@ -392,7 +416,7 @@ const INSTRUMENT_EXAMPLE = {
 // pack id with no special-casing of its own.
 packLabel.set(INSTRUMENT_EXAMPLE.id, INSTRUMENT_EXAMPLE.name);
 packPanel.set(INSTRUMENT_EXAMPLE.id, INSTRUMENT_EXAMPLE.panel);
-packHasVectorSensor.set(INSTRUMENT_EXAMPLE.id, false);
+packHasMotionSensor.set(INSTRUMENT_EXAMPLE.id, false);
 packButtons.set(INSTRUMENT_EXAMPLE.id, INSTRUMENT_EXAMPLE.buttons);
 
 // A fourth card that is not part of the proof matrix at all: the ESP32-S3
@@ -928,7 +952,7 @@ function buildIndexHtml(): void {
     })
     .join("\n");
 
-  const packNames = registry.packs.map((p) => p.name);
+  const packNames = localPacks.map((p) => p.name);
   const matrixRows = apps
     .map((app) => {
       const cells = packNames
@@ -1248,7 +1272,7 @@ function buildRunDir(): void {
       : esp32ImageIdFor(opts.id)
         ? `\n<script type="module" src="${withVersion("../flash/esp32-flash.js", ESP32_FLASH_JS_VERSION)}"></script>`
         : "";
-    const phoneTiltHint = packHasVectorSensor.get(opts.pack) ? " &middot; tilt with your phone" : "";
+    const phoneTiltHint = packHasMotionSensor.get(opts.pack) ? " &middot; tilt with your phone" : "";
     const body = `<div class="wrap">
   <div class="run-header">
     <div class="back"><a href="../index.html">&larr; puck</a></div>
