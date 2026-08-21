@@ -263,6 +263,19 @@ try {
       fail(`${file} @ ${width}px: no embedded emulator iframe found`);
       return;
     }
+
+    // The outer page's hint must follow the embedded module's descriptor,
+    // including raw "stream" sensors. The site generator used to check only
+    // "vector", so stream-only packs had working phone motion with no hint.
+    const hasPhoneMotion = await frame.evaluate(() => {
+      const debug = (window as unknown as { __debug?: { getDevice?: () => { sensors?: { kind: string }[] } | null } }).__debug;
+      return (debug?.getDevice?.()?.sensors || []).some((sensor) => sensor.kind === "vector" || sensor.kind === "stream");
+    });
+    const hintOffersPhoneTilt = await page.$eval(".embed-hint", (el) => (el.textContent || "").includes("tilt with your phone"));
+    if (hasPhoneMotion !== hintOffersPhoneTilt) {
+      fail(`${file} @ ${width}px: phone-motion hint is ${hintOffersPhoneTilt ? "shown" : "hidden"} but descriptor support is ${hasPhoneMotion}`);
+    }
+
     let result: { ok: boolean; reason: string } | null = null;
     try {
       result = await frame.evaluate((eps) => {
@@ -403,7 +416,7 @@ try {
   // that silently 404s one is worse than not having the surface at all. --
   {
     const registry = JSON.parse(readFileSync(join(DIST, "registry.json"), "utf8")) as {
-      apps: { name: string }[];
+      apps: { name: string; path?: string; url?: string }[];
     };
     const agentPaths = [
       "llms.txt",
@@ -411,7 +424,7 @@ try {
       "agents.html",
       "docs/convention/device-pack.md",
       "docs/convention/app-bundle.md",
-      ...registry.apps.map((a) => `apps/${a.name}/descriptor.md`),
+      ...registry.apps.filter((a) => a.path).map((a) => `apps/${a.name}/descriptor.md`),
     ];
     for (const p of agentPaths) {
       if (await fetchOk(p)) console.log(`  /${p}: 200`);

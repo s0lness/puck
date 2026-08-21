@@ -148,8 +148,8 @@ void emu_sensor_event(int index) {
 }
 
 // OPTIONAL (emu_abi.h). device.json declares one "kind": "stream" sensor
-// ("accel", index 0 by construction - this pack has exactly one), so this
-// is exported unconditionally rather than guarded on anything: an app that
+// ("accel", index 1 after the event sensor at index 0), so this is exported
+// unconditionally rather than guarded on anything: an app that
 // never drains app_accel_read() simply lets the ring fill and wrap (see
 // runtime_core.c), the same "costs nothing to leave unread" property a
 // real sensor's own overflow would have.

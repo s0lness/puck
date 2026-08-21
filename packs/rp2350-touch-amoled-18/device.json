@@ -31,7 +31,7 @@
     },
     {
       "id": "gravity",
-      "kind": "gravity",
+      "kind": "vector",
       "label": "tilt",
       "unit": "g"
     }
