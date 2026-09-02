@@ -267,7 +267,7 @@ export const ZIG_EXE = process.env.ZIG_EXE ?? "zig";
 // is this repo's own problem to wipe, never the machine-wide cache every
 // other project and every other agent on it shares.
 const REPO_ROOT = resolve(import.meta.dir, "..");
-export const DEFAULT_ZIG_GLOBAL_CACHE_DIR = join(REPO_ROOT, ".zig-cache", "global");
+export const DEFAULT_ZIG_GLOBAL_CACHE_DIR = join(REPO_ROOT, ".zig-global-cache");
 
 // See this file's header comment (the fifth failure mode) for why this
 // exists: any argument that is an absolute path resolving inside baseDir

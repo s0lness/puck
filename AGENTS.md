@@ -95,7 +95,9 @@ empty content-addressed directory - left behind by an attempt this
 repo's own `ATTEMPT_TIMEOUT_MS` killed or that lost a race with a
 concurrent one, and every later compile whose hash lands on it dies the
 same silent way, for the SAME fixture, every time - fixed by giving every
-zig spawn its own cache under `.zig-cache/` (private to this checkout, so
+zig spawn its own global cache under `.zig-global-cache/` (a sibling of the
+`.zig-cache/` zig uses as its local cache: nesting one inside the other made
+every compile exit 5 deterministically; private to this checkout, so
 no other project can poison it again) and wiping it on a silent failure,
 both in `tools/zigSpawn.ts`. `bun run
 pack:esp32:build` does the

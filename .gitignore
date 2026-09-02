@@ -9,6 +9,7 @@ wasm/dist/
 # can poison it, and so a silent-failure wipe never touches anything but
 # this repo's own copy - see that file's header comment).
 /.zig-cache/
+/.zig-global-cache/
 
 # The device firmware's CMake build tree (25MB of objects and a copy of half
 # the Pico SDK's object files). Regenerate with the two cmake commands in
