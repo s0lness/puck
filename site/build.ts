@@ -1212,7 +1212,7 @@ function chip(tone: ChipTone, label: string, title: string): string {
 }
 
 const EMULATOR_TONE: Record<string, ChipTone> = { PASS: "ok", FAIL: "bad", ERROR: "bad" };
-const HOST_TONE: Record<string, ChipTone> = { MATCH: "ok", DIVERGE: "warn", SANITIZER: "bad", BUILD_FAILED: "mute" };
+const HOST_TONE: Record<string, ChipTone> = { MATCH: "ok", DIVERGE: "warn", SANITIZER: "bad", CRASHED: "bad", BUILD_FAILED: "mute" };
 const SILHOUETTE_TONE: Record<string, ChipTone> = { runs: "ok", blank: "warn", "wrong-panel": "bad", "page-error": "bad", "build-failed": "bad" };
 const VERDICT_TONE: Record<string, ChipTone> = { go: "ok", degraded: "warn", refuse: "bad" };
 
@@ -1236,7 +1236,13 @@ function siliconChip(app: string, pack: string): string {
 /** The first sentence of a reason, for a cell that has to say what is missing without becoming a paragraph. */
 function firstSentence(text: string, limit = 220): string {
   const line = text.split("\n")[0]!.trim();
-  return line.length > limit ? `${line.slice(0, limit - 1)}…` : line;
+  if (line.length <= limit) return line;
+  // Cut at the last word boundary before the limit, not mid-word: a cell
+  // that ends "quarter tu…" reads as a rendering bug rather than as a
+  // deliberate trim.
+  const cut = line.slice(0, limit - 1);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > limit * 0.6 ? cut.slice(0, space) : cut).replace(/[,;:]$/, "")}…`;
 }
 
 /**
@@ -1283,7 +1289,7 @@ function matrixCell(app: AppEntry, target: LedgerTarget, groupStart: boolean): s
     // thing this whole page exists not to do.
     const unpresentable =
       s.mark === "runs" && !runnable
-        ? ` It ran, and there is no page for it here: this board declares a ${escapeHtml(target.panel?.format ?? "an unnamed")} panel and the shared emulator only reads the 16-bit formats the real packs declare, so presenting it would mean pretending packs/web's own RGB565 framebuffer is this board's glass.`
+        ? `. It ran, and there is no page for it here: this board declares a ${escapeHtml(target.panel?.format ?? "an unnamed")} panel and the shared emulator only reads the 16-bit formats the real packs declare, so presenting it would mean pretending packs/web&#39;s own RGB565 framebuffer is this board&#39;s glass`
         : "";
     const id = `${app.name}-${target.name}`;
     const picture = s.proof
@@ -1297,7 +1303,7 @@ function matrixCell(app: AppEntry, target: LedgerTarget, groupStart: boolean): s
     const borrowed = s.via && s.via !== WEB_PACK ? ` <span class="cell-note">via its ${escapeHtml(packLabel.get(s.via) || s.via)} port's own file</span>` : "";
     return `${cellOpen(runnable ? "runs" : "verdict", target.name, "cell-silhouette", groupStart)}
         ${thumb}
-        <div class="chips">${verdictChip(cell)}${chip(tone, s.mark === "runs" ? "runs here" : s.mark, s.reason)}</div>
+        <div class="chips">${verdictChip(cell)}${chip(tone, s.mark === "runs" ? (runnable ? "runs here" : "runs, no page here") : s.mark, s.reason)}</div>
         <p class="cell-why">${escapeHtml(firstSentence(s.reason, runnable ? 220 : 320))}${borrowed}${unpresentable}</p>
       </td>`;
   }

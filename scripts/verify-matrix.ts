@@ -194,6 +194,11 @@ try {
       if (c.publishLinks.length === 0) fail(`${where}: an empty cell must link to the porting procedure`);
       if (c.chips.length === 0) fail(`${where}: an empty cell must carry the mechanical verdict`);
       if (ledgerCell.port) fail(`${where}: the page says no port and the ledger records one`);
+      // The procedure has to be there, not just pointed at: an empty state
+      // whose one link 404s is a shrug with extra steps.
+      for (const href of c.publishLinks) {
+        if (!(await fetchOk(href))) fail(`${where}: its link to the porting procedure 404s (${href})`);
+      }
     }
     if (c.state === "runs" && ledgerCell.targetKind === "pack" && !ledgerCell.port) {
       fail(`${where}: the page says this runs and the ledger records no port for it`);

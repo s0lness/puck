@@ -29,8 +29,10 @@
 //   host        harness/hostdiff.ts: the same C built natively with
 //               -fsanitize=address,undefined and replayed against the wasm
 //               build, frame for frame. MATCH, DIVERGE with the pixel
-//               count, SANITIZER, or BUILD_FAILED. "not run" and why, for
-//               a target with no host build to make.
+//               count, SANITIZER, BUILD_FAILED (no executable came out),
+//               or CRASHED (one did, and the replay through it did not
+//               finish). "not run" and why, for a target with no host
+//               build to make.
 //   silicon     a key and nothing else. Only a real board can answer this
 //               one, and only a person holding it can make it: the count
 //               arrives at page load from GET /api/attest, which keys on
@@ -89,7 +91,7 @@ function findChrome(): string {
 // ---- the ledger's own shape ----------------------------------------------
 
 export type EmulatorMark = "PASS" | "FAIL" | "ERROR" | "no port";
-export type HostMark = "MATCH" | "DIVERGE" | "SANITIZER" | "BUILD_FAILED" | "not run";
+export type HostMark = "MATCH" | "DIVERGE" | "SANITIZER" | "BUILD_FAILED" | "CRASHED" | "not run";
 
 export interface LedgerVerdict {
   verdict: "go" | "degraded" | "refuse";
@@ -255,6 +257,15 @@ interface Captured {
   timedOut: boolean;
 }
 
+// Terminal colour has no business in a JSON document that a web page then
+// prints: bun and the tools it runs colour their own errors, and a reason
+// string carrying raw escape bytes renders as garbage on a gallery cell and
+// diffs noisily in a committed file.
+const ANSI = /\u001b\[[0-9;]*m/g;
+function plain(text: string): string {
+  return text.replace(ANSI, "");
+}
+
 async function runCaptured(args: string[], timeoutMs: number): Promise<Captured> {
   const proc = Bun.spawn(["bun", ...args], {
     cwd: REPO_ROOT,
@@ -269,7 +280,7 @@ async function runCaptured(args: string[], timeoutMs: number): Promise<Captured>
   }, timeoutMs);
   const [stdout, stderr, exitCode] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited]);
   clearTimeout(timer);
-  return { exitCode, stdout, stderr, timedOut };
+  return { exitCode, stdout: plain(stdout), stderr: plain(stderr), timedOut };
 }
 
 /**
@@ -336,6 +347,9 @@ interface HostDiffJson {
 const HOSTDIFF_FLAKE_PAUSES_MS = [5_000, 20_000];
 
 async function runHostDiff(app: string, pack: string): Promise<{ mark: HostMark; reason: string }> {
+  // Only a BUILD_FAILED is retried. A CRASHED run is a fact about the
+  // firmware and the sanitizers, not about the toolchain losing a race, and
+  // running it again would only produce the same crash more slowly.
   let last = await runHostDiffOnce(app, pack);
   for (const pause of HOSTDIFF_FLAKE_PAUSES_MS) {
     if (last.mark !== "BUILD_FAILED") return last;
@@ -352,11 +366,15 @@ async function runHostDiffOnce(app: string, pack: string): Promise<{ mark: HostM
   const parsed = tailJson<HostDiffJson>(r.stdout);
   if (!parsed) {
     // hostdiff exits 2 before it prints anything when a build fails, and
-    // says why on stderr. That sentence is the mark's whole value.
+    // says why on stderr. That sentence is the mark's whole value. A run
+    // with no BUILD_FAILED line got further than that: an executable was
+    // produced and the replay through it did not finish, which is a
+    // different fact and gets a different word.
     const combined = `${r.stdout}\n${r.stderr}`;
     const build = /BUILD_FAILED:([\s\S]*?)(\n\n|$)/.exec(combined);
     const tail = (build ? build[1]! : r.stderr || r.stdout).trim().split("\n").slice(-4).join(" ").slice(0, 400);
-    return { mark: "BUILD_FAILED", reason: tail || `hostdiff exited ${r.exitCode} with nothing to say` };
+    if (build) return { mark: "BUILD_FAILED", reason: tail || `hostdiff exited ${r.exitCode} with nothing to say` };
+    return { mark: "CRASHED", reason: tail || `hostdiff exited ${r.exitCode} without reaching a comparison, and said nothing` };
   }
   const sanitized = parsed.results.find((x) => x.verdict === "sanitizer");
   if (sanitized) return { mark: "SANITIZER", reason: `the sanitized host build trapped on ${sanitized.trace} (${parsed.sanitizers.join(", ")})` };

@@ -25,6 +25,14 @@ Every proof this document describes lands on one of three marks, and it
 matters which, because each catches a different class of bug and none of
 them subsumes another:
 
+**Where they are collected.** `bun run ledger` ([`tools/ledger.ts`](../tools/ledger.ts))
+runs the first two for every app against every target and records them, per
+pair, in `ledger.json`, alongside the key the third one's count comes back
+on. The public gallery renders that file, so each of these marks is a chip
+on a cell with its own sentence behind it, and a mark that is absent is
+absent on the page with the reason printed rather than silently omitted.
+See [`docs/decisions/0012`](decisions/0012-the-gallery-is-built-from-a-ledger.md).
+
 | mark | runs the firmware as | catches | never catches |
 | --- | --- | --- | --- |
 | **emulator** | wasm32-freestanding, in the browser or headless (`harness/emulatorSide.ts`) | application-logic bugs: wrong pixels, wrong state transitions, wrong layout | timing, bus load, real input-device defects, anything wasm's memory-safe-by-construction sandbox hides (see "host", below) |
