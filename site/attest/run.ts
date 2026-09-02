@@ -219,6 +219,13 @@ async function runInvariantsAttestation(opts: RunAttestationOptions & { plan: At
   }
 
   report({ phase: "checking", percent: 100, message: `Running ${plan.app}'s own invariants on ${frames.length} captured frame(s)…` });
+  // A checker is a synchronous pass over every captured frame - hundreds of
+  // thousands of pixels each - so it is the one step here that can hold the
+  // main thread long enough to matter. Yielding first lets the line above
+  // actually reach the screen instead of being replaced by the verdict in
+  // the same frame, which is the difference between a page that says what
+  // it is doing and one that appears to hang.
+  await new Promise((resolve) => setTimeout(resolve, 0));
   // pushStats is deliberately absent: a board answers SHOT with its
   // framebuffer and reports nothing about what it pushed to the panel. A
   // checker that needs it says "unevaluable" and this run is not postable.
