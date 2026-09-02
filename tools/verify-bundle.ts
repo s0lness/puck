@@ -228,12 +228,52 @@ function isUrl(s: string): boolean {
   return /^https?:\/\//.test(s) || /^git@/.test(s);
 }
 
-function cloneBundle(url: string): string {
+// commit, when given, is registry.json's own pin for this external app
+// (registry entry's own "commit" field, next to "url"): a full 40-hex sha,
+// fetched directly and checked, rather than trusting whatever that
+// repository's HEAD happens to be on the day this runs. Without a pin, an
+// external app's own commits under it silently change what gets
+// verified - the exact "reproduction, not a submission" claim
+// docs/convention/app-bundle.md makes for a PORT's own external build
+// (tools/externalBuild.ts, docs/decisions/0005-external-ports-are-
+// reproduced.md) applies just as much to the bundle repository itself.
+function cloneBundle(url: string, commit?: string): string {
   const dir = mkdtempSync(join(tmpdir(), "puck-verify-bundle-clone-"));
-  const result = Bun.spawnSync(["git", "clone", "--depth", "1", url, dir], { stdout: "pipe", stderr: "pipe" });
-  if (!result.success) {
-    const stderr = result.stderr ? result.stderr.toString().trim() : "";
-    throw new Error(`could not clone ${url}${stderr ? `: ${stderr}` : ` (git exited ${result.exitCode})`}`);
+
+  if (!commit) {
+    // Loud and on stderr (not folded into a table cell or --json output
+    // nobody reads until something breaks): an unpinned external app is a
+    // real gap in "listing is a reproduction, not a submission", not a
+    // quiet default worth staying quiet about.
+    console.error(`verify-bundle: WARNING: ${url} has no "commit" pin in registry.json - verifying an unpinned clone of its current HEAD, which nothing here can reproduce later`);
+    const result = Bun.spawnSync(["git", "clone", "--depth", "1", "--", url, dir], { stdout: "pipe", stderr: "pipe" });
+    if (!result.success) {
+      const stderr = result.stderr ? result.stderr.toString().trim() : "";
+      throw new Error(`could not clone ${url}${stderr ? `: ${stderr}` : ` (git exited ${result.exitCode})`}`);
+    }
+    return dir;
+  }
+
+  // Pinned: init + fetch --depth 1 origin <sha> + checkout FETCH_HEAD, then
+  // verify what actually got checked out against the declared pin - the
+  // identical sequence tools/externalBuild.ts's checkout()/
+  // verifyCheckedOutCommit() use for a port's own external build, applied
+  // here to the bundle repository itself rather than duplicated by accident
+  // with a subtly different shape.
+  const run = (args: string[]) => Bun.spawnSync(["git", ...args], { cwd: dir, stdout: "pipe", stderr: "pipe" });
+  const tail = (r: ReturnType<typeof run>) => (r.stderr ? r.stderr.toString().trim() : "");
+  const init = Bun.spawnSync(["git", "init", "--quiet", dir], { stdout: "pipe", stderr: "pipe" });
+  if (!init.success) throw new Error(`could not git init ${dir}: ${tail(init)}`);
+  const remote = run(["remote", "add", "origin", "--", url]);
+  if (!remote.success) throw new Error(`could not add ${url} as a remote: ${tail(remote)}`);
+  const fetch = run(["fetch", "--depth", "1", "origin", commit]);
+  if (!fetch.success) throw new Error(`could not fetch ${commit} from ${url}: ${tail(fetch)}`);
+  const co = run(["checkout", "--quiet", "FETCH_HEAD"]);
+  if (!co.success) throw new Error(`fetched ${commit} from ${url} but could not check it out: ${tail(co)}`);
+  const rev = run(["rev-parse", "HEAD"]);
+  const head = rev.stdout ? rev.stdout.toString().trim() : "";
+  if (!rev.success || head !== commit) {
+    throw new Error(`checked out HEAD=${head || "(unknown)"} from ${url}, which does not match the "commit" pinned in registry.json (${commit})`);
   }
   return dir;
 }
@@ -246,7 +286,12 @@ interface ResolvedBundle {
 
 function resolveBundleJsonPath(target: string): ResolvedBundle {
   if (isUrl(target)) {
-    const cloneRoot = cloneBundle(target);
+    // registry.json is the one place an external app's pin lives (see
+    // above); a target given as a bare URL not found there (someone
+    // running verify-bundle against a URL that isn't registered at all) is
+    // simply unpinned, same as an unregistered app always was.
+    const pinnedCommit = loadRegistry().apps.find((a) => a.url === target)?.commit;
+    const cloneRoot = cloneBundle(target, pinnedCommit);
     const candidate = join(cloneRoot, "bundle.json");
     if (!existsSync(candidate)) throw new Error(`cloned ${target} but found no bundle.json at its root (${candidate})`);
     return { bundleJsonPath: candidate, bundleDir: cloneRoot, cloneRoot };
@@ -300,7 +345,11 @@ interface RegistryPackEntry {
 }
 interface Registry {
   packs: RegistryPackEntry[];
-  apps: { name: string; path?: string; url?: string }[];
+  // commit: an external app's own pin (a full 40-hex sha), next to its
+  // "url" - see cloneBundle()'s own header comment above. Optional so an
+  // in-repo apps/ entry (which only ever has "path") and a not-yet-pinned
+  // external one both still parse.
+  apps: { name: string; path?: string; url?: string; commit?: string }[];
 }
 
 function loadRegistry(): Registry {
@@ -395,7 +444,14 @@ async function verifyPort(bundleRoot: string, port: PortEntry, index: number, re
         modulePath
       );
     } catch (err) {
-      if (err instanceof ExternalBuildError) return { ...base, provenance, status: "error", reason: err.message };
+      if (err instanceof ExternalBuildError) {
+        // err.message already carries the failing command's own last 40
+        // lines of stdout/stderr (tools/externalBuild.ts). Printed here too,
+        // not just returned in `reason`, so it is visible in the plain
+        // table run and not only in --json output.
+        console.error(`  [${port.pack}] ${err.message}`);
+        return { ...base, provenance, status: "error", reason: err.message };
+      }
       throw err;
     }
   } else {
@@ -419,12 +475,19 @@ async function verifyPort(bundleRoot: string, port: PortEntry, index: number, re
     const buildArgs = port.mode === "native" ? [] : ["--app", resolvePath(port.source!), ...(port.buildArgs ?? [])];
     const build = runBunScript(buildScript, buildArgs);
     if (!build.success) {
-      const tail = build.stderr.trim().split("\n").slice(-5).join(" | ");
+      // Last 40 lines of stdout+stderr (zig writes its own diagnostics to
+      // either stream depending on how it fails), not a bare exit code: an
+      // agent (or a person) reading this needs to see WHY the build broke,
+      // not just that it did.
+      const tailLines = [build.stdout, build.stderr].join("\n").trim().split("\n").slice(-40);
+      const tail = tailLines.join("\n");
+      console.error(`  [${port.pack}] build failed (exit ${build.exitCode}) after ${BUILD_MAX_ATTEMPTS} attempt(s): bun run ${buildScript} ${buildArgs.join(" ")}`);
+      if (tail) console.error(tail);
       return {
         ...base,
         status: "error",
-        reason: `build failed (exit ${build.exitCode}) after ${BUILD_MAX_ATTEMPTS} attempt(s): bun run ${buildScript} ${buildArgs.join(" ")}`,
-        details: tail ? [tail] : undefined,
+        reason: `build failed (exit ${build.exitCode}) after ${BUILD_MAX_ATTEMPTS} attempt(s): bun run ${buildScript} ${buildArgs.join(" ")}${tail ? `\n${tail}` : ""}`,
+        details: tail ? tailLines : undefined,
       };
     }
     const repoWasmOut = join(REPO_ROOT, "wasm", "dist", "emu.wasm");
@@ -491,13 +554,17 @@ function printTable(results: PortVerifyResult[]): void {
   // A passing port normally has nothing to say. An externally built one
   // does: where its module came from, which is the one thing a reader
   // cannot infer from the fact that it passed.
-  const rows = results.map((r) => [
-    r.pack,
-    r.mode,
-    r.kind,
-    r.status.toUpperCase(),
-    r.status === "pass" ? (r.provenance ? `built from ${r.provenance}` : "") : r.reason,
-  ]);
+  // A build failure's `reason` can now run to 40 lines (the failing
+  // command's own captured output, printed in full to stderr as it
+  // happens). The table cell stays one line: only the first line of
+  // `reason`, with a pointer to the log just printed above for the rest.
+  const rows = results.map((r) => {
+    if (r.status === "pass") return [r.pack, r.mode, r.kind, r.status.toUpperCase(), r.provenance ? `built from ${r.provenance}` : ""];
+    const lines = r.reason.split("\n");
+    const first = lines[0]!;
+    const cell = lines.length > 1 ? `${first} (see log above)` : first;
+    return [r.pack, r.mode, r.kind, r.status.toUpperCase(), cell];
+  });
   const widths = header.map((h, i) => Math.max(h.length, ...rows.map((row) => row[i]!.length)));
   const fmt = (cols: string[]) => cols.map((c, i) => c.padEnd(widths[i]!)).join("  ");
   console.log(fmt(header));

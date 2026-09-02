@@ -79,7 +79,7 @@ export async function postFreeze(bundle: FreezeBundle, id?: string): Promise<Fre
   try {
     const res = await fetch("/api/freeze", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-puck-emulator": "1" },
       body: JSON.stringify(id ? { ...bundle, id } : bundle),
     });
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}: ${await res.text()}` };

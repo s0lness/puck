@@ -54,7 +54,12 @@ export interface ExternalBuild {
 // everything else here is pinned, and this is the one shape that is not.
 export const WORKING_TREE_COMMIT = "working-tree";
 
-const COMMIT_RE = /^[0-9a-f]{7,40}$/;
+// A FULL 40-character sha, not an abbreviated prefix: an abbreviated sha is
+// only unambiguous against the object database it was typed against, and a
+// bundle.json entry is read long after that database (and whatever objects
+// happened to exist in it that day) is gone. The full sha is the only form
+// that still names exactly one commit, forever, in any clone.
+const COMMIT_RE = /^[0-9a-f]{40}$/;
 
 export class ExternalBuildError extends Error {}
 
@@ -84,8 +89,10 @@ export function validateExternalBuild(raw: unknown, label: string): string[] {
     errors.push(`${label}.commit must be a non-empty string (a commit sha, or "${WORKING_TREE_COMMIT}" for a local directory with no git history)`);
   } else if (b.commit !== WORKING_TREE_COMMIT && !COMMIT_RE.test(b.commit)) {
     errors.push(
-      `${label}.commit must be a commit sha (7 to 40 hex characters), got ${JSON.stringify(b.commit)}. ` +
-        `A branch or tag name is not accepted: it names a moving target, and a build that can move is not a reproduction. ` +
+      `${label}.commit must be a full 40-character commit sha, got ${JSON.stringify(b.commit)}. ` +
+        `An abbreviated sha is not accepted: it is only unambiguous against the object database it was typed against, ` +
+        `which will not still exist when this bundle is verified later. ` +
+        `A branch or tag name is not accepted either: it names a moving target, and a build that can move is not a reproduction. ` +
         `Use "${WORKING_TREE_COMMIT}" only for a local directory that is not a git repository.`
     );
   }
@@ -133,10 +140,18 @@ export interface ExternalBuildOutcome {
 
 const DEFAULT_TIMEOUT_MS = 600_000;
 
-function runGit(args: string[], cwd: string | undefined, onLog?: (line: string) => void): { ok: boolean; stderr: string } {
+// timeoutMs applies here too, not just to the build command below: a git
+// clone/fetch/checkout against a host that stalls (a bad URL, a network
+// that hangs instead of refusing) is exactly the same "looks like it's
+// still working" failure mode the build command's own timeout exists for.
+function runGit(args: string[], cwd: string | undefined, timeoutMs: number, onLog?: (line: string) => void): { ok: boolean; stdout: string; stderr: string } {
   onLog?.(`git ${args.join(" ")}`);
-  const result = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe" });
-  return { ok: result.success, stderr: result.stderr ? result.stderr.toString().trim() : "" };
+  const result = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", timeout: timeoutMs });
+  return {
+    ok: result.success,
+    stdout: result.stdout ? result.stdout.toString().trim() : "",
+    stderr: result.stderr ? result.stderr.toString().trim() : "",
+  };
 }
 
 // Puts the repository's contents at `commit` into `workDir`.
@@ -151,20 +166,26 @@ function runGit(args: string[], cwd: string | undefined, onLog?: (line: string) 
 // WORKING_TREE_COMMIT, so nothing ever claims a pin it does not have.
 function checkout(build: ExternalBuild, workDir: string, options: ExternalBuildOptions): void {
   const { onLog } = options;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const git = (args: string[], cwd: string | undefined) => runGit(args, cwd, timeoutMs, onLog);
 
   if (isRemoteRepo(build.repo)) {
     if (build.commit === WORKING_TREE_COMMIT) {
       throw new ExternalBuildError(`"${WORKING_TREE_COMMIT}" is only meaningful for a local directory; ${build.repo} is remote and must name a commit sha`);
     }
-    const init = runGit(["init", "--quiet", workDir], undefined, onLog);
+    const init = git(["init", "--quiet", workDir], undefined);
     if (!init.ok) throw new ExternalBuildError(`could not git init ${workDir}: ${init.stderr}`);
-    const remote = runGit(["remote", "add", "origin", build.repo], workDir, onLog);
+    // "--" before the repo URL in both `remote add` and `clone` below: it
+    // stops git's own option parser there, so a repo value that happens to
+    // start with "-" is never read back as a flag.
+    const remote = git(["remote", "add", "origin", "--", build.repo], workDir);
     if (!remote.ok) throw new ExternalBuildError(`could not add ${build.repo} as a remote: ${remote.stderr}`);
-    const fetch = runGit(["fetch", "--depth", "1", "origin", build.commit], workDir, onLog);
+    const fetch = git(["fetch", "--depth", "1", "origin", build.commit], workDir);
     if (fetch.ok) {
-      const co = runGit(["checkout", "--quiet", "FETCH_HEAD"], workDir, onLog);
-      if (co.ok) return;
-      throw new ExternalBuildError(`fetched ${build.commit} from ${build.repo} but could not check it out: ${co.stderr}`);
+      const co = git(["checkout", "--quiet", "FETCH_HEAD"], workDir);
+      if (!co.ok) throw new ExternalBuildError(`fetched ${build.commit} from ${build.repo} but could not check it out: ${co.stderr}`);
+      verifyCheckedOutCommit(build, workDir, git);
+      return;
     }
     // Some hosts refuse to serve an arbitrary sha directly. Full clone,
     // then checkout: slower, but it is the only remaining way to honour
@@ -172,10 +193,11 @@ function checkout(build: ExternalBuild, workDir: string, options: ExternalBuildO
     onLog?.(`shallow fetch of ${build.commit} refused, falling back to a full clone`);
     rmSync(workDir, { recursive: true, force: true });
     mkdirSync(workDir, { recursive: true });
-    const clone = runGit(["clone", "--quiet", build.repo, workDir], undefined, onLog);
+    const clone = git(["clone", "--quiet", "--", build.repo, workDir], undefined);
     if (!clone.ok) throw new ExternalBuildError(`could not clone ${build.repo}: ${clone.stderr}`);
-    const co = runGit(["checkout", "--quiet", build.commit], workDir, onLog);
+    const co = git(["checkout", "--quiet", build.commit], workDir);
     if (!co.ok) throw new ExternalBuildError(`cloned ${build.repo} but commit ${build.commit} could not be checked out: ${co.stderr}`);
+    verifyCheckedOutCommit(build, workDir, git);
     return;
   }
 
@@ -203,10 +225,28 @@ function checkout(build: ExternalBuild, workDir: string, options: ExternalBuildO
         `Use "${WORKING_TREE_COMMIT}" if this directory genuinely has no history, and know that such a build is not pinned.`
     );
   }
-  const clone = runGit(["clone", "--quiet", source, workDir], undefined, onLog);
+  const clone = git(["clone", "--quiet", "--", source, workDir], undefined);
   if (!clone.ok) throw new ExternalBuildError(`could not clone local repository ${source}: ${clone.stderr}`);
-  const co = runGit(["checkout", "--quiet", build.commit], workDir, onLog);
+  const co = git(["checkout", "--quiet", build.commit], workDir);
   if (!co.ok) throw new ExternalBuildError(`cloned ${source} but commit ${build.commit} could not be checked out: ${co.stderr}`);
+}
+
+// Belt and suspenders on top of the pin itself: FETCH_HEAD is whatever the
+// remote handed back for the ref/sha asked for, and a checkout of it always
+// succeeds even if a misbehaving or compromised remote served something
+// other than the exact commit requested (a mutated ref, a same-named
+// object on a host that does not actually enforce immutable shas). Checking
+// what actually got checked out against what was declared is what makes
+// this a verified pin rather than a polite request.
+function verifyCheckedOutCommit(build: ExternalBuild, workDir: string, git: (args: string[], cwd: string | undefined) => { ok: boolean; stdout: string; stderr: string }): void {
+  const rev = git(["rev-parse", "HEAD"], workDir);
+  if (!rev.ok) throw new ExternalBuildError(`checked out ${build.commit} from ${build.repo} but could not verify it (git rev-parse HEAD failed): ${rev.stderr}`);
+  if (rev.stdout !== build.commit) {
+    throw new ExternalBuildError(
+      `checked out HEAD=${rev.stdout} from ${build.repo}, which does not match the declared commit ${build.commit}. ` +
+        `Refusing to build: this is not the pinned commit, whatever the remote handed back.`
+    );
+  }
 }
 
 // Runs the build command and returns the artifact it produced.
@@ -271,13 +311,17 @@ export async function buildExternalPort(build: ExternalBuild, options: ExternalB
       clearTimeout(timer);
     }
     if (exitCode !== 0) {
+      // Last 40 lines, not 8: enough of the actual compiler/linker error to
+      // read what broke without pasting an entire log, and kept on their
+      // own lines (not joined into one) so a stack trace or a multi-line
+      // diagnostic stays legible instead of turning into one long ribbon.
       const tail = [stdout, stderr]
         .join("\n")
         .trim()
         .split("\n")
-        .slice(-8)
-        .join(" | ");
-      throw new ExternalBuildError(`build command exited ${exitCode} for ${provenance}: ${build.command}${tail ? ` -- ${tail}` : ""}`);
+        .slice(-40)
+        .join("\n");
+      throw new ExternalBuildError(`build command exited ${exitCode} for ${provenance}: ${build.command}${tail ? `\n${tail}` : ""}`);
     }
     if (!existsSync(artifactPath)) {
       throw new ExternalBuildError(

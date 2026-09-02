@@ -67,9 +67,16 @@ function findChrome(): string {
 }
 const CHROME = process.env.CHROME_PATH || findChrome();
 
+// Thrown, not process.exit()'d: a bare process.exit() inside the try below
+// skips its finally entirely, which is what used to leave Chrome (and, for
+// the --single path, the still-open browser) running after a failed run.
+// See main()'s own catch at the bottom for where the exit code actually
+// gets set, after that finally has run.
+class VerifyFailure extends Error {}
+
 function fail(msg: string): never {
   console.error(`FAIL: ${msg}`);
-  process.exit(1);
+  throw new VerifyFailure(msg);
 }
 
 async function waitForServer(url: string, timeoutMs: number): Promise<void> {
@@ -245,6 +252,7 @@ async function withServer<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+async function main(): Promise<void> {
 let browser: Browser | null = null;
 try {
   browser = await puppeteer.launch({ executablePath: CHROME, headless: true });
@@ -254,9 +262,12 @@ try {
   if (mode !== "both") {
     // Single-mode: caller (this script itself, or a human) has already
     // arranged the src/ tree to be RED or GREEN before invoking this.
+    // `return`, not process.exit(0): this is still inside the try below,
+    // and exiting here directly used to skip its finally, leaving this
+    // very browser (and, on Windows, the dev server's process tree) open.
     const result = await withServer(() => runExperiment(browser!));
     console.log(`${mode.toUpperCase()} run: ${result.accelEventCount} accel event(s) recorded, before-vs-held frame diff = ${result.frameDiffPx}px`);
-    process.exit(0);
+    return;
   }
 
   console.log("GREEN run (current tree, fix in place)...");
@@ -294,3 +305,9 @@ try {
 } finally {
   if (browser) await closeBrowser(browser);
 }
+}
+
+main().catch((err) => {
+  if (!(err instanceof VerifyFailure)) console.error(err);
+  process.exitCode = 1;
+});

@@ -101,6 +101,15 @@ async function main(): Promise<void> {
     }
     console.log(`PASS: ${branchErrors[0]!.slice(0, 110)}...`);
 
+    // An abbreviated sha is unambiguous only against the object database it
+    // was typed against, which will not still exist when this bundle is
+    // verified later - so it is refused exactly like a branch/tag name.
+    console.log("\n3b. an abbreviated (7-hex) sha is rejected...");
+    const shortShaErrors = validateExternalBuild({ ...build, commit: "a1b2c3d" }, "ports[0].build");
+    if (shortShaErrors.length === 0) fail('"commit": "a1b2c3d" (7 hex chars) was accepted: only a full 40-character sha is a real pin');
+    if (!shortShaErrors.some((e) => e.includes("40-character"))) fail(`the rejection does not explain what is wrong: ${shortShaErrors.join("; ")}`);
+    console.log(`PASS: ${shortShaErrors[0]!.slice(0, 110)}...`);
+
     // ---- 4. an artifact cannot escape the checkout -----------------------
     console.log("\n4. an artifact path escaping the checkout is rejected...");
     const escapeErrors = validateExternalBuild({ ...build, artifact: "../outside.wasm" }, "ports[0].build");

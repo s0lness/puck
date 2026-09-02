@@ -380,13 +380,24 @@ console.log(`${ZIG} ${args.join(" ")}`);
 // failures under a concurrent build, then a clean first attempt once it
 // finished), so this is contention, not a coin flip, and hammering it
 // immediately mostly reproduces the same collision.
+//
+// THE TIMEOUT IS NOT DECORATION: the same bug also HANGS, not just crashes
+// (a zig process sitting at 0.02 seconds of CPU for thirteen minutes on
+// arguments that then succeeded immediately on a manual retry - see
+// packs/web/wasm/build.ts's compileModule for the original writeup). A
+// retry loop that only catches a non-zero exit waits forever for that one,
+// which is a far worse failure than a crash: a build that never returns
+// looks like a build that is working. Two minutes is many times what a
+// real compile of these files takes, even under a saturated machine.
 const MAX_ATTEMPTS = 8;
 const RETRY_PAUSE_MS = 400;
-let result = Bun.spawnSync([ZIG, ...args], { stdout: "inherit", stderr: "inherit" });
+const ATTEMPT_TIMEOUT_MS = 120_000;
+let result = Bun.spawnSync([ZIG, ...args], { stdout: "inherit", stderr: "inherit", timeout: ATTEMPT_TIMEOUT_MS });
 for (let attempt = 2; !result.success && attempt <= MAX_ATTEMPTS; attempt++) {
-  console.error(`zig cc exited ${result.exitCode}, retrying (${attempt}/${MAX_ATTEMPTS}) - see this call's comment`);
+  const how = result.signalCode ? `was killed (${result.signalCode}, most likely this build's own ${ATTEMPT_TIMEOUT_MS}ms timeout)` : `exited ${result.exitCode}`;
+  console.error(`zig cc ${how}, retrying (${attempt}/${MAX_ATTEMPTS}) - see this call's comment`);
   Bun.sleepSync(RETRY_PAUSE_MS);
-  result = Bun.spawnSync([ZIG, ...args], { stdout: "inherit", stderr: "inherit" });
+  result = Bun.spawnSync([ZIG, ...args], { stdout: "inherit", stderr: "inherit", timeout: ATTEMPT_TIMEOUT_MS });
 }
 
 if (!result.success) {

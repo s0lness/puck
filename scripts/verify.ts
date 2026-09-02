@@ -51,9 +51,17 @@ function findChrome(): string {
 }
 const CHROME = process.env.CHROME_PATH || findChrome();
 
+// A verification failure the caller already explained on stderr (the
+// `FAIL: ...` line below). Thrown, not process.exit()'d, so it unwinds
+// through the try/finally at the bottom that kills Chrome and the dev
+// server: a bare process.exit() inside that try skips finally entirely on
+// both Bun and Node, which is exactly what left Chrome and the server
+// running after a failed run.
+class VerifyFailure extends Error {}
+
 function fail(msg: string): never {
   console.error(`FAIL: ${msg}`);
-  process.exit(1);
+  throw new VerifyFailure(msg);
 }
 
 async function waitForServer(url: string, timeoutMs: number): Promise<void> {
@@ -68,6 +76,7 @@ async function waitForServer(url: string, timeoutMs: number): Promise<void> {
   throw new Error(`server did not come up within ${timeoutMs}ms`);
 }
 
+async function main(): Promise<void> {
 const server = Bun.spawn(["bun", "run", "server.ts"], {
   cwd: ROOT,
   env: { ...process.env, PORT: String(PORT) },
@@ -196,3 +205,13 @@ try {
   } catch {}
   server.kill();
 }
+}
+
+// Only after main()'s finally has actually run (Chrome and the dev server
+// are down either way) does this decide the exit code. A VerifyFailure
+// already printed its own `FAIL: ...` line; anything else is unexpected and
+// gets logged here so it is not lost.
+main().catch((err) => {
+  if (!(err instanceof VerifyFailure)) console.error(err);
+  process.exitCode = 1;
+});

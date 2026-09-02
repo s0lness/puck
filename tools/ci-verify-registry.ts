@@ -41,8 +41,20 @@ function runVerifyBundle(target: string): { exitCode: number; stdout: string } {
 
 function detailFor(stdout: string, exitCode: number): string {
   try {
-    const parsed = JSON.parse(stdout) as { ports?: { pack: string; status: string }[]; errors?: string[] };
-    if (Array.isArray(parsed.ports)) return parsed.ports.map((p) => `${p.pack}: ${p.status}`).join(", ");
+    const parsed = JSON.parse(stdout) as { ports?: { pack: string; status: string; reason?: string }[]; errors?: string[] };
+    if (Array.isArray(parsed.ports)) {
+      return parsed.ports
+        .map((p) => {
+          if (p.status === "pass") return `${p.pack}: ${p.status}`;
+          // The reason's first line, so a bare "error"/"fail" in this
+          // summary line always names WHY, not just that it happened - the
+          // rest of a build failure's captured output is already in the job
+          // log (tools/verify-bundle.ts prints it as it happens).
+          const first = (p.reason ?? "").split("\n")[0] ?? "";
+          return `${p.pack}: ${p.status}${first ? ` (${first})` : ""}`;
+        })
+        .join(", ");
+    }
     if (Array.isArray(parsed.errors) && parsed.errors.length > 0) return parsed.errors[0]!;
   } catch {
     // stdout was not JSON: the run crashed before verify-bundle printed its

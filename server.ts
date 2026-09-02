@@ -72,6 +72,7 @@ async function serveWasmFile(req: Request): Promise<Response> {
 // plain freeze already landed) overwrites that same directory rather than
 // creating a new one.
 async function saveFreeze(req: Request): Promise<Response> {
+  if (!guard(req)) return new Response("nope", { status: 403 });
   let body: Record<string, unknown>;
   try {
     body = (await req.json()) as Record<string, unknown>;
@@ -99,6 +100,7 @@ async function saveFreeze(req: Request): Promise<Response> {
 // harness/, which replays the same trace shape against real hardware).
 // Timestamped archive plus a latest.json mirror.
 async function saveTrace(req: Request): Promise<Response> {
+  if (!guard(req)) return new Response("nope", { status: 403 });
   let body: unknown;
   try {
     body = await req.json();

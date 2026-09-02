@@ -996,7 +996,14 @@ async function bringUp(bytes: ArrayBuffer, reason: string): Promise<void> {
     failReload(err);
     return;
   }
-  if (newEmu.emu_init() === 0) {
+  let initOk: number;
+  try {
+    initOk = newEmu.emu_init();
+  } catch (err) {
+    failReload(err);
+    return;
+  }
+  if (initOk === 0) {
     failReload(new Error("emu_init() returned 0 (framebuffer allocation failed; see console pane above for why)"));
     return;
   }
@@ -1367,14 +1374,27 @@ function startReplay(trace: Trace): void {
     consoleLog.push("cannot replay: no wasm module loaded yet");
     return;
   }
+  // Same reloadInFlight mutex reloadModule() uses, and for the same reason:
+  // this also calls bringUp() against the shared `emu` slot, so a
+  // live-reload broadcast landing while this bringUp() is still in flight
+  // must not start a second one racing it.
+  if (reloadInFlight) {
+    consoleLog.push("reload already in progress, ignoring (starting replay)");
+    return;
+  }
   recorder.enabled = false;
   paused = true;
   btnPause.textContent = "resume";
-  void bringUp(wasmBytes, `replay of trace recorded ${trace.recordedAt}`).then(() => {
-    replayer = new Replayer(trace.events);
-    updateReplayBar();
-    consoleLog.push(`replay loaded: ${trace.events.length} events. step or resume to play.`);
-  });
+  reloadInFlight = true;
+  void bringUp(wasmBytes, `replay of trace recorded ${trace.recordedAt}`)
+    .then(() => {
+      replayer = new Replayer(trace.events);
+      updateReplayBar();
+      consoleLog.push(`replay loaded: ${trace.events.length} events. step or resume to play.`);
+    })
+    .finally(() => {
+      reloadInFlight = false;
+    });
 }
 function stopReplay(): void {
   replayer = null;
@@ -1480,7 +1500,7 @@ async function saveTraceToServer(): Promise<void> {
   }
   const trace = recorder.toTrace(device);
   try {
-    const res = await fetch("/api/trace", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(trace) });
+    const res = await fetch("/api/trace", { method: "POST", headers: { "content-type": "application/json", "x-puck-emulator": "1" }, body: JSON.stringify(trace) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = (await res.json()) as { path: string };
     consoleLog.push(`trace saved -> ${data.path}`);

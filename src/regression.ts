@@ -166,7 +166,11 @@ export async function checkAgainstBaseline(wasmBytes: ArrayBuffer, baseline: Bas
     if (!d.match && d.diffImage) diffImages.push({ atMs: cur.atMs, rgb: d.diffImage });
   }
 
-  return { pass: points.every((p) => p.match), points, baselineFrames, currentFrames: replay.frames, diffImages };
+  // points.every() on an empty array is vacuously true: a baseline whose
+  // trace produced zero capture points (a malformed baseline, an empty
+  // capturePoints array) must never read as "pass", which is exactly what
+  // Array.prototype.every() would report with nothing to check.
+  return { pass: points.length > 0 && points.every((p) => p.match), points, baselineFrames, currentFrames: replay.frames, diffImages };
 }
 
 export interface RegressionResultPayload {

@@ -56,13 +56,21 @@ function findChrome(): string {
 }
 const CHROME = process.env.CHROME_PATH || findChrome();
 
+// Thrown, not process.exit()'d: a bare process.exit() inside the try below
+// skips its finally entirely, which is what used to leave Chrome and the
+// dev server running after a failed run. See main()'s own catch at the
+// bottom for where the exit code actually gets set, after that finally has
+// run.
+class VerifyFailure extends Error {}
+
 function fail(msg: string): never {
   console.error(`FAIL: ${msg}`);
-  process.exit(1);
+  throw new VerifyFailure(msg);
 }
 
 if (!existsSync(DIST)) fail(`site/dist/ does not exist. Run \`bun run site:build\` first.`);
 
+async function main(): Promise<void> {
 // The shared emulator bundle's main.ts unconditionally tries to open a
 // live-reload websocket on boot (by design, see scripts/verify.ts's own
 // comment); this static server (scripts/staticSite.ts) answers that (and
@@ -550,3 +558,9 @@ try {
 } finally {
   server.stop(true);
 }
+}
+
+main().catch((err) => {
+  if (!(err instanceof VerifyFailure)) console.error(err);
+  process.exitCode = 1;
+});
