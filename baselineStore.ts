@@ -52,9 +52,14 @@ function writeFramePngs(dir: string, prefix: string, frames: StoredFrame[]): voi
 // Writes baselines/latest/baseline.json (the exact bytes needed to check
 // against later, read back with loadBaseline()) plus one PNG per capture
 // point, purely so a person or an agent can open a baseline's frames
-// directly without decoding base64 out of the JSON by hand.
+// directly without decoding base64 out of the JSON by hand. The directory is
+// cleared first, the same reason saveRegressionResult() below clears its
+// own: a previous baseline's frame-<atMs>.png files (from a trace with MORE
+// or DIFFERENT capture points than this one) must never survive into a new
+// baseline's directory looking like they still belong to it.
 export function saveBaseline(bundle: BaselineOnDisk): { path: string } {
   const dir = join(BASELINES_DIR, "latest");
+  if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "baseline.json"), JSON.stringify(bundle, null, 2));
   writeFramePngs(dir, "frame-", bundle.frames);

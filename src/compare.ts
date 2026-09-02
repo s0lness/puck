@@ -25,6 +25,16 @@ export function compareFrames(a: CapturedFrame, b: CapturedFrame, tolerance: num
   if (a.width !== b.width || a.height !== b.height) {
     return { match: false, diffPixels: -1, totalPixels: a.width * a.height, firstDiffAt: null, maxChannelDelta: 255, diffImage: null };
   }
+  // A frame whose rgb buffer is short of width*height*3 (a truncated
+  // capture, a torn write, a caller that built a CapturedFrame by hand and
+  // got the size wrong) must fail here, not read whatever bytes happen to
+  // exist and silently agree with the other frame just because the loop
+  // below runs out of real data and both sides return `undefined` at the
+  // same offset (`undefined !== undefined` is false, which is a match).
+  const expectedLength = a.width * a.height * 3;
+  if (a.rgb.length !== expectedLength || b.rgb.length !== expectedLength) {
+    return { match: false, diffPixels: -1, totalPixels: a.width * a.height, firstDiffAt: null, maxChannelDelta: 255, diffImage: null };
+  }
   const w = a.width, h = a.height;
   let diffPixels = 0;
   let firstDiffAt: { x: number; y: number } | null = null;
