@@ -1,0 +1,3099 @@
+{
+  "convention": "0.1",
+  "generatedAt": "2026-09-02",
+  "apps": [
+    {
+      "name": "aliceisjustplaying/tinydraw",
+      "kind": "external",
+      "path": null,
+      "url": "https://github.com/aliceisjustplaying/tinydraw.git",
+      "commit": "7a157d44a9da3312b1ecda2b45b116af2de28e63",
+      "provenance": "reproduced from aliceisjustplaying/tinydraw@7a157d4 on 2026-09-02"
+    },
+    {
+      "name": "chrono",
+      "kind": "local",
+      "path": "apps/chrono",
+      "url": null,
+      "commit": null,
+      "provenance": null
+    },
+    {
+      "name": "fluidbox",
+      "kind": "local",
+      "path": "apps/fluidbox",
+      "url": null,
+      "commit": null,
+      "provenance": null
+    },
+    {
+      "name": "tinydraw",
+      "kind": "local",
+      "path": "apps/tinydraw",
+      "url": null,
+      "commit": null,
+      "provenance": null
+    },
+    {
+      "name": "gameos",
+      "kind": "local",
+      "path": "apps/gameos",
+      "url": null,
+      "commit": null,
+      "provenance": null
+    }
+  ],
+  "targets": [
+    {
+      "name": "rp2350-touch-amoled-18",
+      "kind": "pack",
+      "label": "RP2350-Touch-AMOLED-1.8",
+      "path": "packs/rp2350-touch-amoled-18",
+      "panel": {
+        "w": 368,
+        "h": 448,
+        "format": "rgb565be"
+      },
+      "provenance": null
+    },
+    {
+      "name": "esp32-s3-touch-amoled-18",
+      "kind": "pack",
+      "label": "ESP32-S3-Touch-AMOLED-1.8",
+      "path": "packs/esp32-s3-touch-amoled-18",
+      "panel": {
+        "w": 368,
+        "h": 448,
+        "format": "rgb565be"
+      },
+      "provenance": null
+    },
+    {
+      "name": "web",
+      "kind": "pack",
+      "label": "Web-Touch",
+      "path": "packs/web",
+      "panel": {
+        "w": 368,
+        "h": 448,
+        "format": "rgb565be"
+      },
+      "provenance": null
+    },
+    {
+      "name": "tinydraw-esp32-s3-touch-amoled-18",
+      "kind": "external-pack",
+      "label": "tinydraw-esp32-s3-touch-amoled-18",
+      "path": null,
+      "panel": null,
+      "provenance": null
+    },
+    {
+      "name": "m5stickc-plus2",
+      "kind": "silhouette",
+      "label": "M5StickC-PLUS2",
+      "path": "packs/silhouettes/m5stickc-plus2",
+      "panel": {
+        "w": 135,
+        "h": 240,
+        "format": "rgb565be"
+      },
+      "provenance": {
+        "datasheet": "https://docs.m5stack.com/en/core/M5StickC%20PLUS2",
+        "verified": false,
+        "note": "unverified against silicon. Panel (135x240, ST7789V2), IMU (MPU6886), MCU (ESP32-PICO-V3-02 at up to 240MHz, 8MB flash, 2MB quad PSRAM) and the button GPIOs (A on G37, B on G39, power on G35, power hold on G4) are read off M5Stack's own product documentation. The 520 KB SRAM figure is the ESP32's, from Espressif, not from that page. The power button is declared role power rather than key: the vendor documentation does not state that software may read G35 as an ordinary input, and a silhouette does not get to guess a control into existence. The PSRAM is deliberately absent from the RAM budget: it exists, it is slow, and no firmware here has measured what an app can actually do with it."
+      }
+    },
+    {
+      "name": "feather-esp32s2-tft",
+      "kind": "silhouette",
+      "label": "Feather-ESP32S2-TFT",
+      "path": "packs/silhouettes/feather-esp32s2-tft",
+      "panel": {
+        "w": 240,
+        "h": 135,
+        "format": "rgb565be"
+      },
+      "provenance": {
+        "datasheet": "https://www.adafruit.com/product/5300",
+        "verified": false,
+        "note": "unverified against silicon. Panel (1.14 inch IPS, 240x135, ST7789), MCU (ESP32-S2 at 240MHz, 4MB flash, 2MB PSRAM) and the button complement are read off Adafruit's own product page. The 320 KB SRAM figure is the ESP32-S2's, from Espressif, not from that page. ONE button is declared, and that is the point of this silhouette: the board carries exactly two tactile buttons, RESET and BOOT0/D0, and RESET is not readable by an app, so it is not declared at all rather than declared as a control that does nothing. There is no IMU on this board, which is why its sensors array is empty rather than optimistic. Do not confuse this board with the ESP32-S2 Reverse TFT Feather (product 5345), which has three user buttons and would answer a different question."
+      }
+    },
+    {
+      "name": "lilygo-t-display-s3",
+      "kind": "silhouette",
+      "label": "LILYGO T-Display-S3",
+      "path": "packs/silhouettes/lilygo-t-display-s3",
+      "panel": {
+        "w": 170,
+        "h": 320,
+        "format": "rgb565be"
+      },
+      "provenance": {
+        "datasheet": "https://github.com/Xinyuan-LilyGO/T-Display-S3",
+        "verified": false,
+        "note": "unverified against silicon. Panel (170x320, ST7789V, 8-bit parallel), MCU (ESP32-S3R8: 16 MB flash, 8 MB OPI PSRAM) and the two tactile buttons (BOOT on GPIO0, the second user button on GPIO14, plus a RESET wired to EN) are read off LILYGO's own repository for this board. The 512 KB SRAM figure is the ESP32-S3's, from Espressif's datasheet, not from that repository. THREE THINGS ARE DERIVED RATHER THAN READ, and are named as derived. The pixel format is the ST7789V's standard 16-bit RGB565 interface; LILYGO's own pages do not state it in those words. RESET is not declared at all rather than declared as a control that does nothing, the same call packs/silhouettes/feather-esp32s2-tft makes. And BOOT is declared as a plain click while GPIO14 is the key: BOOT is sampled by the ROM as a boot strap at power-on, so an app timing a long press on it is asking the board for something it was not wired to promise, where GPIO14 is an ordinary input with nothing else attached to it. The 800 ms long-press threshold on GPIO14 is this descriptor's own choice; no board fact sets it. This is the plain T-Display-S3 and it has NO touch, which is why touch.points is 0: LILYGO sells a separate T-Display-S3-Touch variant with a capacitive digitizer, and that is a different board that would answer a different question."
+      }
+    },
+    {
+      "name": "pico-display-pack-2",
+      "kind": "silhouette",
+      "label": "Pico Display Pack 2.0 on Pico 2",
+      "path": "packs/silhouettes/pico-display-pack-2",
+      "panel": {
+        "w": 320,
+        "h": 240,
+        "format": "rgb565be"
+      },
+      "provenance": {
+        "datasheet": "https://shop.pimoroni.com/en-us/products/pico-display-pack-2-0",
+        "verified": false,
+        "note": "unverified against silicon. This is a two-part target and both parts are named: the Pimoroni Pico Display Pack 2.0 (2.0 inch IPS, 320x240, ST7789, 65K colours, four tactile buttons and an RGB LED) mounted on a Raspberry Pi Pico 2 (https://www.raspberrypi.com/products/raspberry-pi-pico-2/, RP2350, 4 MB QSPI flash, no PSRAM populated). Panel and buttons come off Pimoroni's own product page and its own driver header (pimoroni-pico, libraries/pico_display_2/pico_display_2.hpp: A on GPIO12, B on GPIO13, X on GPIO14, Y on GPIO15, RGB LED on GPIO6/7/8). The 520 KB SRAM figure is the RP2350's, from Raspberry Pi's datasheet, not from Pimoroni. THREE THINGS ARE DERIVED RATHER THAN READ. The A/B/X/Y labels are the names Pimoroni's own firmware uses; the product page text does not spell the silkscreen out. The pixel format is the ST7789's standard 16-bit RGB565 interface, which is what \"65K colours\" describes, not a phrase Pimoroni uses. And the roles are this descriptor's own split: all four buttons are ordinary GPIOs pulled up, so any of them could be timed, and declaring A as the key with an 800 ms threshold while B, X and Y stay plain clicks is a choice made here, not a board fact. The RGB LED is real and is not declared, because emu_device() has no output a host could draw for it and inventing one would be describing this file rather than the board. There is no touch on this pack, and no IMU anywhere in this stack, which is why touch.points is 0 and sensors is empty rather than optimistic."
+      }
+    },
+    {
+      "name": "watchy",
+      "kind": "silhouette",
+      "label": "Watchy",
+      "path": "packs/silhouettes/watchy",
+      "panel": {
+        "w": 200,
+        "h": 200,
+        "format": "mono1"
+      },
+      "provenance": {
+        "datasheet": "https://watchy.sqfmi.com/docs/hardware/",
+        "verified": false,
+        "note": "unverified against silicon. Panel (200x200 e-paper, Good Display GDEY0154D67 on current boards and GDEH0154D67 on earlier ones, SSD1681 controller), the four buttons (v2 hardware: MENU on GPIO26, BACK on GPIO25, UP on GPIO35, DOWN on GPIO4; v3 moves them to GPIO7/6/0/8), the accelerometer (Bosch BMA423) and the MCU (ESP32-PICO-D4 through v2, ESP32-S3FN8 on v3) are read off SQFMI's own hardware documentation and its firmware's src/config.h. The 520 KB SRAM figure is the ESP32-PICO-D4's, from Espressif, not from SQFMI, and this file describes the v2 board rather than the v3 because that is the one whose numbers are stated in both places. The refresh timings are Good Display's panel specification (https://www.good-display.com/product/388.html); SQFMI publishes no refresh figure of its own, and nothing here has measured one. FOUR THINGS ARE DERIVED RATHER THAN READ. The format is called mono1 because Watchy's own firmware drives this panel one bit per pixel through GxEPD2; the panel itself is specified with some greyscale capability, so this describes how the board is used rather than the outer limit of the glass. All four buttons are declared as plain clicks and none as a key: they are ordinary GPIOs, but the documented behaviour is a momentary press and a level-triggered wake from deep sleep, and nothing SQFMI publishes promises a short-versus-long verdict, so declaring one would be inventing a control. A device with no key at all is a real answer, and an app that wants one is told so rather than handed a substitute. The BMA423 reports a continuous acceleration vector, which is what that part does; SQFMI's own docs do not describe the output in those words. And the button edges and positions here place four corner buttons on two edges for a host to draw, which is a simplification of a square case with one button at each corner."
+      }
+    }
+  ],
+  "cells": {
+    "aliceisjustplaying/tinydraw:esp32-s3-touch-amoled-18": {
+      "app": "aliceisjustplaying/tinydraw",
+      "target": "esp32-s3-touch-amoled-18",
+      "targetKind": "pack",
+      "verdict": null,
+      "verdictUnavailable": "aliceisjustplaying/tinydraw's descriptor.md's Demands section carries no ```json demands block, so this app's requirements are prose only.\n        Add one (docs/convention/app-bundle.md, \"Demands are also machine-readable\"); nothing here guesses at prose.",
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "aliceisjustplaying/tinydraw's bundle.json declares no port for esp32-s3-touch-amoled-18"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "aliceisjustplaying/tinydraw's bundle.json declares no port for esp32-s3-touch-amoled-18, so there is nothing to build twice"
+      },
+      "silicon": {
+        "key": "aliceisjustplaying/tinydraw:esp32-s3-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "7a157d44a9da3312",
+        "packSha": "aac6db2fe963317f",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "aliceisjustplaying/tinydraw:feather-esp32s2-tft": {
+      "app": "aliceisjustplaying/tinydraw",
+      "target": "feather-esp32s2-tft",
+      "targetKind": "silhouette",
+      "verdict": null,
+      "verdictUnavailable": "aliceisjustplaying/tinydraw's descriptor.md's Demands section carries no ```json demands block, so this app's requirements are prose only.\n        Add one (docs/convention/app-bundle.md, \"Demands are also machine-readable\"); nothing here guesses at prose.",
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "aliceisjustplaying/tinydraw's bundle.json declares no port for feather-esp32s2-tft"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "aliceisjustplaying/tinydraw:feather-esp32s2-tft"
+      },
+      "silhouette": {
+        "mark": "build-failed",
+        "reason": "aliceisjustplaying/tinydraw's bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": {
+          "w": 240,
+          "h": 135
+        }
+      },
+      "inputs": {
+        "bundleSha": "7a157d44a9da3312",
+        "packSha": "a687c77e26084384-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "aliceisjustplaying/tinydraw:lilygo-t-display-s3": {
+      "app": "aliceisjustplaying/tinydraw",
+      "target": "lilygo-t-display-s3",
+      "targetKind": "silhouette",
+      "verdict": null,
+      "verdictUnavailable": "aliceisjustplaying/tinydraw's descriptor.md's Demands section carries no ```json demands block, so this app's requirements are prose only.\n        Add one (docs/convention/app-bundle.md, \"Demands are also machine-readable\"); nothing here guesses at prose.",
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "aliceisjustplaying/tinydraw's bundle.json declares no port for lilygo-t-display-s3"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "aliceisjustplaying/tinydraw:lilygo-t-display-s3"
+      },
+      "silhouette": {
+        "mark": "build-failed",
+        "reason": "aliceisjustplaying/tinydraw's bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": {
+          "w": 170,
+          "h": 320
+        }
+      },
+      "inputs": {
+        "bundleSha": "7a157d44a9da3312",
+        "packSha": "7c0e947cb1c4b2c6-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "aliceisjustplaying/tinydraw:m5stickc-plus2": {
+      "app": "aliceisjustplaying/tinydraw",
+      "target": "m5stickc-plus2",
+      "targetKind": "silhouette",
+      "verdict": null,
+      "verdictUnavailable": "aliceisjustplaying/tinydraw's descriptor.md's Demands section carries no ```json demands block, so this app's requirements are prose only.\n        Add one (docs/convention/app-bundle.md, \"Demands are also machine-readable\"); nothing here guesses at prose.",
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "aliceisjustplaying/tinydraw's bundle.json declares no port for m5stickc-plus2"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "aliceisjustplaying/tinydraw:m5stickc-plus2"
+      },
+      "silhouette": {
+        "mark": "build-failed",
+        "reason": "aliceisjustplaying/tinydraw's bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": {
+          "w": 135,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "7a157d44a9da3312",
+        "packSha": "5542e3db22589e2e-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "aliceisjustplaying/tinydraw:pico-display-pack-2": {
+      "app": "aliceisjustplaying/tinydraw",
+      "target": "pico-display-pack-2",
+      "targetKind": "silhouette",
+      "verdict": null,
+      "verdictUnavailable": "aliceisjustplaying/tinydraw's descriptor.md's Demands section carries no ```json demands block, so this app's requirements are prose only.\n        Add one (docs/convention/app-bundle.md, \"Demands are also machine-readable\"); nothing here guesses at prose.",
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "aliceisjustplaying/tinydraw's bundle.json declares no port for pico-display-pack-2"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "aliceisjustplaying/tinydraw:pico-display-pack-2"
+      },
+      "silhouette": {
+        "mark": "build-failed",
+        "reason": "aliceisjustplaying/tinydraw's bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": {
+          "w": 320,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "7a157d44a9da3312",
+        "packSha": "46b334fd2ff469f3-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "aliceisjustplaying/tinydraw:rp2350-touch-amoled-18": {
+      "app": "aliceisjustplaying/tinydraw",
+      "target": "rp2350-touch-amoled-18",
+      "targetKind": "pack",
+      "verdict": null,
+      "verdictUnavailable": "aliceisjustplaying/tinydraw's descriptor.md's Demands section carries no ```json demands block, so this app's requirements are prose only.\n        Add one (docs/convention/app-bundle.md, \"Demands are also machine-readable\"); nothing here guesses at prose.",
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "aliceisjustplaying/tinydraw's bundle.json declares no port for rp2350-touch-amoled-18"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "aliceisjustplaying/tinydraw's bundle.json declares no port for rp2350-touch-amoled-18, so there is nothing to build twice"
+      },
+      "silicon": {
+        "key": "aliceisjustplaying/tinydraw:rp2350-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "7a157d44a9da3312",
+        "packSha": "e82df6f6811123c3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "aliceisjustplaying/tinydraw:tinydraw-esp32-s3-touch-amoled-18": {
+      "app": "aliceisjustplaying/tinydraw",
+      "target": "tinydraw-esp32-s3-touch-amoled-18",
+      "targetKind": "external-pack",
+      "verdict": null,
+      "verdictUnavailable": "this repository carries no device.json for \"tinydraw-esp32-s3-touch-amoled-18\": it is a pack an app's own bundle names and nothing here can read, so there is nothing to compare a demand against",
+      "port": {
+        "mode": "native",
+        "verification": "pixel-exact",
+        "declaredVerdict": "go",
+        "source": null,
+        "external": true,
+        "provenance": "built by aliceisjustplaying/tinydraw@000de0a, its own command: ./scripts/build-puck-wasm"
+      },
+      "emulator": {
+        "mark": "ERROR",
+        "reason": "build command exited 1 for https://github.com/aliceisjustplaying/tinydraw.git@000de0aa74: ./scripts/build-puck-wasm\nunsupported Puck build host: MINGW64_NT-10.0-26200-ARM64 x86_64"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "\"tinydraw-esp32-s3-touch-amoled-18\" is a pack this repository does not carry, so there is no wasm/host.ts here to build against"
+      },
+      "silicon": {
+        "key": "aliceisjustplaying/tinydraw:tinydraw-esp32-s3-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this is a pack carried by its own author, not a silhouette",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "7a157d44a9da3312",
+        "packSha": "000de0aa746108d2",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "aliceisjustplaying/tinydraw:watchy": {
+      "app": "aliceisjustplaying/tinydraw",
+      "target": "watchy",
+      "targetKind": "silhouette",
+      "verdict": null,
+      "verdictUnavailable": "aliceisjustplaying/tinydraw's descriptor.md's Demands section carries no ```json demands block, so this app's requirements are prose only.\n        Add one (docs/convention/app-bundle.md, \"Demands are also machine-readable\"); nothing here guesses at prose.",
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "aliceisjustplaying/tinydraw's bundle.json declares no port for watchy"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "aliceisjustplaying/tinydraw:watchy"
+      },
+      "silhouette": {
+        "mark": "build-failed",
+        "reason": "aliceisjustplaying/tinydraw's bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": {
+          "w": 200,
+          "h": 200
+        }
+      },
+      "inputs": {
+        "bundleSha": "7a157d44a9da3312",
+        "packSha": "9a6f6a01fc3c730a-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "aliceisjustplaying/tinydraw:web": {
+      "app": "aliceisjustplaying/tinydraw",
+      "target": "web",
+      "targetKind": "pack",
+      "verdict": null,
+      "verdictUnavailable": "aliceisjustplaying/tinydraw's descriptor.md's Demands section carries no ```json demands block, so this app's requirements are prose only.\n        Add one (docs/convention/app-bundle.md, \"Demands are also machine-readable\"); nothing here guesses at prose.",
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "aliceisjustplaying/tinydraw's bundle.json declares no port for web"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "aliceisjustplaying/tinydraw's bundle.json declares no port for web, so there is nothing to build twice"
+      },
+      "silicon": {
+        "key": "aliceisjustplaying/tinydraw:web"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "7a157d44a9da3312",
+        "packSha": "c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "chrono:esp32-s3-touch-amoled-18": {
+      "app": "chrono",
+      "target": "esp32-s3-touch-amoled-18",
+      "targetKind": "pack",
+      "verdict": {
+        "verdict": "go",
+        "human": "chrono on ESP32-S3-Touch-AMOLED-1.8 (pack): go. Every dimension the app states is met by what the device declares. Unchecked: memory (this target declares no budget.ram.bytes, and nothing here invents one); tick (this target declares no budget.tickBudgetMs). A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "368x448 covers the 200x200 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "unchecked",
+            "reason": "this target declares no budget.ram.bytes, and nothing here invents one"
+          },
+          {
+            "dimension": "tick",
+            "status": "unchecked",
+            "reason": "this target declares no budget.tickBudgetMs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": {
+        "mode": "faithful",
+        "verification": "pixel-exact",
+        "declaredVerdict": null,
+        "source": "apps/chrono/ports/esp32-s3-touch-amoled-18/chrono.c",
+        "external": false,
+        "provenance": null
+      },
+      "emulator": {
+        "mark": "PASS",
+        "reason": "4/4 frame(s) matched"
+      },
+      "host": {
+        "mark": "MATCH",
+        "reason": "4/4 capture point(s) identical to the wasm build, sanitizers address, undefined"
+      },
+      "silicon": {
+        "key": "chrono:esp32-s3-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "4edb88d374b15fb7",
+        "packSha": "aac6db2fe963317f",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "chrono:feather-esp32s2-tft": {
+      "app": "chrono",
+      "target": "feather-esp32s2-tft",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "chrono on Feather-ESP32S2-TFT (silhouette): refuse. Refused because buttons: this device offers 1 button an app may use and this app needs 2; what they are for: key, start and stop, and it must feel instant; click, reset to 00:00:00, on a different control so it cannot be hit by accident. It would also cost: panel, 240x135 is under the 200x200 this app asks for, and above the 128x96 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "degraded",
+            "reason": "240x135 is under the 200x200 this app asks for, and above the 128x96 it scales to: the layout comes out of the panel, so it fits, smaller"
+          },
+          {
+            "dimension": "buttons",
+            "status": "refuse",
+            "reason": "this device offers 1 button an app may use and this app needs 2; what they are for: key, start and stop, and it must feel instant; click, reset to 00:00:00, on a different control so it cannot be hit by accident"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "96 bytes of app state (96) inside the 131072 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 2ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "chrono's bundle.json declares no port for feather-esp32s2-tft"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "chrono:feather-esp32s2-tft"
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "135x240 (this panel's 240x135, presented a quarter turn round), 14.4% of the panel painted, ghost buttons d0, and this panel is already landscape, so the host's own quarter turn puts the app across the device's short side rather than along it",
+        "proof": "packs/silhouettes/feather-esp32s2-tft/proof/chrono.png",
+        "source": "apps/chrono/ports/web/chrono.c",
+        "via": "web",
+        "buildArgs": [
+          "--landscape"
+        ],
+        "panel": {
+          "w": 240,
+          "h": 135
+        }
+      },
+      "inputs": {
+        "bundleSha": "4edb88d374b15fb7",
+        "packSha": "a687c77e26084384-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "chrono:lilygo-t-display-s3": {
+      "app": "chrono",
+      "target": "lilygo-t-display-s3",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "degraded",
+        "human": "chrono on LILYGO T-Display-S3 (silhouette): degraded. The cost is stated: panel, 170x320 is under the 200x200 this app asks for, and above the 128x96 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "degraded",
+            "reason": "170x320 is under the 200x200 this app asks for, and above the 128x96 it scales to: the layout comes out of the panel, so it fits, smaller"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "96 bytes of app state (96) inside the 153344 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 2ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "chrono's bundle.json declares no port for lilygo-t-display-s3"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "chrono:lilygo-t-display-s3"
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "320x170 (this panel's 170x320, presented a quarter turn round), 16.4% of the panel painted, ghost buttons boot, io14",
+        "proof": "packs/silhouettes/lilygo-t-display-s3/proof/chrono.png",
+        "source": "apps/chrono/ports/web/chrono.c",
+        "via": "web",
+        "buildArgs": [
+          "--landscape"
+        ],
+        "panel": {
+          "w": 170,
+          "h": 320
+        }
+      },
+      "inputs": {
+        "bundleSha": "4edb88d374b15fb7",
+        "packSha": "7c0e947cb1c4b2c6-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "chrono:m5stickc-plus2": {
+      "app": "chrono",
+      "target": "m5stickc-plus2",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "degraded",
+        "human": "chrono on M5StickC-PLUS2 (silhouette): degraded. The cost is stated: panel, 135x240 is under the 200x200 this app asks for, and above the 128x96 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "degraded",
+            "reason": "135x240 is under the 200x200 this app asks for, and above the 128x96 it scales to: the layout comes out of the panel, so it fits, smaller"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "96 bytes of app state (96) inside the 196608 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 2ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "chrono's bundle.json declares no port for m5stickc-plus2"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "chrono:m5stickc-plus2"
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "240x135 (this panel's 135x240, presented a quarter turn round), 16.7% of the panel painted, ghost buttons a, b, pwr",
+        "proof": "packs/silhouettes/m5stickc-plus2/proof/chrono.png",
+        "source": "apps/chrono/ports/web/chrono.c",
+        "via": "web",
+        "buildArgs": [
+          "--landscape"
+        ],
+        "panel": {
+          "w": 135,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "4edb88d374b15fb7",
+        "packSha": "5542e3db22589e2e-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "chrono:pico-display-pack-2": {
+      "app": "chrono",
+      "target": "pico-display-pack-2",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "go",
+        "human": "chrono on Pico Display Pack 2.0 on Pico 2 (silhouette): go. Every dimension the app states is met by what the device declares. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "320x240 covers the 200x200 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "96 bytes of app state (96) inside the 247808 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 2ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "chrono's bundle.json declares no port for pico-display-pack-2"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "chrono:pico-display-pack-2"
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "240x320 (this panel's 320x240, presented a quarter turn round), 16.0% of the panel painted, ghost buttons a, b, x, y, and this panel is already landscape, so the host's own quarter turn puts the app across the device's short side rather than along it",
+        "proof": "packs/silhouettes/pico-display-pack-2/proof/chrono.png",
+        "source": "apps/chrono/ports/web/chrono.c",
+        "via": "web",
+        "buildArgs": [
+          "--landscape"
+        ],
+        "panel": {
+          "w": 320,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "4edb88d374b15fb7",
+        "packSha": "46b334fd2ff469f3-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "chrono:rp2350-touch-amoled-18": {
+      "app": "chrono",
+      "target": "rp2350-touch-amoled-18",
+      "targetKind": "pack",
+      "verdict": {
+        "verdict": "go",
+        "human": "chrono on RP2350-Touch-AMOLED-1.8 (pack): go. Every dimension the app states is met by what the device declares. Unchecked: memory (this target declares no budget.ram.bytes, and nothing here invents one); tick (this target declares no budget.tickBudgetMs). A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "368x448 covers the 200x200 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "unchecked",
+            "reason": "this target declares no budget.ram.bytes, and nothing here invents one"
+          },
+          {
+            "dimension": "tick",
+            "status": "unchecked",
+            "reason": "this target declares no budget.tickBudgetMs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": {
+        "mode": "native",
+        "verification": "pixel-exact",
+        "declaredVerdict": null,
+        "source": "packs/rp2350-touch-amoled-18/firmware/apps/chrono.c",
+        "external": false,
+        "provenance": null
+      },
+      "emulator": {
+        "mark": "PASS",
+        "reason": "4/4 frame(s) matched"
+      },
+      "host": {
+        "mark": "MATCH",
+        "reason": "4/4 capture point(s) identical to the wasm build, sanitizers address, undefined"
+      },
+      "silicon": {
+        "key": "chrono:rp2350-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "4edb88d374b15fb7",
+        "packSha": "e82df6f6811123c3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "chrono:tinydraw-esp32-s3-touch-amoled-18": {
+      "app": "chrono",
+      "target": "tinydraw-esp32-s3-touch-amoled-18",
+      "targetKind": "external-pack",
+      "verdict": null,
+      "verdictUnavailable": "this repository carries no device.json for \"tinydraw-esp32-s3-touch-amoled-18\": it is a pack an app's own bundle names and nothing here can read, so there is nothing to compare a demand against",
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "chrono's bundle.json declares no port for tinydraw-esp32-s3-touch-amoled-18"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "\"tinydraw-esp32-s3-touch-amoled-18\" is a pack this repository does not carry, so there is no wasm/host.ts here to build against"
+      },
+      "silicon": {
+        "key": "chrono:tinydraw-esp32-s3-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this is a pack carried by its own author, not a silhouette",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "4edb88d374b15fb7",
+        "packSha": "000de0aa746108d2",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "chrono:watchy": {
+      "app": "chrono",
+      "target": "watchy",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "degraded",
+        "human": "chrono on Watchy (silhouette): degraded. The cost is stated: buttons, \"UP\" is a click standing in for the key this app wants (start and stop, and it must feel instant). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "200x200 covers the 200x200 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "degraded",
+            "reason": "\"UP\" is a click standing in for the key this app wants (start and stop, and it must feel instant)"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "96 bytes of app state (96) inside the 265336 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "300ms per tick against the 2ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "chrono's bundle.json declares no port for watchy"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "chrono:watchy"
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "200x200 (this panel's 200x200, presented a quarter turn round), 15.4% of the panel painted, ghost buttons up, down, menu, back",
+        "proof": "packs/silhouettes/watchy/proof/chrono.png",
+        "source": "apps/chrono/ports/web/chrono.c",
+        "via": "web",
+        "buildArgs": [
+          "--landscape"
+        ],
+        "panel": {
+          "w": 200,
+          "h": 200
+        }
+      },
+      "inputs": {
+        "bundleSha": "4edb88d374b15fb7",
+        "packSha": "9a6f6a01fc3c730a-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "chrono:web": {
+      "app": "chrono",
+      "target": "web",
+      "targetKind": "pack",
+      "verdict": {
+        "verdict": "go",
+        "human": "chrono on Web-Touch (pack): go. Every dimension the app states is met by what the device declares. Unchecked: memory (this target declares no budget.ram.bytes, and nothing here invents one); tick (this target declares no budget.tickBudgetMs). A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "368x448 covers the 200x200 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "unchecked",
+            "reason": "this target declares no budget.ram.bytes, and nothing here invents one"
+          },
+          {
+            "dimension": "tick",
+            "status": "unchecked",
+            "reason": "this target declares no budget.tickBudgetMs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": {
+        "mode": "faithful",
+        "verification": "pixel-exact",
+        "declaredVerdict": null,
+        "source": "apps/chrono/ports/web/chrono.c",
+        "external": false,
+        "provenance": null
+      },
+      "emulator": {
+        "mark": "PASS",
+        "reason": "4/4 frame(s) matched"
+      },
+      "host": {
+        "mark": "MATCH",
+        "reason": "4/4 capture point(s) identical to the wasm build, sanitizers address, undefined"
+      },
+      "silicon": {
+        "key": "chrono:web"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "4edb88d374b15fb7",
+        "packSha": "c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "fluidbox:esp32-s3-touch-amoled-18": {
+      "app": "fluidbox",
+      "target": "esp32-s3-touch-amoled-18",
+      "targetKind": "pack",
+      "verdict": {
+        "verdict": "degraded",
+        "human": "fluidbox on ESP32-S3-Touch-AMOLED-1.8 (pack): degraded. The cost is stated: sensors, no vector sensor, falling back to the declared event: a discrete shake only: the fluid agitates but never pours, so holding the device stops being the control. Unchecked: memory (this target declares no budget.ram.bytes, and nothing here invents one); tick (this target declares no budget.tickBudgetMs). A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "368x448 covers the 96x96 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key this app needs is declared"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "degraded",
+            "reason": "no vector sensor, falling back to the declared event: a discrete shake only: the fluid agitates but never pours, so holding the device stops being the control"
+          },
+          {
+            "dimension": "memory",
+            "status": "unchecked",
+            "reason": "this target declares no budget.ram.bytes, and nothing here invents one"
+          },
+          {
+            "dimension": "tick",
+            "status": "unchecked",
+            "reason": "this target declares no budget.tickBudgetMs"
+          }
+        ],
+        "degrades": [
+          {
+            "name": "particles",
+            "what": "how many particles the fluid is made of",
+            "value": 130,
+            "reference": 130,
+            "boundBy": "the app's own cap of 130"
+          }
+        ]
+      },
+      "verdictUnavailable": null,
+      "port": {
+        "mode": "adaptation",
+        "verification": "invariants",
+        "declaredVerdict": "go",
+        "source": "apps/fluidbox/ports/esp32-s3-touch-amoled-18/fluid.c",
+        "external": false,
+        "provenance": null
+      },
+      "emulator": {
+        "mark": "PASS",
+        "reason": "all invariants held over 3 frame(s)"
+      },
+      "host": {
+        "mark": "DIVERGE",
+        "reason": "3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)"
+      },
+      "silicon": {
+        "key": "fluidbox:esp32-s3-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "8ac38b912117863b",
+        "packSha": "aac6db2fe963317f",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "fluidbox:feather-esp32s2-tft": {
+      "app": "fluidbox",
+      "target": "feather-esp32s2-tft",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "fluidbox on Feather-ESP32S2-TFT (silhouette): refuse. Refused because sensors: this app needs a vector sensor (gravity direction, read every step, so tilting the device pours the liquid) and the device declares none at all. It would also cost: buttons, \"D0\" is a click standing in for the key this app wants (reset the fluid to a settled block, one tap, no explanation). It runs at 25 particles against the reference 130 (how many particles the fluid is made of), bound by panel area (240x135 at one per 1268 px). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "240x135 covers the 96x96 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "degraded",
+            "reason": "\"D0\" is a click standing in for the key this app wants (reset the fluid to a settled block, one tap, no explanation)"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "refuse",
+            "reason": "this app needs a vector sensor (gravity direction, read every step, so tilting the device pours the liquid) and the device declares none at all"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "1296 bytes of app state (96 + 48 x 25 particles) inside the 131072 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 16ms this app needs"
+          }
+        ],
+        "degrades": [
+          {
+            "name": "particles",
+            "what": "how many particles the fluid is made of",
+            "value": 25,
+            "reference": 130,
+            "boundBy": "panel area (240x135 at one per 1268 px)"
+          }
+        ]
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "fluidbox's bundle.json declares no port for feather-esp32s2-tft"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "fluidbox:feather-esp32s2-tft"
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "240x135, 3.8% of the panel painted, ghost buttons d0",
+        "proof": "packs/silhouettes/feather-esp32s2-tft/proof/fluidbox.png",
+        "source": "apps/fluidbox/ports/web/fluid.c",
+        "via": "web",
+        "buildArgs": [
+          "--shake"
+        ],
+        "panel": {
+          "w": 240,
+          "h": 135
+        }
+      },
+      "inputs": {
+        "bundleSha": "8ac38b912117863b",
+        "packSha": "a687c77e26084384-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "fluidbox:lilygo-t-display-s3": {
+      "app": "fluidbox",
+      "target": "lilygo-t-display-s3",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "fluidbox on LILYGO T-Display-S3 (silhouette): refuse. Refused because sensors: this app needs a vector sensor (gravity direction, read every step, so tilting the device pours the liquid) and the device declares none at all. It runs at 42 particles against the reference 130 (how many particles the fluid is made of), bound by panel area (170x320 at one per 1268 px). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "170x320 covers the 96x96 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key this app needs is declared"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "refuse",
+            "reason": "this app needs a vector sensor (gravity direction, read every step, so tilting the device pours the liquid) and the device declares none at all"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "2112 bytes of app state (96 + 48 x 42 particles) inside the 153344 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 16ms this app needs"
+          }
+        ],
+        "degrades": [
+          {
+            "name": "particles",
+            "what": "how many particles the fluid is made of",
+            "value": 42,
+            "reference": 130,
+            "boundBy": "panel area (170x320 at one per 1268 px)"
+          }
+        ]
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "fluidbox's bundle.json declares no port for lilygo-t-display-s3"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "fluidbox:lilygo-t-display-s3"
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "170x320, 3.8% of the panel painted, ghost buttons boot, io14",
+        "proof": "packs/silhouettes/lilygo-t-display-s3/proof/fluidbox.png",
+        "source": "apps/fluidbox/ports/web/fluid.c",
+        "via": "web",
+        "buildArgs": [
+          "--shake"
+        ],
+        "panel": {
+          "w": 170,
+          "h": 320
+        }
+      },
+      "inputs": {
+        "bundleSha": "8ac38b912117863b",
+        "packSha": "7c0e947cb1c4b2c6-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "fluidbox:m5stickc-plus2": {
+      "app": "fluidbox",
+      "target": "m5stickc-plus2",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "degraded",
+        "human": "fluidbox on M5StickC-PLUS2 (silhouette): degraded. It runs at 25 particles against the reference 130 (how many particles the fluid is made of), bound by panel area (135x240 at one per 1268 px). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "135x240 covers the 96x96 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key this app needs is declared"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "every sensor this app reads is declared (vector)"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "1296 bytes of app state (96 + 48 x 25 particles) inside the 196608 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 16ms this app needs"
+          }
+        ],
+        "degrades": [
+          {
+            "name": "particles",
+            "what": "how many particles the fluid is made of",
+            "value": 25,
+            "reference": 130,
+            "boundBy": "panel area (135x240 at one per 1268 px)"
+          }
+        ]
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "fluidbox's bundle.json declares no port for m5stickc-plus2"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "fluidbox:m5stickc-plus2"
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "135x240, 3.8% of the panel painted, ghost buttons a, b, pwr",
+        "proof": "packs/silhouettes/m5stickc-plus2/proof/fluidbox.png",
+        "source": "apps/fluidbox/ports/web/fluid.c",
+        "via": "web",
+        "buildArgs": [
+          "--shake"
+        ],
+        "panel": {
+          "w": 135,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "8ac38b912117863b",
+        "packSha": "5542e3db22589e2e-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "fluidbox:pico-display-pack-2": {
+      "app": "fluidbox",
+      "target": "pico-display-pack-2",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "fluidbox on Pico Display Pack 2.0 on Pico 2 (silhouette): refuse. Refused because sensors: this app needs a vector sensor (gravity direction, read every step, so tilting the device pours the liquid) and the device declares none at all. It runs at 60 particles against the reference 130 (how many particles the fluid is made of), bound by panel area (320x240 at one per 1268 px). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "320x240 covers the 96x96 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key this app needs is declared"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "refuse",
+            "reason": "this app needs a vector sensor (gravity direction, read every step, so tilting the device pours the liquid) and the device declares none at all"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "2976 bytes of app state (96 + 48 x 60 particles) inside the 247808 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 16ms this app needs"
+          }
+        ],
+        "degrades": [
+          {
+            "name": "particles",
+            "what": "how many particles the fluid is made of",
+            "value": 60,
+            "reference": 130,
+            "boundBy": "panel area (320x240 at one per 1268 px)"
+          }
+        ]
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "fluidbox's bundle.json declares no port for pico-display-pack-2"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "fluidbox:pico-display-pack-2"
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "320x240, 3.8% of the panel painted, ghost buttons a, b, x, y",
+        "proof": "packs/silhouettes/pico-display-pack-2/proof/fluidbox.png",
+        "source": "apps/fluidbox/ports/web/fluid.c",
+        "via": "web",
+        "buildArgs": [
+          "--shake"
+        ],
+        "panel": {
+          "w": 320,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "8ac38b912117863b",
+        "packSha": "46b334fd2ff469f3-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "fluidbox:rp2350-touch-amoled-18": {
+      "app": "fluidbox",
+      "target": "rp2350-touch-amoled-18",
+      "targetKind": "pack",
+      "verdict": {
+        "verdict": "go",
+        "human": "fluidbox on RP2350-Touch-AMOLED-1.8 (pack): go. Every dimension the app states is met by what the device declares. Unchecked: memory (this target declares no budget.ram.bytes, and nothing here invents one); tick (this target declares no budget.tickBudgetMs). A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "368x448 covers the 96x96 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key this app needs is declared"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "every sensor this app reads is declared (vector)"
+          },
+          {
+            "dimension": "memory",
+            "status": "unchecked",
+            "reason": "this target declares no budget.ram.bytes, and nothing here invents one"
+          },
+          {
+            "dimension": "tick",
+            "status": "unchecked",
+            "reason": "this target declares no budget.tickBudgetMs"
+          }
+        ],
+        "degrades": [
+          {
+            "name": "particles",
+            "what": "how many particles the fluid is made of",
+            "value": 130,
+            "reference": 130,
+            "boundBy": "the app's own cap of 130"
+          }
+        ]
+      },
+      "verdictUnavailable": null,
+      "port": {
+        "mode": "adaptation",
+        "verification": "invariants",
+        "declaredVerdict": "degraded",
+        "source": "apps/fluidbox/ports/rp2350-touch-amoled-18/fluid.c",
+        "external": false,
+        "provenance": null
+      },
+      "emulator": {
+        "mark": "PASS",
+        "reason": "all invariants held over 3 frame(s)"
+      },
+      "host": {
+        "mark": "DIVERGE",
+        "reason": "3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)"
+      },
+      "silicon": {
+        "key": "fluidbox:rp2350-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "8ac38b912117863b",
+        "packSha": "e82df6f6811123c3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "fluidbox:tinydraw-esp32-s3-touch-amoled-18": {
+      "app": "fluidbox",
+      "target": "tinydraw-esp32-s3-touch-amoled-18",
+      "targetKind": "external-pack",
+      "verdict": null,
+      "verdictUnavailable": "this repository carries no device.json for \"tinydraw-esp32-s3-touch-amoled-18\": it is a pack an app's own bundle names and nothing here can read, so there is nothing to compare a demand against",
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "fluidbox's bundle.json declares no port for tinydraw-esp32-s3-touch-amoled-18"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "\"tinydraw-esp32-s3-touch-amoled-18\" is a pack this repository does not carry, so there is no wasm/host.ts here to build against"
+      },
+      "silicon": {
+        "key": "fluidbox:tinydraw-esp32-s3-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this is a pack carried by its own author, not a silhouette",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "8ac38b912117863b",
+        "packSha": "000de0aa746108d2",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "fluidbox:watchy": {
+      "app": "fluidbox",
+      "target": "watchy",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "fluidbox on Watchy (silhouette): refuse. Refused because panel: this app's colour carries information and the panel is mono1, which is not a colour one. It would also cost: buttons, \"UP\" is a click standing in for the key this app wants (reset the fluid to a settled block, one tap, no explanation). It runs at 31 particles against the reference 130 (how many particles the fluid is made of), bound by panel area (200x200 at one per 1268 px). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "refuse",
+            "reason": "this app's colour carries information and the panel is mono1, which is not a colour one"
+          },
+          {
+            "dimension": "buttons",
+            "status": "degraded",
+            "reason": "\"UP\" is a click standing in for the key this app wants (reset the fluid to a settled block, one tap, no explanation)"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "every sensor this app reads is declared (vector)"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "1584 bytes of app state (96 + 48 x 31 particles) inside the 265336 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "300ms per tick against the 16ms this app needs"
+          }
+        ],
+        "degrades": [
+          {
+            "name": "particles",
+            "what": "how many particles the fluid is made of",
+            "value": 31,
+            "reference": 130,
+            "boundBy": "panel area (200x200 at one per 1268 px)"
+          }
+        ]
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "fluidbox's bundle.json declares no port for watchy"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "fluidbox:watchy"
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "200x200, 3.8% of the panel painted, ghost buttons up, down, menu, back",
+        "proof": "packs/silhouettes/watchy/proof/fluidbox.png",
+        "source": "apps/fluidbox/ports/web/fluid.c",
+        "via": "web",
+        "buildArgs": [
+          "--shake"
+        ],
+        "panel": {
+          "w": 200,
+          "h": 200
+        }
+      },
+      "inputs": {
+        "bundleSha": "8ac38b912117863b",
+        "packSha": "9a6f6a01fc3c730a-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "fluidbox:web": {
+      "app": "fluidbox",
+      "target": "web",
+      "targetKind": "pack",
+      "verdict": {
+        "verdict": "go",
+        "human": "fluidbox on Web-Touch (pack): go. Every dimension the app states is met by what the device declares. Unchecked: memory (this target declares no budget.ram.bytes, and nothing here invents one); tick (this target declares no budget.tickBudgetMs). A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "368x448 covers the 96x96 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key this app needs is declared"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "every sensor this app reads is declared (vector)"
+          },
+          {
+            "dimension": "memory",
+            "status": "unchecked",
+            "reason": "this target declares no budget.ram.bytes, and nothing here invents one"
+          },
+          {
+            "dimension": "tick",
+            "status": "unchecked",
+            "reason": "this target declares no budget.tickBudgetMs"
+          }
+        ],
+        "degrades": [
+          {
+            "name": "particles",
+            "what": "how many particles the fluid is made of",
+            "value": 130,
+            "reference": 130,
+            "boundBy": "the app's own cap of 130"
+          }
+        ]
+      },
+      "verdictUnavailable": null,
+      "port": {
+        "mode": "adaptation",
+        "verification": "invariants",
+        "declaredVerdict": "go",
+        "source": "apps/fluidbox/ports/web/fluid.c",
+        "external": false,
+        "provenance": null
+      },
+      "emulator": {
+        "mark": "PASS",
+        "reason": "all invariants held over 3 frame(s)"
+      },
+      "host": {
+        "mark": "DIVERGE",
+        "reason": "3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)"
+      },
+      "silicon": {
+        "key": "fluidbox:web"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "8ac38b912117863b",
+        "packSha": "c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "gameos:esp32-s3-touch-amoled-18": {
+      "app": "gameos",
+      "target": "esp32-s3-touch-amoled-18",
+      "targetKind": "pack",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "gameos on ESP32-S3-Touch-AMOLED-1.8 (pack): refuse. Refused because sensors: this app needs a vector sensor (GUNSHIP aims the reticle by tilt, the donor's own default aim mode) and the device declares shake:event, accel:stream. Unchecked: memory (this target declares no budget.ram.bytes, and nothing here invents one); tick (this target declares no budget.tickBudgetMs). A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "368x448 covers the 368x448 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "this app asks for no buttons"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "1 touch point(s) declared, 1 needed"
+          },
+          {
+            "dimension": "sensors",
+            "status": "refuse",
+            "reason": "this app needs a vector sensor (GUNSHIP aims the reticle by tilt, the donor's own default aim mode) and the device declares shake:event, accel:stream"
+          },
+          {
+            "dimension": "memory",
+            "status": "unchecked",
+            "reason": "this target declares no budget.ram.bytes, and nothing here invents one"
+          },
+          {
+            "dimension": "tick",
+            "status": "unchecked",
+            "reason": "this target declares no budget.tickBudgetMs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": {
+        "mode": "adaptation",
+        "verification": "invariants",
+        "declaredVerdict": "degraded",
+        "source": "apps/gameos/ports/esp32-s3-touch-amoled-18/gameos_port.c",
+        "external": false,
+        "provenance": null
+      },
+      "emulator": {
+        "mark": "PASS",
+        "reason": "all invariants held over 21 frame(s)"
+      },
+      "host": {
+        "mark": "CRASHED",
+        "reason": "harness/hostdiff.ts: unexpected error: EOF: end of file, write Error: EOF: end of file, write     at async replayHost (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a1a475c9ac10a10f5\\harness\\hostSide.ts:387:20)     at async main (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a1a475c9ac10a10f5\\harness\\hostdiff.ts:280:30)"
+      },
+      "silicon": {
+        "key": "gameos:esp32-s3-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "1ad93f15fa080728",
+        "packSha": "aac6db2fe963317f",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "gameos:feather-esp32s2-tft": {
+      "app": "gameos",
+      "target": "feather-esp32s2-tft",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "gameos on Feather-ESP32S2-TFT (silhouette): refuse. Refused because panel: 240x135 is under the 184x224 this app can scale to, and because touch: this app needs 1 touch point(s) and the device declares 0, and because sensors: this app needs a vector sensor (GUNSHIP aims the reticle by tilt, the donor's own default aim mode) and the device declares none at all. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "refuse",
+            "reason": "240x135 is under the 184x224 this app can scale to"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "this app asks for no buttons"
+          },
+          {
+            "dimension": "touch",
+            "status": "refuse",
+            "reason": "this app needs 1 touch point(s) and the device declares 0"
+          },
+          {
+            "dimension": "sensors",
+            "status": "refuse",
+            "reason": "this app needs a vector sensor (GUNSHIP aims the reticle by tilt, the donor's own default aim mode) and the device declares none at all"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "65536 bytes of app state (65536) inside the 131072 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 16ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "gameos's bundle.json declares no port for feather-esp32s2-tft"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "gameos:feather-esp32s2-tft"
+      },
+      "silhouette": {
+        "mark": "page-error",
+        "reason": "memory access out of bounds",
+        "proof": "packs/silhouettes/feather-esp32s2-tft/proof/gameos.png",
+        "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
+        "via": "rp2350-touch-amoled-18",
+        "buildArgs": [],
+        "panel": {
+          "w": 240,
+          "h": 135
+        }
+      },
+      "inputs": {
+        "bundleSha": "1ad93f15fa080728",
+        "packSha": "a687c77e26084384-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "gameos:lilygo-t-display-s3": {
+      "app": "gameos",
+      "target": "lilygo-t-display-s3",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "gameos on LILYGO T-Display-S3 (silhouette): refuse. Refused because panel: 170x320 is under the 184x224 this app can scale to, and because touch: this app needs 1 touch point(s) and the device declares 0, and because sensors: this app needs a vector sensor (GUNSHIP aims the reticle by tilt, the donor's own default aim mode) and the device declares none at all. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "refuse",
+            "reason": "170x320 is under the 184x224 this app can scale to"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "this app asks for no buttons"
+          },
+          {
+            "dimension": "touch",
+            "status": "refuse",
+            "reason": "this app needs 1 touch point(s) and the device declares 0"
+          },
+          {
+            "dimension": "sensors",
+            "status": "refuse",
+            "reason": "this app needs a vector sensor (GUNSHIP aims the reticle by tilt, the donor's own default aim mode) and the device declares none at all"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "65536 bytes of app state (65536) inside the 153344 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 16ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "gameos's bundle.json declares no port for lilygo-t-display-s3"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "gameos:lilygo-t-display-s3"
+      },
+      "silhouette": {
+        "mark": "blank",
+        "reason": "the app compiled, instantiated and painted this 170x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "proof": "packs/silhouettes/lilygo-t-display-s3/proof/gameos.png",
+        "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
+        "via": "rp2350-touch-amoled-18",
+        "buildArgs": [],
+        "panel": {
+          "w": 170,
+          "h": 320
+        }
+      },
+      "inputs": {
+        "bundleSha": "1ad93f15fa080728",
+        "packSha": "7c0e947cb1c4b2c6-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "gameos:m5stickc-plus2": {
+      "app": "gameos",
+      "target": "m5stickc-plus2",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "gameos on M5StickC-PLUS2 (silhouette): refuse. Refused because panel: 135x240 is under the 184x224 this app can scale to, and because touch: this app needs 1 touch point(s) and the device declares 0. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "refuse",
+            "reason": "135x240 is under the 184x224 this app can scale to"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "this app asks for no buttons"
+          },
+          {
+            "dimension": "touch",
+            "status": "refuse",
+            "reason": "this app needs 1 touch point(s) and the device declares 0"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "every sensor this app reads is declared (vector)"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "65536 bytes of app state (65536) inside the 196608 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 16ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "gameos's bundle.json declares no port for m5stickc-plus2"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "gameos:m5stickc-plus2"
+      },
+      "silhouette": {
+        "mark": "blank",
+        "reason": "the app compiled, instantiated and painted this 135x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "proof": "packs/silhouettes/m5stickc-plus2/proof/gameos.png",
+        "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
+        "via": "rp2350-touch-amoled-18",
+        "buildArgs": [],
+        "panel": {
+          "w": 135,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "1ad93f15fa080728",
+        "packSha": "5542e3db22589e2e-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "gameos:pico-display-pack-2": {
+      "app": "gameos",
+      "target": "pico-display-pack-2",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "gameos on Pico Display Pack 2.0 on Pico 2 (silhouette): refuse. Refused because touch: this app needs 1 touch point(s) and the device declares 0, and because sensors: this app needs a vector sensor (GUNSHIP aims the reticle by tilt, the donor's own default aim mode) and the device declares none at all. It would also cost: panel, 320x240 is under the 368x448 this app asks for, and above the 184x224 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "degraded",
+            "reason": "320x240 is under the 368x448 this app asks for, and above the 184x224 it scales to: the layout comes out of the panel, so it fits, smaller"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "this app asks for no buttons"
+          },
+          {
+            "dimension": "touch",
+            "status": "refuse",
+            "reason": "this app needs 1 touch point(s) and the device declares 0"
+          },
+          {
+            "dimension": "sensors",
+            "status": "refuse",
+            "reason": "this app needs a vector sensor (GUNSHIP aims the reticle by tilt, the donor's own default aim mode) and the device declares none at all"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "65536 bytes of app state (65536) inside the 247808 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 16ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "gameos's bundle.json declares no port for pico-display-pack-2"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "gameos:pico-display-pack-2"
+      },
+      "silhouette": {
+        "mark": "page-error",
+        "reason": "memory access out of bounds",
+        "proof": "packs/silhouettes/pico-display-pack-2/proof/gameos.png",
+        "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
+        "via": "rp2350-touch-amoled-18",
+        "buildArgs": [],
+        "panel": {
+          "w": 320,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "1ad93f15fa080728",
+        "packSha": "46b334fd2ff469f3-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "gameos:rp2350-touch-amoled-18": {
+      "app": "gameos",
+      "target": "rp2350-touch-amoled-18",
+      "targetKind": "pack",
+      "verdict": {
+        "verdict": "go",
+        "human": "gameos on RP2350-Touch-AMOLED-1.8 (pack): go. Every dimension the app states is met by what the device declares. Unchecked: memory (this target declares no budget.ram.bytes, and nothing here invents one); tick (this target declares no budget.tickBudgetMs). A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "368x448 covers the 368x448 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "this app asks for no buttons"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "1 touch point(s) declared, 1 needed"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "every sensor this app reads is declared (vector)"
+          },
+          {
+            "dimension": "memory",
+            "status": "unchecked",
+            "reason": "this target declares no budget.ram.bytes, and nothing here invents one"
+          },
+          {
+            "dimension": "tick",
+            "status": "unchecked",
+            "reason": "this target declares no budget.tickBudgetMs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": {
+        "mode": "adaptation",
+        "verification": "invariants",
+        "declaredVerdict": "degraded",
+        "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
+        "external": false,
+        "provenance": null
+      },
+      "emulator": {
+        "mark": "PASS",
+        "reason": "all invariants held over 12 frame(s)"
+      },
+      "host": {
+        "mark": "DIVERGE",
+        "reason": "3/12 capture point(s) differ from the wasm build, first gameos-demo t=304ms at 376/164864px (0.23%)"
+      },
+      "silicon": {
+        "key": "gameos:rp2350-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "1ad93f15fa080728",
+        "packSha": "e82df6f6811123c3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "gameos:tinydraw-esp32-s3-touch-amoled-18": {
+      "app": "gameos",
+      "target": "tinydraw-esp32-s3-touch-amoled-18",
+      "targetKind": "external-pack",
+      "verdict": null,
+      "verdictUnavailable": "this repository carries no device.json for \"tinydraw-esp32-s3-touch-amoled-18\": it is a pack an app's own bundle names and nothing here can read, so there is nothing to compare a demand against",
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "gameos's bundle.json declares no port for tinydraw-esp32-s3-touch-amoled-18"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "\"tinydraw-esp32-s3-touch-amoled-18\" is a pack this repository does not carry, so there is no wasm/host.ts here to build against"
+      },
+      "silicon": {
+        "key": "gameos:tinydraw-esp32-s3-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this is a pack carried by its own author, not a silhouette",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "1ad93f15fa080728",
+        "packSha": "000de0aa746108d2",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "gameos:watchy": {
+      "app": "gameos",
+      "target": "watchy",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "gameos on Watchy (silhouette): refuse. Refused because panel: this app's colour carries information and the panel is mono1, which is not a colour one, and because touch: this app needs 1 touch point(s) and the device declares 0. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "refuse",
+            "reason": "this app's colour carries information and the panel is mono1, which is not a colour one"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "this app asks for no buttons"
+          },
+          {
+            "dimension": "touch",
+            "status": "refuse",
+            "reason": "this app needs 1 touch point(s) and the device declares 0"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "every sensor this app reads is declared (vector)"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "65536 bytes of app state (65536) inside the 265336 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "300ms per tick against the 16ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "gameos's bundle.json declares no port for watchy"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "gameos:watchy"
+      },
+      "silhouette": {
+        "mark": "page-error",
+        "reason": "null function",
+        "proof": "packs/silhouettes/watchy/proof/gameos.png",
+        "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
+        "via": "rp2350-touch-amoled-18",
+        "buildArgs": [],
+        "panel": {
+          "w": 200,
+          "h": 200
+        }
+      },
+      "inputs": {
+        "bundleSha": "1ad93f15fa080728",
+        "packSha": "9a6f6a01fc3c730a-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "gameos:web": {
+      "app": "gameos",
+      "target": "web",
+      "targetKind": "pack",
+      "verdict": {
+        "verdict": "go",
+        "human": "gameos on Web-Touch (pack): go. Every dimension the app states is met by what the device declares. Unchecked: memory (this target declares no budget.ram.bytes, and nothing here invents one); tick (this target declares no budget.tickBudgetMs). A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "368x448 covers the 368x448 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "this app asks for no buttons"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "1 touch point(s) declared, 1 needed"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "every sensor this app reads is declared (vector)"
+          },
+          {
+            "dimension": "memory",
+            "status": "unchecked",
+            "reason": "this target declares no budget.ram.bytes, and nothing here invents one"
+          },
+          {
+            "dimension": "tick",
+            "status": "unchecked",
+            "reason": "this target declares no budget.tickBudgetMs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "gameos's bundle.json declares no port for web"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "gameos's bundle.json declares no port for web, so there is nothing to build twice"
+      },
+      "silicon": {
+        "key": "gameos:web"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "1ad93f15fa080728",
+        "packSha": "c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "tinydraw:esp32-s3-touch-amoled-18": {
+      "app": "tinydraw",
+      "target": "esp32-s3-touch-amoled-18",
+      "targetKind": "pack",
+      "verdict": {
+        "verdict": "go",
+        "human": "tinydraw on ESP32-S3-Touch-AMOLED-1.8 (pack): go. Every dimension the app states is met by what the device declares. Unchecked: memory (this target declares no budget.ram.bytes, and nothing here invents one); tick (this target declares no budget.tickBudgetMs). A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "368x448 covers the 200x200 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "1 touch point(s) declared, 1 needed"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "unchecked",
+            "reason": "this target declares no budget.ram.bytes, and nothing here invents one"
+          },
+          {
+            "dimension": "tick",
+            "status": "unchecked",
+            "reason": "this target declares no budget.tickBudgetMs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": {
+        "mode": "adaptation",
+        "verification": "invariants",
+        "declaredVerdict": "degraded",
+        "source": "apps/tinydraw/ports/esp32-s3-touch-amoled-18/tinydraw.c",
+        "external": false,
+        "provenance": null
+      },
+      "emulator": {
+        "mark": "PASS",
+        "reason": "all invariants held over 4 frame(s)"
+      },
+      "host": {
+        "mark": "MATCH",
+        "reason": "4/4 capture point(s) identical to the wasm build, sanitizers address, undefined"
+      },
+      "silicon": {
+        "key": "tinydraw:esp32-s3-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "74cf0b699a80cf7b",
+        "packSha": "aac6db2fe963317f",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "tinydraw:feather-esp32s2-tft": {
+      "app": "tinydraw",
+      "target": "feather-esp32s2-tft",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "tinydraw on Feather-ESP32S2-TFT (silhouette): refuse. Refused because buttons: this device offers 1 button an app may use and this app needs 2; what they are for: key, cycle the zoom level; click, undo the last stroke, on a different control so cycling zoom cannot erase work, and because touch: this app needs 1 touch point(s) and the device declares 0. It would also cost: panel, 240x135 is under the 200x200 this app asks for, and above the 128x128 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "degraded",
+            "reason": "240x135 is under the 200x200 this app asks for, and above the 128x128 it scales to: the layout comes out of the panel, so it fits, smaller"
+          },
+          {
+            "dimension": "buttons",
+            "status": "refuse",
+            "reason": "this device offers 1 button an app may use and this app needs 2; what they are for: key, cycle the zoom level; click, undo the last stroke, on a different control so cycling zoom cannot erase work"
+          },
+          {
+            "dimension": "touch",
+            "status": "refuse",
+            "reason": "this app needs 1 touch point(s) and the device declares 0"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "16384 bytes of app state (16384) inside the 131072 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 8ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "tinydraw's bundle.json declares no port for feather-esp32s2-tft"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "tinydraw:feather-esp32s2-tft"
+      },
+      "silhouette": {
+        "mark": "blank",
+        "reason": "the app compiled, instantiated and painted this 240x135 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "proof": "packs/silhouettes/feather-esp32s2-tft/proof/tinydraw.png",
+        "source": "apps/tinydraw/ports/web/tinydraw.c",
+        "via": "web",
+        "buildArgs": [],
+        "panel": {
+          "w": 240,
+          "h": 135
+        }
+      },
+      "inputs": {
+        "bundleSha": "74cf0b699a80cf7b",
+        "packSha": "a687c77e26084384-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "tinydraw:lilygo-t-display-s3": {
+      "app": "tinydraw",
+      "target": "lilygo-t-display-s3",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "tinydraw on LILYGO T-Display-S3 (silhouette): refuse. Refused because touch: this app needs 1 touch point(s) and the device declares 0. It would also cost: panel, 170x320 is under the 200x200 this app asks for, and above the 128x128 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "degraded",
+            "reason": "170x320 is under the 200x200 this app asks for, and above the 128x128 it scales to: the layout comes out of the panel, so it fits, smaller"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "refuse",
+            "reason": "this app needs 1 touch point(s) and the device declares 0"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "16384 bytes of app state (16384) inside the 153344 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 8ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "tinydraw's bundle.json declares no port for lilygo-t-display-s3"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "tinydraw:lilygo-t-display-s3"
+      },
+      "silhouette": {
+        "mark": "blank",
+        "reason": "the app compiled, instantiated and painted this 170x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "proof": "packs/silhouettes/lilygo-t-display-s3/proof/tinydraw.png",
+        "source": "apps/tinydraw/ports/web/tinydraw.c",
+        "via": "web",
+        "buildArgs": [],
+        "panel": {
+          "w": 170,
+          "h": 320
+        }
+      },
+      "inputs": {
+        "bundleSha": "74cf0b699a80cf7b",
+        "packSha": "7c0e947cb1c4b2c6-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "tinydraw:m5stickc-plus2": {
+      "app": "tinydraw",
+      "target": "m5stickc-plus2",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "tinydraw on M5StickC-PLUS2 (silhouette): refuse. Refused because touch: this app needs 1 touch point(s) and the device declares 0. It would also cost: panel, 135x240 is under the 200x200 this app asks for, and above the 128x128 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "degraded",
+            "reason": "135x240 is under the 200x200 this app asks for, and above the 128x128 it scales to: the layout comes out of the panel, so it fits, smaller"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "refuse",
+            "reason": "this app needs 1 touch point(s) and the device declares 0"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "16384 bytes of app state (16384) inside the 196608 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 8ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "tinydraw's bundle.json declares no port for m5stickc-plus2"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "tinydraw:m5stickc-plus2"
+      },
+      "silhouette": {
+        "mark": "blank",
+        "reason": "the app compiled, instantiated and painted this 135x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "proof": "packs/silhouettes/m5stickc-plus2/proof/tinydraw.png",
+        "source": "apps/tinydraw/ports/web/tinydraw.c",
+        "via": "web",
+        "buildArgs": [],
+        "panel": {
+          "w": 135,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "74cf0b699a80cf7b",
+        "packSha": "5542e3db22589e2e-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "tinydraw:pico-display-pack-2": {
+      "app": "tinydraw",
+      "target": "pico-display-pack-2",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "tinydraw on Pico Display Pack 2.0 on Pico 2 (silhouette): refuse. Refused because touch: this app needs 1 touch point(s) and the device declares 0. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "320x240 covers the 200x200 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "refuse",
+            "reason": "this app needs 1 touch point(s) and the device declares 0"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "16384 bytes of app state (16384) inside the 247808 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 8ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "tinydraw's bundle.json declares no port for pico-display-pack-2"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "tinydraw:pico-display-pack-2"
+      },
+      "silhouette": {
+        "mark": "blank",
+        "reason": "the app compiled, instantiated and painted this 320x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "proof": "packs/silhouettes/pico-display-pack-2/proof/tinydraw.png",
+        "source": "apps/tinydraw/ports/web/tinydraw.c",
+        "via": "web",
+        "buildArgs": [],
+        "panel": {
+          "w": 320,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "74cf0b699a80cf7b",
+        "packSha": "46b334fd2ff469f3-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "tinydraw:rp2350-touch-amoled-18": {
+      "app": "tinydraw",
+      "target": "rp2350-touch-amoled-18",
+      "targetKind": "pack",
+      "verdict": {
+        "verdict": "go",
+        "human": "tinydraw on RP2350-Touch-AMOLED-1.8 (pack): go. Every dimension the app states is met by what the device declares. Unchecked: memory (this target declares no budget.ram.bytes, and nothing here invents one); tick (this target declares no budget.tickBudgetMs). A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "368x448 covers the 200x200 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "1 touch point(s) declared, 1 needed"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "unchecked",
+            "reason": "this target declares no budget.ram.bytes, and nothing here invents one"
+          },
+          {
+            "dimension": "tick",
+            "status": "unchecked",
+            "reason": "this target declares no budget.tickBudgetMs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": {
+        "mode": "adaptation",
+        "verification": "invariants",
+        "declaredVerdict": "degraded",
+        "source": "apps/tinydraw/ports/rp2350-touch-amoled-18/tinydraw.c",
+        "external": false,
+        "provenance": null
+      },
+      "emulator": {
+        "mark": "PASS",
+        "reason": "all invariants held over 4 frame(s)"
+      },
+      "host": {
+        "mark": "MATCH",
+        "reason": "4/4 capture point(s) identical to the wasm build, sanitizers address, undefined"
+      },
+      "silicon": {
+        "key": "tinydraw:rp2350-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "74cf0b699a80cf7b",
+        "packSha": "e82df6f6811123c3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "tinydraw:tinydraw-esp32-s3-touch-amoled-18": {
+      "app": "tinydraw",
+      "target": "tinydraw-esp32-s3-touch-amoled-18",
+      "targetKind": "external-pack",
+      "verdict": null,
+      "verdictUnavailable": "this repository carries no device.json for \"tinydraw-esp32-s3-touch-amoled-18\": it is a pack an app's own bundle names and nothing here can read, so there is nothing to compare a demand against",
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "tinydraw's bundle.json declares no port for tinydraw-esp32-s3-touch-amoled-18"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "\"tinydraw-esp32-s3-touch-amoled-18\" is a pack this repository does not carry, so there is no wasm/host.ts here to build against"
+      },
+      "silicon": {
+        "key": "tinydraw:tinydraw-esp32-s3-touch-amoled-18"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this is a pack carried by its own author, not a silhouette",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "74cf0b699a80cf7b",
+        "packSha": "000de0aa746108d2",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "tinydraw:watchy": {
+      "app": "tinydraw",
+      "target": "watchy",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "refuse",
+        "human": "tinydraw on Watchy (silhouette): refuse. Refused because touch: this app needs 1 touch point(s) and the device declares 0. It would also cost: buttons, \"UP\" is a click standing in for the key this app wants (cycle the zoom level). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "200x200 covers the 200x200 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "degraded",
+            "reason": "\"UP\" is a click standing in for the key this app wants (cycle the zoom level)"
+          },
+          {
+            "dimension": "touch",
+            "status": "refuse",
+            "reason": "this app needs 1 touch point(s) and the device declares 0"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "16384 bytes of app state (16384) inside the 265336 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "300ms per tick against the 8ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "tinydraw's bundle.json declares no port for watchy"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "tinydraw:watchy"
+      },
+      "silhouette": {
+        "mark": "blank",
+        "reason": "the app compiled, instantiated and painted this 200x200 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "proof": "packs/silhouettes/watchy/proof/tinydraw.png",
+        "source": "apps/tinydraw/ports/web/tinydraw.c",
+        "via": "web",
+        "buildArgs": [],
+        "panel": {
+          "w": 200,
+          "h": 200
+        }
+      },
+      "inputs": {
+        "bundleSha": "74cf0b699a80cf7b",
+        "packSha": "9a6f6a01fc3c730a-c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "tinydraw:web": {
+      "app": "tinydraw",
+      "target": "web",
+      "targetKind": "pack",
+      "verdict": {
+        "verdict": "go",
+        "human": "tinydraw on Web-Touch (pack): go. Every dimension the app states is met by what the device declares. Unchecked: memory (this target declares no budget.ram.bytes, and nothing here invents one); tick (this target declares no budget.tickBudgetMs). A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "368x448 covers the 200x200 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "1 touch point(s) declared, 1 needed"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "unchecked",
+            "reason": "this target declares no budget.ram.bytes, and nothing here invents one"
+          },
+          {
+            "dimension": "tick",
+            "status": "unchecked",
+            "reason": "this target declares no budget.tickBudgetMs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": {
+        "mode": "adaptation",
+        "verification": "invariants",
+        "declaredVerdict": "degraded",
+        "source": "apps/tinydraw/ports/web/tinydraw.c",
+        "external": false,
+        "provenance": null
+      },
+      "emulator": {
+        "mark": "PASS",
+        "reason": "all invariants held over 4 frame(s)"
+      },
+      "host": {
+        "mark": "MATCH",
+        "reason": "4/4 capture point(s) identical to the wasm build, sanitizers address, undefined"
+      },
+      "silicon": {
+        "key": "tinydraw:web"
+      },
+      "silhouette": {
+        "mark": "not applicable",
+        "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": null
+      },
+      "inputs": {
+        "bundleSha": "74cf0b699a80cf7b",
+        "packSha": "c6f69d0ee4c941e3",
+        "verdictToolSha": "beeade31b86b1c0e"
+      },
+      "computedAt": "2026-09-02"
+    }
+  }
+}
