@@ -35,8 +35,8 @@ This repository has three connected surfaces.
 | | |
 |---|---|
 | the instrument | The device-agnostic emulator and differential verifier in `src/`, `harness/` and `wasm/`. |
-| **[`packs/rp2350-touch-amoled-18/`](packs/rp2350-touch-amoled-18/)** | A self-contained device pack. Real C for the Waveshare RP2350-Touch-AMOLED-1.8, plus its drivers, traps, checks and WebAssembly build. |
-| **[`apps/chrono/`](apps/chrono/)** | A portable app bundle. Its descriptor and traces define the stopwatch independently of one implementation. |
+| the packs | Three self-contained device folders: **[`packs/rp2350-touch-amoled-18/`](packs/rp2350-touch-amoled-18/)** (the reference pack, real C for the Waveshare RP2350-Touch-AMOLED-1.8), **[`packs/esp32-s3-touch-amoled-18/`](packs/esp32-s3-touch-amoled-18/)** (the same panel, no framebuffer, 16 bands of 28 rows), and **[`packs/web/`](packs/web/)** (the browser itself, panel, buttons and accelerometer, installable per app). |
+| the apps | Four portable app bundles: **[`apps/chrono/`](apps/chrono/)** (the reference bundle, a stopwatch), **[`apps/fluidbox/`](apps/fluidbox/)** (a tilt-driven particle liquid), **[`apps/tinydraw/`](apps/tinydraw/)** (a finger-drawing canvas, from an external author's own repository), and **[`apps/gameos/`](apps/gameos/)** (a handheld game-console shell). Each defines its behavior independently of one implementation. |
 
 The concrete formats are in [`docs/convention/`](docs/convention/), and
 [`registry.json`](registry.json) lists every local or externally hosted
@@ -235,14 +235,21 @@ scripts/        headless verification (puppeteer-core against a local
 server.ts       the local dev server. Binds 127.0.0.1 explicitly. Also
                 backs the hardware-free regression check's persistence
                 (baselineStore.ts).
-packs/          self-contained device packs. The RP2350 AMOLED pack is the
+packs/          self-contained device packs. rp2350-touch-amoled-18/ is the
                 reference, with board C, drivers, checks, USB tooling and a
-                build that writes wasm/dist/emu.wasm. packs/web is the same
-                thing for the browser: a panel, two drawn buttons, a real
-                accelerometer, and a build that also emits an installable
-                page per app.
-apps/           portable app bundles. Chrono is the reference descriptor,
-                trace set and source snapshot.
+                build that writes wasm/dist/emu.wasm. esp32-s3-touch-amoled-18/
+                is the same panel with no framebuffer, painted in 16 bands
+                of 28 rows against its ESP-IDF half. web/ is the same
+                convention for the browser: a panel, two drawn buttons, a
+                real accelerometer, and a build that also emits an
+                installable page per app.
+apps/           portable app bundles. chrono/ is the reference descriptor,
+                trace set and source snapshot (a stopwatch). fluidbox/ is
+                a tilt-driven particle liquid. tinydraw/ is a
+                finger-drawing canvas from an external author's own
+                repository. gameos/ is a handheld game-console shell that
+                vendors a donor's real engine, and on its esp32 port the
+                donor's real shell too.
 registry.json   local paths and external URLs for packs and apps.
 ```
 

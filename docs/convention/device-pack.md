@@ -18,6 +18,16 @@ Packs may live under this repository's `packs/` directory or in an author's own 
 
 The reference pack is [`packs/rp2350-touch-amoled-18`](../../packs/rp2350-touch-amoled-18/).
 
+`bun run pack:lint` ([`tools/pack-lint.ts`](../../tools/pack-lint.ts))
+checks every local pack in `registry.json` against this list mechanically:
+`AGENTS.md` exists, `device.json` parses and carries the fields above plus
+`emu_device()`'s own required fields, `gotchas.md` is present and
+non-empty, `wasm/build.ts` exists and bounds every zig attempt with a
+per-attempt timeout, and either `gate/` exists or the pack's own
+`AGENTS.md` names its equivalent under a `## Gate` heading. External
+(`url`-only) packs are not checked, since nothing about them exists on
+this machine to lint. One line per violation, exit 1; clean is exit 0.
+
 ## A target device is not necessarily a chip
 
 Nothing above says "hardware". A pack describes a panel, some inputs, some sensors and a memory model, and a browser has all four, so [`packs/web`](../../packs/web/) is a device pack under this same convention rather than an exception to it: same `device.json`, same `AGENTS.md`, same `gotchas.md`, same `wasm/build.ts` writing the same `wasm/dist/emu.wasm`, same `bun run verify-bundle` deciding whether its ports are real.
