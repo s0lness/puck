@@ -3375,7 +3375,7 @@
       },
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
-        "packSha": "71997abbc23eae96",
+        "packSha": "e93be7327da732c5",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -3442,7 +3442,7 @@
       },
       "silhouette": {
         "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 240x135 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "reason": "feather-esp32s2-tft declares no digitizer (touch.points 0), and tinydraw demands 1 touch point(s), so there is nothing here that could ever answer a touch. the app compiled, instantiated and painted this 240x135 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
         "proof": "packs/silhouettes/feather-esp32s2-tft/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
@@ -3521,7 +3521,7 @@
       },
       "silhouette": {
         "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 170x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "reason": "lilygo-t-display-s3 declares no digitizer (touch.points 0), and tinydraw demands 1 touch point(s), so there is nothing here that could ever answer a touch. the app compiled, instantiated and painted this 170x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
         "proof": "packs/silhouettes/lilygo-t-display-s3/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
@@ -3599,9 +3599,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 320x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
-        "proof": "packs/silhouettes/m5stack-cores3/proof/tinydraw.png",
+        "mark": "runs",
+        "reason": "the module's own emu_device() declares M5Stack CoreS3: 320x240, buttons pwr, a, b, c; the painted canvas is 320x240 device pixels, one per panel pixel; a dragged stroke changed the panel: 4.77% of pixels differ from before the drag, over the 0.5% floor",
+        "proof": "packs/silhouettes/m5stack-cores3/proof/tinydraw-stroke.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
         "buildArgs": [],
@@ -3679,7 +3679,7 @@
       },
       "silhouette": {
         "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 135x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "reason": "m5stickc-plus2 declares no digitizer (touch.points 0), and tinydraw demands 1 touch point(s), so there is nothing here that could ever answer a touch. the app compiled, instantiated and painted this 135x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
         "proof": "packs/silhouettes/m5stickc-plus2/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
@@ -3758,7 +3758,7 @@
       },
       "silhouette": {
         "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 320x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "reason": "pico-display-pack-2 declares no digitizer (touch.points 0), and tinydraw demands 1 touch point(s), so there is nothing here that could ever answer a touch. the app compiled, instantiated and painted this 320x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
         "proof": "packs/silhouettes/pico-display-pack-2/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
@@ -3853,7 +3853,7 @@
       },
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
-        "packSha": "5f7b37d2127fbf77",
+        "packSha": "9010b30ac68f51de",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -3960,7 +3960,7 @@
       },
       "silhouette": {
         "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 200x200 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "reason": "watchy declares no digitizer (touch.points 0), and tinydraw demands 1 touch point(s), so there is nothing here that could ever answer a touch. the app compiled, instantiated and painted this 200x200 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
         "proof": "packs/silhouettes/watchy/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
@@ -4038,9 +4038,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 240x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
-        "proof": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/proof/tinydraw.png",
+        "mark": "runs",
+        "reason": "the module's own emu_device() declares Waveshare ESP32-S3-Touch-LCD-2.8: 240x320, buttons boot, pwr; the painted canvas is 240x320 device pixels, one per panel pixel; a dragged stroke changed the panel: 4.62% of pixels differ from before the drag, over the 0.5% floor",
+        "proof": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/proof/tinydraw-stroke.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
         "buildArgs": [],
