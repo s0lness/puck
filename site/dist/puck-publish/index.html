@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>puck: porting an app</title>
+<meta name="description" content="The step-by-step procedure for porting an app onto a puck device pack and getting it verified." />
+<meta property="og:title" content="puck: porting an app" />
+<meta property="og:description" content="The step-by-step procedure for porting an app onto a puck device pack and getting it verified." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2214%22%20fill%3D%22%232f6feb%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23fafafa%22%2F%3E%3C%2Fsvg%3E" />
+<link rel="stylesheet" href="../styles.css?v=2071d3998f" />
+</head>
+<body>
+<div class="wrap">
+  <div class="run-header">
+    <div class="back"><a href="../index.html">&larr; puck</a></div>
+    <h1>porting an app</h1>
+    <p class="meta">the procedure behind every empty cell in the matrix: <a href="https://github.com/s0lness/puck/blob/master/skills/puck-publish/SKILL.md">skills/puck-publish/SKILL.md</a>, served whole</p>
+  </div>
+  <section>
+    <div class="wrap" style="padding:0">
+      <p class="lede">Listing is a reproduction, not a submission. A port appears on this site once <code>bun run verify-bundle</code> has rebuilt its module from its own declared source and replayed its own declared traces, and <code>bun run ledger</code> has written the result down. Nothing here is listed on a claim.</p>
+      <pre class="agent-doc">---
+name: puck-publish
+description: Guides an agent through porting or publishing an app on puck (device-agnostic emulator + device packs + app bundles), from a target pack and a vibe-coded implementation through to a harness-verified bundle.json and a registry PR. Use when asked to port an app to a puck device pack, add a new apps/ bundle, publish an app to the puck registry, or when a port&#39;s bundle.json needs bringing up to schema v0.2.
+---
+
+# Publishing an app on puck
+
+Listing is a reproduction, not a submission. Nothing here gets listed on a claim in this conversation or in a README: it gets listed once `bun run verify-bundle` rebuilds the module and replays the traces itself and exits 0. Read `docs/convention/app-bundle.md` and `docs/convention/publishing.md` before starting; this skill is the procedure, those documents are the contract.
+
+## a. Identify the target pack
+
+Read the target pack&#39;s `AGENTS.md` first, in full, before writing any code. It is the entry point for a reason: board gotchas, memory limits, and build quirks live there, not in this skill. Also read `device.json` (panel size, buttons, sensors, memory model) and `gotchas.md`.
+
+Compare the app&#39;s `Demands` (see step b) against `device.json` and state a verdict before writing any implementation: `go`, `degraded`, or `refuse`. Say the mismatch plainly if there is one. Do not skip straight to code because the pack &quot;looks close enough.&quot;
+
+## b. Extract the descriptor
+
+A descriptor has exactly three sections, in this order: `Essence` (what appears on screen, layout, visual character), `Interactions` (every input and its result), `Demands` (requirements separated from preferences). Read `apps/chrono/descriptor.md` as the reference shape before writing one.
+
+Extract the descriptor from the app&#39;s own source and behavior, not from what the source code happens to look like internally: the descriptor records intent, the source is evidence. Show the extracted descriptor to the author and iterate on it before treating it as final. A vague or incomplete `Demands` section produces a false `go` verdict later, so push on it here.
+
+**If the donor ships reference media or a host frame-dump harness, check it before listing.** A donor repository sometimes carries its own reference screenshot, a recorded demo video, or a documented host-side simulator pattern - evidence of what the real thing actually looks like, independent of anything this repository&#39;s own harness produces. When it exists, at least one emulator frame must be compared against that donor-produced reference BEFORE the port is listed, and the comparison committed with the bundle (structural + pixel diff, a README explaining what matched and what differs and why). A port that only ever checks itself against its own prior captures can drift from the real device for a long time without anyone noticing - this is the check that catches it. If the donor&#39;s own reference material is stale or the host harness will not run here, say so plainly in the comparison README rather than skipping the step silently.
+
+## c. Record traces and confirm determinism
+
+Traces are recorded live, in the emulator page (`bun run dev`): every input call the page makes is recorded in order, saved as a trace, and can be loaded back and replayed bit-for-bit. Record the interactions the descriptor names, covering both the &quot;requires&quot; and the &quot;prefers&quot; paths where they differ in behavior.
+
+Replay the same trace twice against the same build and confirm it produces the same result both times before trusting it as verification material. A trace that is not deterministic is not a proof, it is a coin flip; find and fix the source of the nondeterminism (usually an input path the trace does not fully pin down) before moving on.
+
+## d. Prove the port
+
+**`faithful` claim** (same interaction surface): build the target pack&#39;s module, then run
+
+```
+bun run portdiff &lt;referenceModule.wasm&gt; &lt;portModule.wasm&gt; &lt;trace.json&gt; --write-frames &lt;bundle&gt;/frames
+```
+
+`--write-frames` writes the reference module&#39;s own captured frames as PNGs into the bundle&#39;s `frames/` directory, one per capture point, once every point already matches. Do this only after the plain (non-`--write-frames`) run shows every capture point at tolerance zero; writing frames from a diverging run just checks in the wrong answer.
+
+**`adaptation` claim** (interaction surface changed): propose invariants from the descriptor, not from the implementation. Ask what a healthy run must be true of at specific, named moments (a settled state, a moment right after an event), the same way `apps/fluidbox/invariants.ts` reads.
+
+Then **red before green**, for every invariant, no exceptions: deliberately break the build or behavior the invariant is supposed to catch, rerun `bun run invariants &lt;wasm&gt; &lt;trace.json&gt; &lt;checker.ts&gt; --at &lt;ms,...&gt;`, and confirm it fails, naming the actual invariant that caught it. Restore the break, rerun, and confirm it passes. An invariant that cannot be made to fail this way is not a real check: reject it, do not publish it. This is not optional scaffolding; it is the only evidence that the checker checks anything at all.
+
+## e. Assemble bundle.json (schema v0.2)
+
+One entry per pack under `ports`, each with `pack`, `mode` (`faithful` | `adaptation` | `native`), `verification` (`{kind:&quot;pixel-exact&quot;, traces, frames}` or `{kind:&quot;invariants&quot;, checker, trace, captureAt}`), and `source`. Add `verdict: &quot;degraded&quot;` if step a&#39;s verdict was degraded. Add `silicon` only once the port has actually run against real hardware, dated and citing how, never in anticipation of a future run. Every path is relative to the bundle&#39;s own repository root.
+
+Nothing verify-bundle needs may live only in a README: the pixel-exact capture points come from the `frames/` directory&#39;s own filenames, and the invariants `captureAt` list must be exact and complete in `bundle.json` itself. See `docs/convention/app-bundle.md`&#39;s schema section for the full shape and both 0.2 additions (`buildArgs`, `verdict`) beyond it.
+
+## f. Verify
+
+```
+bun run verify-bundle &lt;path-to-bundle&gt;
+```
+
+Read every line of a failure, not just the exit code: a `FAIL` names the diverging frame or the failed invariant, an `ERROR` names a build or configuration problem (unknown pack, external pack, a build that would not compile). Fix the actual cause and rerun. Do not touch the checker&#39;s thresholds or the traces just to make the run pass; if the check is wrong, say so and fix the check, don&#39;t launder a real regression through a loosened threshold.
+
+Iterate until every port bundle.json claims exits 0. This is the actual publishing gate; nothing before this step is a proof of anything.
+
+## g. Publish
+
+Two shapes, matching `docs/convention/app-bundle.md`&#39;s registry convention:
+
+- **In-repo bundle**: a PR adding or updating `apps/&lt;name&gt;/` (descriptor, bundle.json, traces, frames or checker), plus a `{&quot;name&quot;: &quot;&lt;name&gt;&quot;, &quot;path&quot;: &quot;apps/&lt;name&gt;&quot;}` entry in `registry.json` if new.
+- **External bundle**: the app lives in the author&#39;s own repository. Publish there, then open a one-line PR here adding `{&quot;name&quot;: &quot;&lt;author&gt;/&lt;app&gt;&quot;, &quot;url&quot;: &quot;&lt;repo url&gt;&quot;}` to `registry.json`. The name is author-namespaced so two authors&#39; apps of the same name never collide.
+
+Either way, the PR is the bundle plus the registry line, nothing else: no separate prose claim of what works, because `bun run verify-bundle` (run again in CI on every PR, push, and nightly) is what actually says so.
+</pre>
+    </div>
+  </section>
+  <footer>
+    <div class="wrap" style="padding:0">
+      <a href="https://github.com/s0lness/puck/blob/master/README.md">s0lness/puck</a> on GitHub, MIT licensed.
+      &middot; <a href="../agents.html">agents</a>
+    </div>
+  </footer>
+</div>
+<script>/* markup: visual-feedback overlay, only for a browser holding the key */(function(){if(!(/[?&](markup|edit)([=&]|$)/.test(location.search)||sessionStorage.getItem("markup-on")))return;var m=/[#&]k=([A-Za-z0-9_-]+)/.exec(location.hash),k=null;try{if(m)localStorage.setItem("markup-key",m[1]);k=localStorage.getItem("markup-key")}catch(e){}var local=location.hostname==="localhost"||location.hostname==="127.0.0.1";if(!k&&!local)return;document.head.appendChild(Object.assign(document.createElement("script"),{src:"https://markup.sylve.org/markup.js"}))})()</script>
+</body>
+</html>

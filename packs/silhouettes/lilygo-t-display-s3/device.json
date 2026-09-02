@@ -1,0 +1,44 @@
+{
+  "convention": "0.2",
+  "name": "LILYGO T-Display-S3",
+  "panel": {
+    "w": 170,
+    "h": 320,
+    "format": "rgb565be"
+  },
+  "buttons": [
+    {
+      "id": "boot",
+      "label": "BOOT",
+      "edge": "bottom",
+      "at": 0.3,
+      "role": "click"
+    },
+    {
+      "id": "io14",
+      "label": "IO14",
+      "edge": "bottom",
+      "at": 0.7,
+      "role": "key",
+      "longPressMs": 800
+    }
+  ],
+  "touch": {
+    "points": 0
+  },
+  "sensors": [],
+  "budget": {
+    "ram": {
+      "bytes": 153344,
+      "basis": "512 KB of on-chip SRAM (ESP32-S3, Espressif's own datasheet), minus the 108,800-byte full framebuffer (170x320 at two bytes), minus a 256 KB reserve for the SDK, its task stacks and the radio stacks. Derived from the datasheet, never measured on this board. The 8 MB of OPI PSRAM this board carries is deliberately absent: it exists, it is slower than SRAM, and no firmware here has measured what an app can actually do with it, which is the same call packs/silhouettes/m5stickc-plus2 makes about its own 2 MB."
+    },
+    "framebuffer": "full",
+    "tickBudgetMs": 16,
+    "tickBudgetBasis": "One frame at 60 Hz on a memory-mapped parallel panel. The ST7789V here is driven over an 8-bit parallel bus rather than SPI, so the clock-out is not what bounds a tick; nothing here has measured what is."
+  },
+  "provenance": {
+    "datasheet": "https://github.com/Xinyuan-LilyGO/T-Display-S3",
+    "verified": false,
+    "note": "unverified against silicon. Panel (170x320, ST7789V, 8-bit parallel), MCU (ESP32-S3R8: 16 MB flash, 8 MB OPI PSRAM) and the two tactile buttons (BOOT on GPIO0, the second user button on GPIO14, plus a RESET wired to EN) are read off LILYGO's own repository for this board. The 512 KB SRAM figure is the ESP32-S3's, from Espressif's datasheet, not from that repository. THREE THINGS ARE DERIVED RATHER THAN READ, and are named as derived. The pixel format is the ST7789V's standard 16-bit RGB565 interface; LILYGO's own pages do not state it in those words. RESET is not declared at all rather than declared as a control that does nothing, the same call packs/silhouettes/feather-esp32s2-tft makes. And BOOT is declared as a plain click while GPIO14 is the key: BOOT is sampled by the ROM as a boot strap at power-on, so an app timing a long press on it is asking the board for something it was not wired to promise, where GPIO14 is an ordinary input with nothing else attached to it. The 800 ms long-press threshold on GPIO14 is this descriptor's own choice; no board fact sets it. This is the plain T-Display-S3 and it has NO touch, which is why touch.points is 0: LILYGO sells a separate T-Display-S3-Touch variant with a capacitive digitizer, and that is a different board that would answer a different question."
+  }
+}

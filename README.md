@@ -24,11 +24,22 @@ an unrelated [ESP32-S3 pack](packs/esp32-s3-touch-amoled-18/).
 by its own port notes, and verified by invariants rather than pixel
 identity.
 
-The gallery at [puck.sylve.org](https://puck.sylve.org) runs every proven
-combination live: the real firmware, compiled to WebAssembly, in the
-browser, no install and no mockup. From the same pages, real boards flash
-too: the RP2350 over WebUSB and the ESP32-S3 over Web Serial, both
-bench-proven, no separate tool, no serial driver to install.
+The gallery at [puck.sylve.org](https://puck.sylve.org) is every app in this
+repository against every device it knows about, one cell each: apps down,
+devices across. A cell either runs that app's own C, compiled to
+WebAssembly, one click away, or says plainly what is missing. It is
+generated from [`ledger.json`](ledger.json), which is computed rather than
+written: `bun run ledger` builds and replays every cell it claims, so no
+date and no verdict on that page was typed by anybody.
+
+The devices across include five **silhouettes**: boards nobody has written
+firmware for, described by a `device.json` alone, that an app is compiled
+against and really runs on at that panel size with those buttons. From the
+same pages, real boards flash too: the RP2350 over WebUSB and the ESP32-S3
+over Web Serial, both bench-proven, no separate tool, no serial driver to
+install. After a flash, the page can make the board replay that port's own
+trace and post the verdict, which is where the silicon count on a cell
+comes from.
 
 This repository has three connected surfaces.
 

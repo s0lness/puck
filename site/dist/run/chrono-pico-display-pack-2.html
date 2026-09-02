@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>chrono on Pico Display Pack 2.0 on Pico 2: puck</title>
+<meta name="description" content="Nobody has written firmware for this board. This is chrono&#39;s own C, compiled against that board&#39;s own device.json through packs/web and run at its panel size with its buttons, and it proves exactly that much: no driver, no timing, no memory pressure, no silicon. chrono on Pico Display Pack 2.0 on Pico 2 (silhouette): go. Every dimension the app states is met by what the device declares. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs." />
+<meta property="og:title" content="chrono on Pico Display Pack 2.0 on Pico 2: puck" />
+<meta property="og:description" content="Nobody has written firmware for this board. This is chrono&#39;s own C, compiled against that board&#39;s own device.json through packs/web and run at its panel size with its buttons, and it proves exactly that much: no driver, no timing, no memory pressure, no silicon. chrono on Pico Display Pack 2.0 on Pico 2 (silhouette): go. Every dimension the app states is met by what the device declares. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2214%22%20fill%3D%22%232f6feb%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23fafafa%22%2F%3E%3C%2Fsvg%3E" />
+<link rel="stylesheet" href="../styles.css?v=2071d3998f" />
+</head>
+<body>
+<div class="wrap">
+  <div class="run-header">
+    <div class="back"><a href="../index.html">&larr; puck</a></div>
+    <h1>chrono on Pico Display Pack 2.0 on Pico 2</h1>
+    <p class="meta">running on Pico Display Pack 2.0 on Pico 2, a silhouette: a device.json and nothing else, no firmware</p>
+    <div class="badges"><span class="badge accent">silhouette</span> <span class="badge accent">320x240</span></div>
+    <p>Nobody has written firmware for this board. This is chrono&#39;s own C, compiled against that board&#39;s own device.json through packs/web and run at its panel size with its buttons, and it proves exactly that much: no driver, no timing, no memory pressure, no silicon. chrono on Pico Display Pack 2.0 on Pico 2 (silhouette): go. Every dimension the app states is met by what the device declares. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.</p>
+    <div class="links">
+      <a href="https://github.com/s0lness/puck/blob/master/apps/chrono/descriptor.md">descriptor</a>
+      <a href="https://github.com/s0lness/puck/blob/master/packs/silhouettes/pico-display-pack-2/AGENTS.md">the board</a>
+      <a href="https://github.com/s0lness/puck/blob/master/packs/silhouettes/pico-display-pack-2/device.json">device.json</a>
+    </div>
+  </div>
+
+  <div class="emu-stage" id="stage">
+    <div class="emu-frame" id="frame" style="width:400px;height:410px">
+      <iframe id="emu" allowtransparency="true" src="../emu/index.html?embed=1&module=%2Fmodules%2Fchrono-pico-display-pack-2.wasm&v=b247ff5a65" width="400" height="410" title="chrono on Pico Display Pack 2.0 on Pico 2 running live" allow="autoplay"></iframe>
+    </div>
+  </div>
+  <p class="embed-hint">touch the screen</p>
+
+  <div class="run-footer"></div>
+
+
+<footer>
+    <div class="wrap" style="padding:0">
+      <a href="https://github.com/s0lness/puck/blob/master/README.md">s0lness/puck</a> on GitHub, MIT licensed.
+      &middot; <a href="../agents.html?v=d1cb386cd7">agents</a>
+    </div>
+  </footer>
+</div>
+<script>
+(function () {
+  var NATIVE_W = 400, NATIVE_H = 410;
+  var stage = document.getElementById("stage");
+  var frame = document.getElementById("frame");
+  function fit() {
+    var scale = Math.min(1, stage.clientWidth / NATIVE_W);
+    frame.style.transform = "scale(" + scale + ")";
+    stage.style.height = Math.round(NATIVE_H * scale) + "px";
+  }
+  window.addEventListener("resize", fit);
+  fit();
+  
+})();
+</script>
+<script>/* markup: visual-feedback overlay, only for a browser holding the key */(function(){if(!(/[?&](markup|edit)([=&]|$)/.test(location.search)||sessionStorage.getItem("markup-on")))return;var m=/[#&]k=([A-Za-z0-9_-]+)/.exec(location.hash),k=null;try{if(m)localStorage.setItem("markup-key",m[1]);k=localStorage.getItem("markup-key")}catch(e){}var local=location.hostname==="localhost"||location.hostname==="127.0.0.1";if(!k&&!local)return;document.head.appendChild(Object.assign(document.createElement("script"),{src:"https://markup.sylve.org/markup.js"}))})()</script>
+</body>
+</html>

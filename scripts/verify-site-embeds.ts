@@ -403,15 +403,23 @@ try {
   // that silently 404s one is worse than not having the surface at all. --
   {
     const registry = JSON.parse(readFileSync(join(DIST, "registry.json"), "utf8")) as {
-      apps: { name: string }[];
+      apps: { name: string; path?: string; url?: string }[];
     };
+    // LOCAL apps only. An app published in its own repository has no
+    // descriptor in this one to serve: it lives at its author's own URL,
+    // and copying a clone's copy of it under this domain would be
+    // presenting somebody else's document as this site's. The matrix links
+    // to their repository instead (site/build.ts's buildAgentSurfaces skips
+    // them for the same reason). Before this line, registering the first
+    // url-only app made this check demand a file nothing was ever going to
+    // write.
     const agentPaths = [
       "llms.txt",
       "registry.json",
       "agents.html",
       "docs/convention/device-pack.md",
       "docs/convention/app-bundle.md",
-      ...registry.apps.map((a) => `apps/${a.name}/descriptor.md`),
+      ...registry.apps.filter((a) => typeof a.path === "string").map((a) => `apps/${a.name}/descriptor.md`),
     ];
     for (const p of agentPaths) {
       if (await fetchOk(p)) console.log(`  /${p}: 200`);

@@ -41,9 +41,16 @@ bun run pack:web:silhouette m5stickc-plus2 --app apps/fluidbox/ports/web/fluid.c
 
 writes `packs/web/dist/silhouettes/m5stickc-plus2/fluid/`, a standalone
 page whose panel is 135x240 and whose ghost buttons are A, B and PWR,
-because the module's own `emu_device()` says so. `bun run
-verify-silhouette` drives that page headlessly, tilts it, and writes
-`proof/fluidbox.png`.
+because the module's own `emu_device()` says so.
+
+`proof/` holds two kinds of picture and they are not interchangeable.
+`proof/<app>.png` is written by `bun run ledger` for every app against
+every silhouette (`scripts/silhouetteProof.ts`): a settled first frame,
+the mechanical answer to whether that app runs at this size at all.
+`proof/fluidbox-tilt.png` is written by `bun run verify-silhouette`, which
+drives the same page headlessly, pours forty synthetic devicemotion
+samples into it, and asserts the fluid's centre of mass moved the way
+gravity pointed. Two claims, two pictures, two filenames.
 
 `bun run verdict <app> m5stickc-plus2` is the mechanical read of whether an
 app fits here at all, before any of that.

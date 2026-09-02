@@ -47,17 +47,17 @@ interface Registry {
   apps: RegistryEntry[];
 }
 
-interface DeviceButton {
+export interface DeviceButton {
   id: string;
   label?: string;
   role?: string;
   longPressMs?: number;
 }
-interface DeviceSensor {
+export interface DeviceSensor {
   id: string;
   kind: string;
 }
-interface DeviceJson {
+export interface DeviceJson {
   name?: string;
   panel?: { w: number; h: number; format?: string };
   buttons?: DeviceButton[];
@@ -71,17 +71,17 @@ interface DeviceJson {
   provenance?: { datasheet?: string; verified?: boolean; hypothetical?: boolean; note?: string };
 }
 
-interface DemandButton {
+export interface DemandButton {
   role: string;
   why?: string;
 }
-interface DemandSensor {
+export interface DemandSensor {
   kind: string;
   id?: string;
   why?: string;
   fallback?: { kind: string; id?: string; cost?: string };
 }
-interface Degrade {
+export interface Degrade {
   what?: string;
   basis: string;
   pixelsPerUnit?: number;
@@ -89,7 +89,7 @@ interface Degrade {
   min: number;
   max: number;
 }
-interface Demands {
+export interface Demands {
   convention?: string;
   panel?: {
     minW: number;
@@ -108,15 +108,15 @@ interface Demands {
 
 // ---- the result ----------------------------------------------------------
 
-type Status = "go" | "degraded" | "refuse" | "unchecked";
+export type Status = "go" | "degraded" | "refuse" | "unchecked";
 
-interface Check {
+export interface Check {
   dimension: string;
   status: Status;
   reason: string;
 }
 
-interface DegradeResult {
+export interface DegradeResult {
   name: string;
   what: string;
   value: number;
@@ -124,7 +124,7 @@ interface DegradeResult {
   boundBy: string;
 }
 
-interface VerdictResult {
+export interface VerdictResult {
   app: string;
   target: string;
   targetKind: "pack" | "silhouette";
@@ -143,19 +143,29 @@ function readJson<T>(path: string): T {
   return JSON.parse(readFileSync(path, "utf8")) as T;
 }
 
+/**
+ * Thrown by readDemands() when a descriptor states its requirements in prose
+ * only. The CLI turns this into an exit-2 die(); tools/ledger.ts catches it
+ * and writes the sentence into the cell, because a matrix that silently
+ * dropped an app with no machine-readable demands would be hiding exactly
+ * the gap this type names. Every external bundle registered here today is in
+ * that state.
+ */
+export class DemandsUnavailable extends Error {}
+
 // The demands block lives inside the descriptor's third section, and this
 // looks for it there rather than anywhere in the file: a fenced block under
 // Essence or Interactions would be describing something else, and reading
 // it as requirements is exactly the kind of quiet mistake this tool must
 // not make.
-function parseDemands(descriptorPath: string): Demands {
+export function readDemands(descriptorPath: string): Demands {
   const text = readFileSync(descriptorPath, "utf8");
   const demandsAt = text.search(/^##\s+Demands\s*$/m);
-  if (demandsAt === -1) die(`${descriptorPath} has no "## Demands" section (docs/convention/app-bundle.md)`);
+  if (demandsAt === -1) throw new DemandsUnavailable(`${descriptorPath} has no "## Demands" section (docs/convention/app-bundle.md)`);
   const section = text.slice(demandsAt);
   const fenced = /```json demands\s*\n([\s\S]*?)```/.exec(section);
   if (!fenced) {
-    die(
+    throw new DemandsUnavailable(
       `${descriptorPath}'s Demands section carries no \`\`\`json demands block, so this app's requirements are prose only.\n` +
         `        Add one (docs/convention/app-bundle.md, "Demands are also machine-readable"); nothing here guesses at prose.`
     );
@@ -163,7 +173,7 @@ function parseDemands(descriptorPath: string): Demands {
   try {
     return JSON.parse(fenced[1]!) as Demands;
   } catch (err) {
-    die(`${descriptorPath}'s json demands block is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
+    throw new DemandsUnavailable(`${descriptorPath}'s json demands block is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -457,62 +467,74 @@ function resolveTarget(registry: Registry, name: string): { name: string; kind: 
   return { name: entry.name, kind: pack ? "pack" : "silhouette", device: readJson<DeviceJson>(devicePath) };
 }
 
+// ---- the computation, callable ------------------------------------------
+// Exported so tools/ledger.ts computes a whole matrix of verdicts through
+// THIS code rather than by shelling out once per cell, or worse, by growing
+// a second opinion about what a demand means. The CLI below is one caller of
+// it, not the implementation.
+
+export function computeVerdict(app: string, target: string, targetKind: "pack" | "silhouette", demands: Demands, device: DeviceJson): VerdictResult {
+  const degrades = computeDegrades(demands, device);
+  const checks: Check[] = [
+    panelCheck(demands, device),
+    buttonCheck(demands, device),
+    touchCheck(demands, device),
+    sensorCheck(demands, device),
+    memoryCheck(demands, device, degrades),
+    tickCheck(demands, device),
+  ];
+
+  // A degrade that lands under its own reference is itself a cost, even when
+  // every dimension above is a fit: fluidbox on a small panel breaks nothing
+  // and is still not the app the descriptor describes.
+  const degradedByCount = degrades.some((d) => d.value < d.reference);
+  const worst = Math.max(degradedByCount ? WORST.degraded : 0, ...checks.map((c) => WORST[c.status]));
+  const verdict: VerdictResult["verdict"] = worst === WORST.refuse ? "refuse" : worst === WORST.degraded ? "degraded" : "go";
+
+  const partial: Omit<VerdictResult, "human"> = { app, target, targetKind, verdict, checks, degrades };
+  return { ...partial, human: humanLine(partial, device) };
+}
+
 // ---- run -----------------------------------------------------------------
+// Guarded, because this file is imported as well as run now: a bare CLI at
+// module scope would fire on every import and exit the importing process.
 
-const argv = process.argv.slice(2);
-const json = argv.includes("--json");
-const positional = argv.filter((a) => !a.startsWith("--"));
-if (positional.length !== 2) {
-  console.error("usage: puck verdict <app> <pack-or-silhouette> [--json]");
-  process.exit(EXIT_INFRA);
-}
-
-const registry = readJson<Registry>(join(REPO_ROOT, "registry.json"));
-const app = resolveApp(registry, positional[0]!);
-const target = resolveTarget(registry, positional[1]!);
-const demands = parseDemands(app.descriptor);
-
-const degrades = computeDegrades(demands, target.device);
-const checks: Check[] = [
-  panelCheck(demands, target.device),
-  buttonCheck(demands, target.device),
-  touchCheck(demands, target.device),
-  sensorCheck(demands, target.device),
-  memoryCheck(demands, target.device, degrades),
-  tickCheck(demands, target.device),
-];
-
-// A degrade that lands under its own reference is itself a cost, even when
-// every dimension above is a fit: fluidbox on a small panel breaks nothing
-// and is still not the app the descriptor describes.
-const degradedByCount = degrades.some((d) => d.value < d.reference);
-const worst = Math.max(degradedByCount ? WORST.degraded : 0, ...checks.map((c) => WORST[c.status]));
-const verdict: VerdictResult["verdict"] = worst === WORST.refuse ? "refuse" : worst === WORST.degraded ? "degraded" : "go";
-
-const partial: Omit<VerdictResult, "human"> = {
-  app: app.name,
-  target: target.name,
-  targetKind: target.kind,
-  verdict,
-  checks,
-  degrades,
-};
-const result: VerdictResult = { ...partial, human: humanLine(partial, target.device) };
-
-if (json) {
-  console.log(JSON.stringify(result, null, 2));
-} else {
-  console.log(`${result.app} x ${result.target}: ${result.verdict.toUpperCase()}`);
-  console.log("");
-  const width = Math.max(...checks.map((c) => c.dimension.length));
-  for (const check of checks) {
-    console.log(`  ${check.dimension.padEnd(width)}  ${check.status.padEnd(9)} ${check.reason}`);
+if (import.meta.main) {
+  const argv = process.argv.slice(2);
+  const json = argv.includes("--json");
+  const positional = argv.filter((a) => !a.startsWith("--"));
+  if (positional.length !== 2) {
+    console.error("usage: puck verdict <app> <pack-or-silhouette> [--json]");
+    process.exit(EXIT_INFRA);
   }
-  for (const degrade of result.degrades) {
-    console.log(`  ${"degrade".padEnd(width)}  ${String(degrade.value).padEnd(9)} ${degrade.what}, against the reference ${degrade.reference}, bound by ${degrade.boundBy}`);
-  }
-  console.log("");
-  console.log(result.human);
-}
 
-process.exit(verdict === "refuse" ? EXIT_REFUSE : EXIT_FIT);
+  const registry = readJson<Registry>(join(REPO_ROOT, "registry.json"));
+  const app = resolveApp(registry, positional[0]!);
+  const target = resolveTarget(registry, positional[1]!);
+  let demands: Demands;
+  try {
+    demands = readDemands(app.descriptor);
+  } catch (err) {
+    die(err instanceof Error ? err.message : String(err));
+  }
+
+  const result = computeVerdict(app.name, target.name, target.kind, demands, target.device);
+
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    console.log(`${result.app} x ${result.target}: ${result.verdict.toUpperCase()}`);
+    console.log("");
+    const width = Math.max(...result.checks.map((c) => c.dimension.length));
+    for (const check of result.checks) {
+      console.log(`  ${check.dimension.padEnd(width)}  ${check.status.padEnd(9)} ${check.reason}`);
+    }
+    for (const degrade of result.degrades) {
+      console.log(`  ${"degrade".padEnd(width)}  ${String(degrade.value).padEnd(9)} ${degrade.what}, against the reference ${degrade.reference}, bound by ${degrade.boundBy}`);
+    }
+    console.log("");
+    console.log(result.human);
+  }
+
+  process.exit(result.verdict === "refuse" ? EXIT_REFUSE : EXIT_FIT);
+}

@@ -1,0 +1,58 @@
+{
+  "convention": "0.2",
+  "name": "Pico Display Pack 2.0 on Pico 2",
+  "panel": {
+    "w": 320,
+    "h": 240,
+    "format": "rgb565be"
+  },
+  "buttons": [
+    {
+      "id": "a",
+      "label": "A",
+      "edge": "left",
+      "at": 0.25,
+      "role": "key",
+      "longPressMs": 800
+    },
+    {
+      "id": "b",
+      "label": "B",
+      "edge": "left",
+      "at": 0.75,
+      "role": "click"
+    },
+    {
+      "id": "x",
+      "label": "X",
+      "edge": "right",
+      "at": 0.25,
+      "role": "click"
+    },
+    {
+      "id": "y",
+      "label": "Y",
+      "edge": "right",
+      "at": 0.75,
+      "role": "click"
+    }
+  ],
+  "touch": {
+    "points": 0
+  },
+  "sensors": [],
+  "budget": {
+    "ram": {
+      "bytes": 247808,
+      "basis": "520 KB of on-chip SRAM (RP2350, the Raspberry Pi datasheet, ten independent banks), minus the 153,600-byte full framebuffer (320x240 at two bytes), minus a 128 KB reserve for the pico-sdk and its two 2 KB core stacks plus whatever the driver holds. A smaller reserve than the ESP32 silhouettes here take, because there is no radio stack and no RTOS in the picture. Derived from the datasheet, never measured on this board."
+    },
+    "framebuffer": "full",
+    "tickBudgetMs": 16,
+    "tickBudgetBasis": "One frame at 60 Hz. The ST7789 is driven over SPI here, and nothing in this file has measured how much of a frame the clock-out of 153,600 bytes actually costs on this bus, so this is a frame period rather than a measured headroom."
+  },
+  "provenance": {
+    "datasheet": "https://shop.pimoroni.com/en-us/products/pico-display-pack-2-0",
+    "verified": false,
+    "note": "unverified against silicon. This is a two-part target and both parts are named: the Pimoroni Pico Display Pack 2.0 (2.0 inch IPS, 320x240, ST7789, 65K colours, four tactile buttons and an RGB LED) mounted on a Raspberry Pi Pico 2 (https://www.raspberrypi.com/products/raspberry-pi-pico-2/, RP2350, 4 MB QSPI flash, no PSRAM populated). Panel and buttons come off Pimoroni's own product page and its own driver header (pimoroni-pico, libraries/pico_display_2/pico_display_2.hpp: A on GPIO12, B on GPIO13, X on GPIO14, Y on GPIO15, RGB LED on GPIO6/7/8). The 520 KB SRAM figure is the RP2350's, from Raspberry Pi's datasheet, not from Pimoroni. THREE THINGS ARE DERIVED RATHER THAN READ. The A/B/X/Y labels are the names Pimoroni's own firmware uses; the product page text does not spell the silkscreen out. The pixel format is the ST7789's standard 16-bit RGB565 interface, which is what \"65K colours\" describes, not a phrase Pimoroni uses. And the roles are this descriptor's own split: all four buttons are ordinary GPIOs pulled up, so any of them could be timed, and declaring A as the key with an 800 ms threshold while B, X and Y stay plain clicks is a choice made here, not a board fact. The RGB LED is real and is not declared, because emu_device() has no output a host could draw for it and inventing one would be describing this file rather than the board. There is no touch on this pack, and no IMU anywhere in this stack, which is why touch.points is 0 and sensors is empty rather than optimistic."
+  }
+}

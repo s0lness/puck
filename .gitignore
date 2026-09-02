@@ -38,6 +38,9 @@ test/regression/dist/
 # (or `bun run test/wasi/build.ts` on its own)
 test/wasi/dist/
 
+# The host harness's own fixture wasm: regenerate with `bun run test:host`
+test/host/dist/
+
 # The external-port fixture's own build output: its bundle's build command
 # writes it into a temporary checkout, but a developer running that command
 # by hand in the fixture directory would leave a copy here

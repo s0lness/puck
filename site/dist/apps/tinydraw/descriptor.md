@@ -82,3 +82,32 @@ drawing-surface one:
   writable non-volatile storage sized for the document, a board-specific budget
   question (the donor's own ESP32 product reserves 4 MiB of its 16 MiB flash for
   exactly this), separate from whether the drawing surface itself works.
+
+The requirements above, in the form `bun run verdict` checks (see
+[`docs/convention/app-bundle.md`](../../docs/convention/app-bundle.md)'s "Demands
+are also machine-readable"). A digitizer is the demand nothing here can work
+around: this app IS the finger on the glass, and a board with buttons and no
+touch is refused rather than adapted. The memory figure is the stroke store, not
+the framebuffer, for the reason the prose gives: undo and zoom both redraw from
+the original geometry, so the points have to still be there.
+
+```json demands
+{
+  "convention": "0.1",
+  "panel": {
+    "minW": 200,
+    "minH": 200,
+    "scalesTo": { "minW": 128, "minH": 128 },
+    "orientation": "either",
+    "color": false
+  },
+  "buttons": [
+    { "role": "key", "why": "cycle the zoom level" },
+    { "role": "click", "why": "undo the last stroke, on a different control so cycling zoom cannot erase work" }
+  ],
+  "touch": { "points": 1 },
+  "sensors": [],
+  "memory": { "baseBytes": 16384 },
+  "tick": { "needsMs": 8, "refuseUnderMs": 2 }
+}
+```

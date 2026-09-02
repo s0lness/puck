@@ -15,7 +15,17 @@
 //
 // Defaults to fluidbox on m5stickc-plus2, which is the pair the roadmap's
 // first cell names, and writes packs/silhouettes/m5stickc-plus2/proof/
-// fluidbox.png: the panel itself, at 1:1, not a screenshot of a page.
+// fluidbox-tilt.png: the panel itself, at 1:1, not a screenshot of a page.
+//
+// THE FILENAME ENDS IN -tilt FOR A REASON. tools/ledger.ts writes
+// proof/<app>.png for every app against every silhouette, through
+// scripts/silhouetteProof.ts, and that picture is a settled first frame:
+// the wide, mechanical answer to whether this app runs at this size. This
+// one is the narrow, deliberate answer to whether the fluid pours where
+// the board is tilted, captured a beat after forty synthetic devicemotion
+// samples. Two different pictures of two different claims, and one
+// filename for both would mean whichever ran last silently replaced the
+// other.
 //
 // THREE ASSERTIONS, and each is about something a screenshot could fake:
 //   1. the module's own emu_device() says 135x240, so the app was compiled
@@ -48,7 +58,7 @@ const SILHOUETTE = argValue("--silhouette", "m5stickc-plus2");
 const APP_SOURCE = argValue("--app", "apps/fluidbox/ports/web/fluid.c");
 const APP_NAME = APP_SOURCE.split("/").pop()!.replace(/\.c$/, "");
 const BUILD = !process.argv.includes("--no-build");
-const PROOF = resolve(ROOT, argValue("--proof", join("packs", "silhouettes", SILHOUETTE, "proof", "fluidbox.png")));
+const PROOF = resolve(ROOT, argValue("--proof", join("packs", "silhouettes", SILHOUETTE, "proof", "fluidbox-tilt.png")));
 const DIST = join(ROOT, "packs", "web", "dist", "silhouettes", SILHOUETTE, APP_NAME);
 
 function findChrome(): string {

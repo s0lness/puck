@@ -708,6 +708,10 @@ function compareFrames(a, b, tolerance) {
   if (a.width !== b.width || a.height !== b.height) {
     return { match: false, diffPixels: -1, totalPixels: a.width * a.height, firstDiffAt: null, maxChannelDelta: 255, diffImage: null };
   }
+  const expectedLength = a.width * a.height * 3;
+  if (a.rgb.length !== expectedLength || b.rgb.length !== expectedLength) {
+    return { match: false, diffPixels: -1, totalPixels: a.width * a.height, firstDiffAt: null, maxChannelDelta: 255, diffImage: null };
+  }
   const { width: w, height: h } = a;
   let diffPixels = 0;
   let firstDiffAt = null;

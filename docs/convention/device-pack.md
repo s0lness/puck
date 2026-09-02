@@ -69,6 +69,7 @@ A silhouette runs, it does not draw. `packs/web`'s host compiles an app's own C 
   - `ram`: `{ "bytes": n, "basis": "<how that number was arrived at>" }`. The bytes an app's own state may use, after the framebuffer and whatever the platform reserves. The basis is mandatory prose: an undefended number here is a number a verdict would quote as if it had been measured.
   - `framebuffer`: `full` (the whole panel fits in RAM at once) or `banded` (it does not, and the runtime renders in bands, the way `packs/esp32-s3-touch-amoled-18` does).
   - `tickBudgetMs`: how long one tick may take before the device misses its own frame rate.
+  - `tickBudgetBasis`: optional prose, and expected wherever that number is derived rather than obvious. A 16 on a 60 Hz colour panel needs no defence; the 300 on [`watchy`](../../packs/silhouettes/watchy/) is Good Display's own partial-refresh time for that e-paper, and an undefended 300 would be exactly the number `ram.basis` already refuses to let `ram.bytes` be. Note what this dimension does NOT model: it says how long a tick may take, never how often a frame appears, so an app whose tick fits inside 300 ms still gets three frames a second on that board.
 - `provenance`: where the numbers came from.
   - `datasheet`: a URL a reader can check.
   - `verified`: `false` until somebody has run this silhouette's own numbers against the physical board. The string `"unverified against silicon"` belongs in `note` while that is the case, and the gallery says so wherever the silhouette appears.
@@ -86,4 +87,14 @@ A silhouette that is not a real board at all declares `"hypothetical": true` in 
 ]
 ```
 
-The first two are [`m5stickc-plus2`](../../packs/silhouettes/m5stickc-plus2/) (a three-button board with an IMU) and [`feather-esp32s2-tft`](../../packs/silhouettes/feather-esp32s2-tft/) (one usable button, no IMU), and the second one earns its place by what it REFUSES: `bun run verdict chrono feather-esp32s2-tft` says no, and says why, which is a more useful thing to show than a port that was never going to work.
+There are five, and each one earns its place by a refusal the others cannot make. A silhouette that only ever says yes is a silhouette that proves nothing.
+
+- [`m5stickc-plus2`](../../packs/silhouettes/m5stickc-plus2/): three buttons and an IMU. The one that says yes, and where the first cell was proven.
+- [`feather-esp32s2-tft`](../../packs/silhouettes/feather-esp32s2-tft/): one usable button, no IMU. `bun run verdict chrono feather-esp32s2-tft` says no, and says why.
+- [`lilygo-t-display-s3`](../../packs/silhouettes/lilygo-t-display-s3/): no digitizer and no IMU, so tinydraw is refused for touch and fluidbox for gravity, each in one line.
+- [`pico-display-pack-2`](../../packs/silhouettes/pico-display-pack-2/): the only non-ESP32 target here, four buttons, and the cell that comes out a clean `go`.
+- [`watchy`](../../packs/silhouettes/watchy/): 200x200 e-paper, `mono1`, four buttons and none of them a `key`. The first target that is not a colour screen: it refuses every app whose colour carries information, degrades the ones that ask for a key, and its panel rather than its CPU sets its tick budget.
+
+## Running a silhouette cell, and what writes the proof
+
+`bun run ledger` ([`tools/ledger.ts`](../../tools/ledger.ts)) compiles every app in `registry.json` against every silhouette in it, opens the resulting page headlessly, asserts the canvas is that board's declared panel, and writes `packs/silhouettes/<name>/proof/<app>.png`. That picture is the whole mechanism's honesty check, and it is where a port that hardcoded another board's panel size gets caught: it compiles, it instantiates, and what comes out is empty, or clipped, or a module trapping on a memory access out of bounds. None of those is skipped; each one is a cell on the gallery with its reason on it. `bun run verify-silhouette` is a second, deeper proof of one hand-picked pair and writes its own `proof/fluidbox-tilt.png`.

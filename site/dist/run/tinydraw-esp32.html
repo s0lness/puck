@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tinydraw on ESP32-S3-Touch-AMOLED-1.8: puck</title>
+<meta name="description" content="The third board for the same two-level, one-undo reduction: a fresh implementation against a device with no framebuffer, repainting 28 rows at a time, holding the same 65536-byte app arena contract as its siblings." />
+<meta property="og:title" content="tinydraw on ESP32-S3-Touch-AMOLED-1.8: puck" />
+<meta property="og:description" content="The third board for the same two-level, one-undo reduction: a fresh implementation against a device with no framebuffer, repainting 28 rows at a time, holding the same 65536-byte app arena contract as its siblings." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2214%22%20fill%3D%22%232f6feb%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23fafafa%22%2F%3E%3C%2Fsvg%3E" />
+<link rel="stylesheet" href="../styles.css?v=2071d3998f" />
+</head>
+<body>
+<div class="wrap">
+  <div class="run-header">
+    <div class="back"><a href="../index.html">&larr; puck</a></div>
+    <h1>tinydraw on ESP32-S3-Touch-AMOLED-1.8</h1>
+    <p class="meta">running on ESP32-S3-Touch-AMOLED-1.8</p>
+    <div class="badges"><span class="badge accent">adaptation</span> <span class="badge accent">invariants (degraded)</span></div>
+    <p>The third board for the same two-level, one-undo reduction: a fresh implementation against a device with no framebuffer, repainting 28 rows at a time, holding the same 65536-byte app arena contract as its siblings.</p>
+    <div class="links">
+      <a href="https://github.com/s0lness/puck/blob/master/apps/tinydraw/descriptor.md">descriptor</a>
+      <a href="https://github.com/s0lness/puck/blob/master/apps/tinydraw/ports/esp32-s3-touch-amoled-18/README.md">port notes</a>
+    </div>
+  </div>
+
+  <div class="emu-stage" id="stage">
+    <div class="emu-frame" id="frame" style="width:448px;height:618px">
+      <iframe id="emu" allowtransparency="true" src="../emu/index.html?embed=1&module=%2Fmodules%2Ftinydraw-esp32.wasm&v=b247ff5a65" width="448" height="618" title="tinydraw on ESP32-S3-Touch-AMOLED-1.8 running live" allow="autoplay"></iframe>
+    </div>
+  </div>
+  <p class="embed-hint">touch the screen</p>
+
+  <div class="run-footer"></div>
+
+  <section class="flash-section flash-section-note">
+    <h2>Flash to the real device</h2>
+    <p class="flash-note">No prebuilt image for this port yet. The pack&#39;s firmware and this page&#39;s flasher both work; build this port&#39;s image with the pack&#39;s own tools/build-native.ts and it appears here.</p>
+  </section>
+<footer>
+    <div class="wrap" style="padding:0">
+      <a href="https://github.com/s0lness/puck/blob/master/README.md">s0lness/puck</a> on GitHub, MIT licensed.
+      &middot; <a href="../agents.html?v=d1cb386cd7">agents</a>
+    </div>
+  </footer>
+</div>
+<script>
+(function () {
+  var NATIVE_W = 448, NATIVE_H = 618;
+  var stage = document.getElementById("stage");
+  var frame = document.getElementById("frame");
+  function fit() {
+    var scale = Math.min(1, stage.clientWidth / NATIVE_W);
+    frame.style.transform = "scale(" + scale + ")";
+    stage.style.height = Math.round(NATIVE_H * scale) + "px";
+  }
+  window.addEventListener("resize", fit);
+  fit();
+  
+})();
+</script>
+<script>/* markup: visual-feedback overlay, only for a browser holding the key */(function(){if(!(/[?&](markup|edit)([=&]|$)/.test(location.search)||sessionStorage.getItem("markup-on")))return;var m=/[#&]k=([A-Za-z0-9_-]+)/.exec(location.hash),k=null;try{if(m)localStorage.setItem("markup-key",m[1]);k=localStorage.getItem("markup-key")}catch(e){}var local=location.hostname==="localhost"||location.hostname==="127.0.0.1";if(!k&&!local)return;document.head.appendChild(Object.assign(document.createElement("script"),{src:"https://markup.sylve.org/markup.js"}))})()</script>
+</body>
+</html>

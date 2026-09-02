@@ -29,6 +29,13 @@
 //
 // TypeScript only, no shell script, per this repo's own AGENTS.md.
 import { existsSync, mkdirSync, rmSync, copyFileSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
+// Type-only, so nothing of tools/ledger.ts's own CLI is imported at
+// runtime: the shapes below are the ledger's, declared once where it
+// writes them rather than restated here where they would drift.
+import type { Ledger, LedgerCell, LedgerTarget } from "../tools/ledger";
+// The one thing this generator asks the emulator itself rather than
+// restating: which declared panel formats it can actually present.
+import { supportsPixelFormat } from "../src/panel";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 // The generator and the page agree on one sentence for "nobody has
@@ -68,6 +75,11 @@ function withVersion(url: string, hash: string): string {
 // ---- read the data that decides what gets built -------------------------
 interface Registry {
   packs: { name: string; path: string }[];
+  // Silhouettes are their own array, never mixed into packs: a silhouette
+  // satisfies none of a pack's required contents (docs/convention/
+  // device-pack.md). This generator reads their device.json for the same
+  // four things it reads a pack's for, and nothing else.
+  silhouettes?: { name: string; path: string }[];
   // An app entry is EITHER local ({name,path}) or external, published in
   // its own repository ({name,url} - docs/convention/app-bundle.md's own
   // registry convention). `path` is therefore optional here, unlike the
@@ -114,7 +126,6 @@ interface ProvenEntry {
   mode: string;
   verification: string;
   degraded: boolean;
-  silicon: { attestedAt: string; how: string } | null;
   // Only a pixel-exact port has these, and only a pixel-exact port can be
   // attested on a board: the attestation replays the bundle's own traces
   // and diffs against the bundle's own recorded frames, which is exactly
@@ -153,7 +164,13 @@ interface PackButton {
   at: number;
 }
 const packButtons = new Map<string, PackButton[]>();
-for (const p of registry.packs) {
+// Silhouettes go into the SAME four maps as real packs, deliberately: a
+// silhouette run page is written by the same writeRunPage(), sized by the
+// same embedFrameSize(), and framed by the same cardDeviceGeometry(), which
+// is only possible because none of those three ever asks whether a target
+// has firmware. That is the whole "a silhouette runs, it does not draw"
+// claim, spelled out in code rather than in prose.
+for (const p of [...registry.packs, ...(registry.silhouettes ?? [])]) {
   const device = readJson<{
     name?: string;
     panel?: { w: number; h: number };
@@ -162,7 +179,7 @@ for (const p of registry.packs) {
   }>(join(REPO_ROOT, p.path, "device.json"));
   packLabel.set(p.name, device.name || p.name);
   if (device.panel) packPanel.set(p.name, device.panel);
-  packHasVectorSensor.set(p.name, (device.sensors || []).some((sensor) => sensor.kind === "vector"));
+  packHasVectorSensor.set(p.name, (device.sensors || []).some((sensor) => sensor.kind === "vector" || sensor.kind === "gravity"));
   packButtons.set(p.name, (device.buttons || []).map((b) => ({ edge: b.edge, at: b.at })));
 }
 
@@ -273,34 +290,70 @@ function cardDeviceGeometry(pack: string, rotated: boolean): CardDeviceGeometry 
   return { bezelW, bezelH, bezelRadius, panelStyle, buttonsHtml, panelW: panel.w, panelH: panel.h };
 }
 
+// ---- the ledger, which is now what decides everything on this page ------
+// ledger.json (tools/ledger.ts, `bun run ledger`) is a RESULTS document:
+// every app in registry.json against every target in it, with the verdict,
+// the emulator mark, the host mark, the attestation key and the silhouette
+// mark for each pair. This generator used to walk each bundle.json and
+// render whatever it found listed there, which meant the page could only
+// ever show what had worked - an unported app, a device with no firmware,
+// and an external bundle whose build was red all had exactly the same
+// representation, which was none at all. See
+// docs/decisions/0012-the-gallery-is-built-from-a-ledger.md.
+//
+// The ONE thing still read out of a bundle.json below is an attestable
+// port's own trace files and recorded-frame directory (buildAttestPlans).
+// Those are inputs a flash page needs to hand a board, not results about a
+// port, so they belong to the bundle and not to a document of outcomes.
+// bundle.json's `silicon` block is no longer read anywhere in site/: the
+// counter comes from GET /api/attest, keyed by the string the ledger
+// stores (docs/decisions/0011).
+const LEDGER_PATH = join(REPO_ROOT, "ledger.json");
+if (!existsSync(LEDGER_PATH)) {
+  throw new Error(`site/build.ts: no ledger.json at the repository root. Run \`bun run ledger\` first: this page is built from it, not from the bundles.`);
+}
+const ledger = readJson<Ledger>(LEDGER_PATH);
+
+function cellFor(app: string, target: string): LedgerCell | undefined {
+  return ledger.cells[`${app}:${target}`];
+}
+
 interface AppEntry {
   name: string;
-  path: string;
-  bundle: ChronoLikeBundle;
+  /** null for an app published in its own repository. */
+  path: string | null;
+  url: string | null;
+  /** "reproduced from <repo>@<sha> on <date>", for an external bundle. */
+  provenance: string | null;
+  external: boolean;
+  /** Every local pack this app declares a port for, in the ledger's own target order. */
   proven: ProvenEntry[];
 }
-// External (url-only) entries have no local checkout for this generator to
-// read a bundle.json from - this site generator has no external-bundle
-// rendering path at all (unlike tools/verify-bundle.ts, which does clone
-// and verify them), so they are skipped here, not crashed on. Pre-existing
-// gap, unrelated to this file's own gameos work: registry.json's
-// "aliceisjustplaying/tinydraw" entry (url-only) has always been unreadable
-// by the line below as originally written - a plain `a.path` field access
-// with no existence check - found while rebuilding the site for this task,
-// fixed here since a broken `bun run site:build` blocks every future task
-// that needs it, not just this one.
-const apps: AppEntry[] = registry.apps.filter((a): a is { name: string; path: string; url?: string } => typeof a.path === "string").map((a) => {
-  const bundle = readJson<ChronoLikeBundle>(join(REPO_ROOT, a.path, "bundle.json"));
-  const proven: ProvenEntry[] = bundle.ports.map((entry) => ({
-    pack: entry.pack,
-    mode: entry.mode,
-    verification: entry.verification.kind,
-    degraded: entry.verdict === "degraded",
-    silicon: entry.silicon ?? null,
-    traces: entry.verification.kind === "pixel-exact" && Array.isArray(entry.verification.traces) ? entry.verification.traces : null,
-    framesDir: entry.verification.kind === "pixel-exact" && entry.verification.frames ? entry.verification.frames : null,
-  }));
-  return { name: a.name, path: a.path, bundle, proven };
+
+// Local apps first, then the ones published in their own repositories. Not
+// registry.json's own order, which happens to put the external bundle at
+// the top: the rows a reader recognises come first and the one that needs
+// its provenance explained comes last, where the note under the table is.
+const ledgerApps = [...ledger.apps.filter((a) => a.kind === "local"), ...ledger.apps.filter((a) => a.kind !== "local")];
+
+const apps: AppEntry[] = ledgerApps.map((a) => {
+  const proven: ProvenEntry[] = [];
+  for (const target of ledger.targets) {
+    if (target.kind !== "pack") continue;
+    const cell = cellFor(a.name, target.name);
+    if (!cell || !cell.port) continue;
+    const bundlePath = a.path ? join(REPO_ROOT, a.path, "bundle.json") : null;
+    const bundlePort = bundlePath ? readJson<ChronoLikeBundle>(bundlePath).ports.find((p) => p.pack === target.name) : undefined;
+    proven.push({
+      pack: target.name,
+      mode: cell.port.mode,
+      verification: cell.port.verification,
+      degraded: cell.port.declaredVerdict === "degraded",
+      traces: bundlePort?.verification.kind === "pixel-exact" && Array.isArray(bundlePort.verification.traces) ? bundlePort.verification.traces : null,
+      framesDir: bundlePort?.verification.kind === "pixel-exact" && bundlePort.verification.frames ? bundlePort.verification.frames : null,
+    });
+  }
+  return { name: a.name, path: a.path, url: a.url, provenance: a.provenance, external: a.kind !== "local", proven };
 });
 
 // ---- the one piece of prose this data cannot carry: how to build each
@@ -362,6 +415,12 @@ const COMBO_BUILD: Record<string, ComboBuild> = {
     args: ["--app", "apps/tinydraw/ports/web/tinydraw.c"],
     portDoc: "apps/tinydraw/ports/web/README.md",
     blurb: "The RP2350 port's file, byte for byte, on a device with no SRAM budget of its own: the pack still vendors the same 65536-byte app arena contract, so the same reductions apply on their own merits.",
+  },
+  "tinydraw:esp32-s3-touch-amoled-18": {
+    script: "packs/esp32-s3-touch-amoled-18/wasm/build.ts",
+    args: ["--app", "apps/tinydraw/ports/esp32-s3-touch-amoled-18/tinydraw.c"],
+    portDoc: "apps/tinydraw/ports/esp32-s3-touch-amoled-18/README.md",
+    blurb: "The third board for the same two-level, one-undo reduction: a fresh implementation against a device with no framebuffer, repainting 28 rows at a time, holding the same 65536-byte app arena contract as its siblings.",
   },
   "gameos:esp32-s3-touch-amoled-18": {
     script: "packs/esp32-s3-touch-amoled-18/wasm/build.ts",
@@ -475,11 +534,73 @@ for (const app of apps) {
     const build = COMBO_BUILD[key];
     if (!build) {
       throw new Error(
-        `site/build.ts has no COMBO_BUILD entry for "${key}", but ${app.path}/bundle.json lists it as proven. ` +
+        `site/build.ts has no COMBO_BUILD entry for "${key}", but ledger.json records a port for it. ` +
           `Add one (script, args, portDoc, blurb) or this gallery would silently under-claim what's proven.`
       );
     }
-    combos.push({ id: comboId(app.name, entry.pack), app: app.name, appPath: app.path, pack: entry.pack, build, proven: entry });
+    combos.push({ id: comboId(app.name, entry.pack), app: app.name, appPath: app.path!, pack: entry.pack, build, proven: entry });
+  }
+}
+
+// ---- silhouette cells that actually run get a run page of their own ----
+// The roadmap's workstream 3 in one object: a device nobody has written
+// firmware for, running the app's real C at that board's real size. The
+// module is built by packs/web's own build.ts against the silhouette's
+// device.json (`--silhouette <name>`, MODULE mode, not the host mode the
+// ledger proves with), and everything downstream is the ordinary run-page
+// path: the same shared emulator bundle, the same iframe, the same chrome
+// built from emu_device() at runtime. Nothing here knows a silhouette from
+// a pack, which is exactly the claim.
+//
+// ONLY THE CELLS THE LEDGER SAYS RUN. A cell whose module never built, or
+// whose page threw, or whose canvas came out the wrong size, gets no link:
+// the matrix says what happened instead. A cell that built and instantiated
+// but painted one flat colour (BLANK) also gets no page, because the one
+// thing a visitor would come to that page to see is not there.
+interface SilhouetteCombo {
+  id: string;
+  app: string;
+  appPath: string | null;
+  silhouette: string;
+  source: string;
+  buildArgs: string[];
+  /** Which pack's own port file was borrowed, when it was not this app's web port. */
+  via: string;
+  panel: { w: number; h: number };
+}
+const silhouetteCombos: SilhouetteCombo[] = [];
+// A silhouette this repository can put on a run page at all. The shared
+// emulator blits a framebuffer through a reader chosen by the panel's
+// declared format (src/panel.ts), and it has readers for the two 16-bit
+// ones the packs here declare and for nothing else. packs/web's own
+// framebuffer is RGB565 whatever a device.json calls its glass, so an app
+// compiled against a monochrome silhouette really does run in the pack's
+// host page (which never asks) and really cannot be presented by the
+// emulator (which does, correctly: a module claiming mono1 and handing over
+// 16-bit pixels is a module lying about itself, and that is worth refusing).
+// The matrix says so on the cell rather than linking to a page that would
+// fail on open.
+function emulatorCanPresent(target: LedgerTarget): boolean {
+  return target.panel ? supportsPixelFormat(target.panel.format) : false;
+}
+const silhouettePages = new Set<string>();
+for (const app of apps) {
+  for (const target of ledger.targets) {
+    if (target.kind !== "silhouette") continue;
+    const cell = cellFor(app.name, target.name);
+    if (!cell || cell.silhouette.mark !== "runs" || !cell.silhouette.source || !cell.silhouette.panel) continue;
+    if (!emulatorCanPresent(target)) continue;
+    silhouettePages.add(`${app.name}:${target.name}`);
+    silhouetteCombos.push({
+      id: `${app.name}-${target.name}`,
+      app: app.name,
+      appPath: app.path,
+      silhouette: target.name,
+      source: cell.silhouette.source,
+      buildArgs: cell.silhouette.buildArgs,
+      via: cell.silhouette.via ?? "web",
+      panel: cell.silhouette.panel,
+    });
   }
 }
 
@@ -505,8 +626,17 @@ function runBuild(script: string, args: string[]): void {
     stderr: "inherit",
     env: { ...process.env },
   });
+  // Backing off between attempts, not hammering: measured while writing
+  // tools/ledger.ts, this flake is a WINDOW rather than a coin toss, and it
+  // widens with machine load. Four attempts with no pause at all can land
+  // inside one window and fail a whole `bun run site:build` for a reason
+  // that has nothing to do with the site. Same shape as
+  // harness/hostSide.ts's own retry, for the same measurement.
+  let pause = 1000;
   for (let attempt = 2; !result.success && attempt <= BUILD_MAX_ATTEMPTS; attempt++) {
-    console.error(`bun run ${script} exited ${result.exitCode}, retrying (${attempt}/${BUILD_MAX_ATTEMPTS}) - see this function's comment`);
+    console.error(`bun run ${script} exited ${result.exitCode}, waiting ${pause}ms and retrying (${attempt}/${BUILD_MAX_ATTEMPTS}) - see this function's comment`);
+    Bun.sleepSync(pause);
+    pause = Math.min(pause * 3, 20_000);
     result = Bun.spawnSync(["bun", "run", script, ...args], {
       cwd: REPO_ROOT,
       stdout: "inherit",
@@ -537,6 +667,13 @@ function buildAllModules(): void {
   if (!existsSync(REPO_WASM_OUT)) throw new Error(`${INSTRUMENT_EXAMPLE.script} did not write ${REPO_WASM_OUT}`);
   copyFileSync(REPO_WASM_OUT, join(MODULES_DIR, `${INSTRUMENT_EXAMPLE.id}.wasm`));
   console.log(`copied -> site/dist/modules/${INSTRUMENT_EXAMPLE.id}.wasm`);
+
+  for (const s of silhouetteCombos) {
+    runBuild("packs/web/wasm/build.ts", ["--silhouette", s.silhouette, "--app", s.source, ...s.buildArgs]);
+    if (!existsSync(REPO_WASM_OUT)) throw new Error(`the silhouette build for ${s.id} did not write ${REPO_WASM_OUT}`);
+    copyFileSync(REPO_WASM_OUT, join(MODULES_DIR, `${s.id}.wasm`));
+    console.log(`copied -> site/dist/modules/${s.id}.wasm`);
+  }
 }
 
 // ---- 1.2. the web pack's own app pages -----------------------------------
@@ -1032,109 +1169,240 @@ function modeLabel(mode: string): string {
   return "adaptation";
 }
 
-// The two-mark matrix (docs/convention/publishing.md): EVERY cell rendered
-// here already passed the shared harness (site/build.ts only ever builds a
-// combo listed as a bundle.json "port", and bun run verify-bundle is what
-// decides a port belongs there at all) - that is the first mark, implicit
-// in the cell simply being filled in rather than "not ported". The second,
-// distinct mark is proof-silicon below: only present when that port's own
-// bundle.json carries a "silicon" attestation, meaning it has ALSO been
-// run against real hardware, not only the emulator.
-function renderProofCell(entry: ProvenEntry | undefined, href: string | null): string {
-  if (!entry) return `<td class="proof-cell empty">not ported</td>`;
-  const verif = entry.degraded ? `${entry.verification} (degraded)` : entry.verification;
-  const silicon = entry.silicon
-    ? `<span class="proof-silicon" title="run against real hardware, attested ${escapeHtml(entry.silicon.attestedAt)}: ${escapeHtml(entry.silicon.how)}">&#9679; on silicon</span>`
-    : "";
-  const inner = `<span class="proof-mode">${escapeHtml(modeLabel(entry.mode))}</span><span class="proof-verif">${escapeHtml(verif)}</span>${silicon}`;
-  return href ? `<td class="proof-cell"><a href="${href}">${inner}</a></td>` : `<td class="proof-cell">${inner}</td>`;
+// ---- the matrix: one cell per app per target, from the ledger ----------
+// docs/decisions/0012. Every cell here is a row out of ledger.json, and the
+// rule the whole page turns on is that a cell must be one of exactly three
+// things and never a blank: something that RUNS (a thumbnail and a link),
+// a VERDICT (the mechanical go/degraded/refuse and its reason, for a
+// target this app has no port on), or an EMPTY STATE that says what is
+// missing. "Not ported" as a grey word in a box was the fourth thing, and
+// it said nothing at all.
+
+/** Whether site/demo-media/ carries a complete recorded loop for this id. */
+function hasDemoMedia(id: string): boolean {
+  return DEMO_MEDIA_EXTS.every((ext) => existsSync(join(DEMO_MEDIA_DIR, `${id}.${ext}`)));
 }
 
-function buildIndexHtml(): void {
-  const cardsHtml = apps
-    .map((app) => {
-      const primary = combos.find((x) => x.app === app.name && x.pack === app.proven[0]!.pack)!;
-      const provenLinks = app.proven
-        .map((p) => {
-          const c = combos.find((x) => x.app === app.name && x.pack === p.pack)!;
-          // The web pack's link says where it runs rather than what it
-          // runs on, because that is the whole difference: every other
-          // link opens an emulator of a device the visitor does not have,
-          // and this one opens the app on the device already in their
-          // hand.
-          const label =
-            p.pack === WEB_PACK
-              ? `run on your phone: ${escapeHtml(packLabel.get(p.pack) || p.pack)}`
-              : `run on ${escapeHtml(packLabel.get(p.pack) || p.pack)}`;
-          return `<a href="${comboHref(c, "")}">${label}</a>`;
-        })
-        .join("");
-      // Deduped: chrono is proven the same way (faithful/pixel-exact) on
-      // both packs, and showing that badge twice would just be noise.
-      const seenBadges = new Set<string>();
-      const badges = app.proven
-        .filter((p) => {
-          const key = `${p.mode}:${p.verification}:${p.degraded}`;
-          if (seenBadges.has(key)) return false;
-          seenBadges.add(key);
-          return true;
-        })
-        .map((p) => `<span class="badge${p.degraded ? "" : " accent"}">${escapeHtml(modeLabel(p.mode))} · ${escapeHtml(p.verification)}</span>`)
-        .join("");
-      // One line per pack this app is proven on, saying how many real
-      // boards have run this port's own trace and confirmed the frames.
-      // The empty state ships in the HTML and the counts are fetched
-      // client-side (site/attest-client.ts): the endpoint is a Pages
-      // Function, and site/dist/ is a static build that also gets served
-      // with nothing behind it (this repo's own headless checks, a local
-      // preview, anyone's clone), so a missing endpoint has to read as "no
-      // board has confirmed this yet" rather than as an error.
-      const counters = app.proven
-        .filter((p) => p.pack !== WEB_PACK) // the browser is not a board somebody can confirm on
-        .map(
-          (p) =>
-            `<li><span class="attest-pack">${escapeHtml(packLabel.get(p.pack) || p.pack)}</span> ` +
-            `<span class="attest-counter attest-counter-empty" data-attest-app="${escapeHtml(app.name)}" data-attest-pack="${escapeHtml(p.pack)}">${escapeHtml(ATTEST_EMPTY_STATE)}</span></li>`
-        )
-        .join("");
-      const counterBlock = counters ? `<ul class="attest-counters">${counters}</ul>` : "";
-      return `<div class="card">
-  ${demoThumb(primary.id, `${app.name} demo`, `run/${primary.id}.html`, primary.pack, primary.app === "chrono")}
-  <div class="body">
-    <h3>${escapeHtml(app.name)}</h3>
-    <p>${escapeHtml(APP_BLURB[app.name] || "")}</p>
-    <div class="badges">${badges}</div>
-    ${counterBlock}
-    <div class="links">
-      ${provenLinks}
-      <a href="${gh(`${app.path}/descriptor.md`)}">descriptor</a>
-    </div>
-  </div>
-</div>`;
-    })
-    .join("\n");
+/** Where a silhouette cell's proof PNG is served from, mirroring demo media's own assets/ convention. */
+function proofHref(target: string, app: string): string {
+  const name = `${target}-${app.replace(/[\\/]/g, "-")}.png`;
+  const filePath = join(DIST, "assets", "proofs", name);
+  const base = `assets/proofs/${name}`;
+  return existsSync(filePath) ? withVersion(base, contentHashOf(filePath)) : base;
+}
 
-  const packNames = registry.packs.map((p) => p.name);
-  const matrixRows = apps
+function copyProofs(): void {
+  const outDir = join(DIST, "assets", "proofs");
+  mkdirSync(outDir, { recursive: true });
+  for (const cell of Object.values(ledger.cells)) {
+    if (!cell.silhouette.proof) continue;
+    const src = join(REPO_ROOT, cell.silhouette.proof);
+    if (!existsSync(src)) {
+      console.warn(`site/build.ts: ledger.json names the proof ${cell.silhouette.proof}, which is not on disk - that cell will render without a picture`);
+      continue;
+    }
+    copyFileSync(src, join(outDir, `${cell.target}-${cell.app.replace(/[\\/]/g, "-")}.png`));
+  }
+}
+
+type ChipTone = "ok" | "warn" | "bad" | "mute";
+
+function chip(tone: ChipTone, label: string, title: string): string {
+  return `<span class="chip chip-${tone}"${title ? ` title="${escapeHtml(title)}"` : ""}>${escapeHtml(label)}</span>`;
+}
+
+const EMULATOR_TONE: Record<string, ChipTone> = { PASS: "ok", FAIL: "bad", ERROR: "bad" };
+const HOST_TONE: Record<string, ChipTone> = { MATCH: "ok", DIVERGE: "warn", SANITIZER: "bad", CRASHED: "bad", BUILD_FAILED: "mute" };
+const SILHOUETTE_TONE: Record<string, ChipTone> = { runs: "ok", blank: "warn", "wrong-panel": "bad", "page-error": "bad", "build-failed": "bad" };
+const VERDICT_TONE: Record<string, ChipTone> = { go: "ok", degraded: "warn", refuse: "bad" };
+
+/** The mechanical verdict, always shown, always with its own sentence behind it. */
+function verdictChip(cell: LedgerCell): string {
+  if (!cell.verdict) return chip("mute", "no verdict", cell.verdictUnavailable ?? "");
+  const v = cell.verdict.verdict;
+  const degrades = cell.verdict.degrades.filter((d) => d.value !== d.reference);
+  const label = v === "degraded" && degrades.length > 0 ? `degraded: ${degrades[0]!.value} ${degrades[0]!.name}` : v;
+  return chip(VERDICT_TONE[v]!, label, cell.verdict.human);
+}
+
+/** The silicon counter: the empty state ships in the HTML, the number arrives from GET /api/attest. */
+function siliconChip(app: string, pack: string): string {
+  return (
+    `<span class="chip chip-mute attest-counter attest-counter-empty" data-attest-app="${escapeHtml(app)}" data-attest-pack="${escapeHtml(pack)}">` +
+    `${escapeHtml(ATTEST_EMPTY_STATE)}</span>`
+  );
+}
+
+/** The first sentence of a reason, for a cell that has to say what is missing without becoming a paragraph. */
+function firstSentence(text: string, limit = 220): string {
+  const line = text.split("\n")[0]!.trim();
+  if (line.length <= limit) return line;
+  // Cut at the last word boundary before the limit, not mid-word: a cell
+  // that ends "quarter tu…" reads as a rendering bug rather than as a
+  // deliberate trim.
+  const cut = line.slice(0, limit - 1);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > limit * 0.6 ? cut.slice(0, space) : cut).replace(/[,;:]$/, "")}…`;
+}
+
+/**
+ * The one <td> opener every branch below goes through. `state` is the
+ * three-way classification the page makes about itself and
+ * scripts/verify-matrix.ts checks against the ledger: `runs` (a link to
+ * something that opens and runs), `verdict` (a mark and the sentence behind
+ * it), `empty` (says what is missing and where the procedure is), and
+ * `void` for a column that is not this app's target at all. Written into
+ * the markup rather than inferred from what the cell happens to contain,
+ * because a check that inferred it could never catch the page and the
+ * ledger disagreeing.
+ */
+function cellOpen(state: "runs" | "verdict" | "empty" | "void", target: string, extraClass: string, groupStart: boolean): string {
+  return `<td class="cell ${extraClass}${groupStart ? " group-start" : ""}" data-cell="${state}" data-target="${escapeHtml(target)}">`;
+}
+
+function matrixCell(app: AppEntry, target: LedgerTarget, groupStart: boolean): string {
+  const cell = cellFor(app.name, target.name);
+  if (!cell) {
+    return `${cellOpen("void", target.name, "cell-void", groupStart)}<p class="cell-why">not in the ledger</p></td>`;
+  }
+
+  // ---- a target this repository does not carry, named by somebody else's
+  // bundle. Only the app that declares a port there has anything to say.
+  if (target.kind === "external-pack") {
+    if (!cell.port) return `${cellOpen("void", target.name, "cell-void", groupStart)}<p class="cell-why">not this app's target</p></td>`;
+    const tone = EMULATOR_TONE[cell.emulator.mark] ?? "mute";
+    return `${cellOpen("verdict", target.name, "cell-external", groupStart)}
+        <div class="chips">${chip(tone, `emulator ${cell.emulator.mark}`, cell.emulator.reason)}</div>
+        <p class="cell-why">${escapeHtml(firstSentence(cell.emulator.reason, 320))}</p>
+        ${cell.port.provenance ? `<p class="cell-prov">${escapeHtml(cell.port.provenance)}</p>` : ""}
+      </td>`;
+  }
+
+  // ---- a silhouette: no firmware exists, so the only question is whether
+  // the app's own C runs at that board's size, and the picture is the answer.
+  if (target.kind === "silhouette") {
+    const s = cell.silhouette;
+    const tone = SILHOUETTE_TONE[s.mark] ?? "mute";
+    const runnable = silhouettePages.has(`${app.name}:${target.name}`);
+    // It ran, and this site still cannot show it running: said here rather
+    // than swallowed, because "runs here" with no link would be the one
+    // thing this whole page exists not to do.
+    const unpresentable =
+      s.mark === "runs" && !runnable
+        ? `. It ran, and there is no page for it here: this board declares a ${escapeHtml(target.panel?.format ?? "an unnamed")} panel and the shared emulator only reads the 16-bit formats the real packs declare, so presenting it would mean pretending packs/web&#39;s own RGB565 framebuffer is this board&#39;s glass`
+        : "";
+    const id = `${app.name}-${target.name}`;
+    const picture = s.proof
+      ? `<img src="${proofHref(target.name, app.name)}" alt="${escapeHtml(`${app.name} running on the ${target.label} silhouette`)}" class="proof-img" loading="lazy" />`
+      : "";
+    const thumb = runnable
+      ? `<a class="thumb-proof" href="run/${id}.html" aria-label="${escapeHtml(`open ${app.name} running on the ${target.label} silhouette`)}">${picture}</a>`
+      : picture
+        ? `<span class="thumb-proof thumb-proof-still">${picture}</span>`
+        : "";
+    const borrowed = s.via && s.via !== WEB_PACK ? ` <span class="cell-note">via its ${escapeHtml(packLabel.get(s.via) || s.via)} port's own file</span>` : "";
+    return `${cellOpen(runnable ? "runs" : "verdict", target.name, "cell-silhouette", groupStart)}
+        ${thumb}
+        <div class="chips">${verdictChip(cell)}${chip(tone, s.mark === "runs" ? (runnable ? "runs here" : "runs, no page here") : s.mark, s.reason)}</div>
+        <p class="cell-why">${escapeHtml(firstSentence(s.reason, runnable ? 220 : 320))}${borrowed}${unpresentable}</p>
+      </td>`;
+  }
+
+  // ---- a real pack, with a port on it: the thing runs, and every mark it
+  // has earned sits under it.
+  if (cell.port) {
+    const combo = combos.find((c) => c.app === app.name && c.pack === target.name)!;
+    const href = comboHref(combo, "");
+    const media = hasDemoMedia(combo.id);
+    const thumb = media ? demoThumb(combo.id, `${app.name} on ${target.label}`, href, target.name, app.name === "chrono") : "";
+    const chips = [
+      chip(EMULATOR_TONE[cell.emulator.mark] ?? "mute", `emulator ${cell.emulator.mark}`, cell.emulator.reason),
+      cell.host.mark === "not run" ? chip("mute", "host not run", cell.host.reason) : chip(HOST_TONE[cell.host.mark] ?? "mute", `host ${cell.host.mark}`, cell.host.reason),
+      target.name === WEB_PACK ? "" : siliconChip(app.name, target.name),
+    ]
+      .filter(Boolean)
+      .join("");
+    const label = `${modeLabel(cell.port.mode)}, ${cell.port.verification}${cell.port.declaredVerdict === "degraded" ? " (degraded)" : ""}`;
+    const trouble = cell.emulator.mark !== "PASS" || cell.host.mark === "DIVERGE" || cell.host.mark === "SANITIZER";
+    return `${cellOpen("runs", target.name, "cell-port", groupStart)}
+        ${thumb}
+        <a class="cell-open" href="${href}">${escapeHtml(target.name === WEB_PACK ? "run it on your phone" : "run it")}</a>
+        <p class="cell-mode">${escapeHtml(label)}</p>
+        <div class="chips">${chips}</div>
+        ${trouble ? `<p class="cell-why">${escapeHtml(firstSentence(cell.emulator.mark !== "PASS" ? cell.emulator.reason : cell.host.reason, 320))}</p>` : ""}
+      </td>`;
+  }
+
+  // ---- a real pack with no port: the empty state, which has to say what
+  // is missing rather than leave a hole in the grid.
+  return `${cellOpen("empty", target.name, "cell-empty", groupStart)}
+        <div class="chips">${verdictChip(cell)}</div>
+        <p class="cell-why">no port yet.${cell.verdict ? ` ${escapeHtml(firstSentence(reasonFor(cell), 260))}` : ` ${escapeHtml(firstSentence(cell.verdictUnavailable ?? "", 260))}`}</p>
+        <a class="cell-publish" href="puck-publish/">how to port it</a>
+      </td>`;
+}
+
+/** The sentence a no-port cell shows: the refusal if there is one, else the cost, else that everything fits. */
+function reasonFor(cell: LedgerCell): string {
+  if (!cell.verdict) return cell.verdictUnavailable ?? "";
+  const refused = cell.verdict.checks.find((c) => c.status === "refuse");
+  if (refused) return `${refused.dimension}: ${refused.reason}`;
+  const cost = cell.verdict.checks.find((c) => c.status === "degraded");
+  if (cost) return `${cost.dimension}: ${cost.reason}`;
+  const shrunk = cell.verdict.degrades.find((d) => d.value !== d.reference);
+  if (shrunk) return `${shrunk.value} ${shrunk.name} against the reference ${shrunk.reference}, bound by ${shrunk.boundBy}`;
+  return "every dimension this app states is met by what the device declares";
+}
+
+// The column groups, in the order a reader should meet them: devices this
+// repository has real firmware for, then a device somebody else's bundle
+// targets, then devices nobody has written firmware for at all.
+const TARGET_GROUPS: { kind: LedgerTarget["kind"]; label: string; note: string }[] = [
+  { kind: "pack", label: "device packs", note: "real firmware, in this repository" },
+  { kind: "external-pack", label: "an author's own pack", note: "named by their bundle, not carried here" },
+  { kind: "silhouette", label: "silhouettes", note: "a device.json and nothing else, no firmware anywhere" },
+];
+
+function buildIndexHtml(): void {
+  const groups = TARGET_GROUPS.map((g) => ({ ...g, targets: ledger.targets.filter((t) => t.kind === g.kind) })).filter((g) => g.targets.length > 0);
+  const orderedTargets = groups.flatMap((g) => g.targets);
+
+  const groupHead = groups
+    .map((g, i) => `<th class="group-head${i > 0 ? " group-start" : ""}" colspan="${g.targets.length}"><span class="group-label">${escapeHtml(g.label)}</span><span class="group-note">${escapeHtml(g.note)}</span></th>`)
+    .join("\n            ");
+
+  const targetHead = groups
+    .flatMap((g, gi) =>
+      g.targets.map((t, ti) => {
+        const unverified = t.provenance && t.provenance.verified !== true;
+        const panel = t.panel ? `${t.panel.w}&times;${t.panel.h}` : "";
+        const doc = t.path ? gh(`${t.path}/${t.kind === "silhouette" ? "AGENTS.md" : "AGENTS.md"}`) : null;
+        const name = doc ? `<a href="${doc}">${escapeHtml(t.label)}</a>` : escapeHtml(t.label);
+        return `<th class="target-head${gi > 0 && ti === 0 ? " group-start" : ""}" data-target="${escapeHtml(t.name)}">${name}<span class="target-sub">${panel}${unverified ? `${panel ? " &middot; " : ""}datasheet only` : ""}</span></th>`;
+      })
+    )
+    .join("\n            ");
+
+  const rows = apps
     .map((app) => {
-      const cells = packNames
-        .map((pack) => {
-          const entry = app.proven.find((p) => p.pack === pack);
-          const c = entry ? combos.find((x) => x.app === app.name && x.pack === pack) : undefined;
-          return renderProofCell(entry, c ? comboHref(c, "") : null);
-        })
-        .join("\n        ");
-      return `      <tr>
-        <td class="app-row">${escapeHtml(app.name)}</td>
-        ${cells}
-      </tr>`;
+      const cells = groups.flatMap((g, gi) => g.targets.map((t, ti) => matrixCell(app, t, gi > 0 && ti === 0))).join("\n          ");
+      const docHref = app.path ? gh(`${app.path}/descriptor.md`) : app.url ? app.url.replace(/\.git$/, "") : null;
+      const blurb = APP_BLURB[app.name] || "";
+      return `        <tr>
+          <th class="app-row" scope="row" data-app="${escapeHtml(app.name)}">
+            <span class="app-name">${escapeHtml(app.name)}</span>
+            ${blurb ? `<span class="app-blurb">${escapeHtml(blurb)}</span>` : ""}
+            ${docHref ? `<a class="app-doc" href="${docHref}">${escapeHtml(app.path ? "descriptor" : "their repository")}</a>` : ""}
+            ${app.provenance ? `<span class="app-prov">${escapeHtml(app.provenance)}</span>` : ""}
+          </th>
+          ${cells}
+        </tr>`;
     })
     .join("\n");
-  const matrixHead = packNames.map((p) => `<th>${escapeHtml(packLabel.get(p) || p)}</th>`).join("\n        ");
 
   // Every "reference" tile (a device pack proving itself, plus the
   // instrument's own minimal example) gets the same recorded-loop
-  // treatment as the app cards above, and the same click-through to its
+  // treatment as the matrix cells above, and the same click-through to its
   // real, live run page.
   const refTiles = [
     ...REFERENCE_APPS.map((r) => ({
@@ -1163,42 +1431,56 @@ function buildIndexHtml(): void {
     )
     .join("\n");
 
+  const cellCount = apps.length * orderedTargets.length;
+
+  // THE MATRIX BREAKS OUT OF THE PAGE'S OWN COLUMN, and the markup is where
+  // that happens rather than a CSS trick: every other section on this page
+  // lives inside one 1040px .wrap, which is a good measure for prose and
+  // far too narrow for nine device columns - inside it, the silhouettes
+  // (the whole reason the table exists) sat past the right edge on every
+  // desktop. So the matrix is its own top-level section with its own wider
+  // wrap, and the prose sections close and reopen around it. The table
+  // still scrolls inside .matrix-scroll and the page still never does.
   const body = `<div class="wrap">
   <header class="hero">
     <h1>puck</h1>
     <p class="tagline">apps that travel between tiny computers.</p>
-    <p class="sub">Every clip below is a recording of the real thing, compiled to WebAssembly and running live one click away. <a href="${gh("README.md")}">puck</a> is a device-agnostic emulator, a set of self-contained device packs, and a set of portable app bundles; open any run page to touch the actual emulator, not a mockup.</p>
+    <p class="sub">${apps.length} apps down, ${orderedTargets.length} devices across, ${cellCount} cells. Every one of them either runs that app's own C, one click away, or says plainly what is missing. Nothing below is a mockup and nothing below is a date somebody typed: the whole table is <a href="${gh("ledger.json")}">ledger.json</a>, written by <a href="${gh("tools/ledger.ts")}"><code>bun run ledger</code></a>, which builds and replays every cell it claims. <a href="${gh("README.md")}">puck</a> is a device-agnostic emulator, a set of self-contained device packs, and a set of portable app bundles.</p>
   </header>
+</div>
 
-  <section id="apps">
-    <div class="wrap" style="padding:0">
-      <div class="cards">
-${cardsHtml}
-      </div>
-    </div>
-  </section>
-
-  <section id="proof">
-    <div class="wrap" style="padding:0">
-      <h2>proof matrix</h2>
-      <p class="lede">Each cell is a real build of that app's own port, for that device pack's real firmware, verified by the shared harness (<code>bun run verify-bundle</code>): click through to run it live. Every cell shown is emulator-proven; a cell additionally marked <strong>&#9679; on silicon</strong> has also been run against the real board over serial, an attestation, not an automatic guarantee (hover or focus the mark for when and how).</p>
+<section id="matrix">
+  <div class="wrap">
+      <h2>the matrix</h2>
+      <p class="lede">A cell with a picture is a build that ran: <strong>emulator</strong> is the module rebuilt from the port's own source and its traces replayed, <strong>host</strong> is the same C compiled natively under address and undefined-behaviour sanitizers and diffed against it frame by frame, and <strong>silicon</strong> is how many real boards have run that port's trace and confirmed the frames. A cell with no port carries the mechanical verdict instead, with the reason it came out that way. Hover or focus any mark for the sentence behind it.</p>
+  </div>
+  <div class="wrap wrap-wide">
       <div class="matrix-scroll">
         <table class="matrix">
-          <thead><tr><th></th>
-        ${matrixHead}
-          </tr></thead>
+          <thead>
+            <tr class="group-row"><th class="corner"></th>
+            ${groupHead}
+            </tr>
+            <tr><th class="corner"></th>
+            ${targetHead}
+            </tr>
+          </thead>
           <tbody>
-${matrixRows}
+${rows}
           </tbody>
         </table>
       </div>
-    </div>
-  </section>
+  </div>
+  <div class="wrap">
+    <p class="matrix-foot">A silhouette is a board nobody has written firmware for: one <code>device.json</code> with its numbers read off a datasheet and never measured against silicon, compiled against through <a href="${gh("packs/web")}">packs/web</a> so the app really runs at that panel size with those buttons. Last computed ${escapeHtml(ledger.generatedAt)}.</p>
+  </div>
+</section>
 
+<div class="wrap">
   <section id="reference">
     <div class="wrap" style="padding:0">
       <h2>reference app</h2>
-      <p class="lede">Not a port: each device pack's own shipped app, plus the instrument's own minimal example firmware - every tile below links to it running live, the same as the cards above.</p>
+      <p class="lede">Not a port: each device pack's own shipped app, plus the instrument's own minimal example firmware - every tile below links to it running live, the same as the cells above.</p>
       <div class="ref-cards">
 ${refCardsHtml}
       </div>
@@ -1216,13 +1498,13 @@ ${refCardsHtml}
         </div>
         <div class="item">
           <h3>app descriptors</h3>
-          <p>An app is defined by its descriptor and traces, not by one implementation's source code: what appears on screen, every interaction, and separate requirements from preferences. A port starts with a verdict against the target pack, stated plainly, before any code is written.</p>
+          <p>An app is defined by its descriptor and traces, not by one implementation's source code: what appears on screen, every interaction, and separate requirements from preferences. A port starts with a verdict against the target pack, computed from those two documents, before any code is written.</p>
           <span class="src"><a href="${gh("docs/convention/app-bundle.md")}">app-bundle.md</a></span>
         </div>
         <div class="item">
-          <h3>the verifier</h3>
-          <p>A faithful port replays its traces and compares frames pixel for pixel. An adaptation states behavioral invariants instead, and gets checked against those. Either way, the same shared harness decides, not a claim in a README.</p>
-          <span class="src"><a href="${gh("docs/harness.md")}">harness.md</a></span>
+          <h3>the ledger</h3>
+          <p>Every cell above is recomputed when its own inputs change, and reused when they do not. A faithful port replays its traces and compares frames pixel for pixel; an adaptation states behavioral invariants and gets checked against those; either way the shared harness decides, not a claim in a README.</p>
+          <span class="src"><a href="${gh("docs/decisions/0012-the-gallery-is-built-from-a-ledger.md")}">decision 0012</a></span>
         </div>
       </div>
     </div>
@@ -1236,12 +1518,13 @@ ${refCardsHtml}
     join(DIST, "index.html"),
     page(
       "puck: apps that travel between tiny computers",
-      "A gallery of firmware ported between device packs: recorded demo loops on this page, the real WebAssembly build one click away on every run page.",
+      "Every app in this repository against every device it knows about, one cell each: a build that ran, or a plain statement of what is missing.",
       "styles.css",
       body
     )
   );
 }
+
 
 // ---- flash section: real-device flashing over WebUSB, or an honest note ----
 // Keyed by combo id (not by pack) because the artifact choice is per
@@ -1595,6 +1878,39 @@ ${attestSection}${siteFooter("../")}
     docLinks: [{ label: "source", href: gh(INSTRUMENT_EXAMPLE.doc) }],
     autoRotate: false,
   });
+
+  // A silhouette cell's own page, through the same generator as every
+  // other: the only differences are the words, and they are the honest
+  // ones. There is no flash section (nothing to flash: there is no
+  // firmware) and no attest section (no board has this firmware on it,
+  // because there is none), and both of those fall out of the same
+  // conditions the pack pages already use rather than from a special case.
+  for (const s of silhouetteCombos) {
+    const label = packLabel.get(s.silhouette) || s.silhouette;
+    const cell = cellFor(s.app, s.silhouette);
+    const verdictLine = cell?.verdict ? cell.verdict.human : "";
+    const borrowed =
+      s.via === WEB_PACK
+        ? ""
+        : ` This is the app's ${packLabel.get(s.via) || s.via} port's own file, compiled unchanged: this app has no web-pack port of its own, and packs/web vendored that pack's app contract byte for byte, so the file compiles here on its own merits.`;
+    writeRunPage({
+      id: s.id,
+      title: `${s.app} on ${label}`,
+      pack: s.silhouette,
+      packLabelStr: `${label}, a silhouette: a device.json and nothing else, no firmware`,
+      modeStr: "silhouette",
+      verifStr: `${s.panel.w}x${s.panel.h}`,
+      blurb:
+        `Nobody has written firmware for this board. This is ${s.app}'s own C, compiled against that board's own device.json through packs/web and run at its panel size with its buttons, and it proves exactly that much: no driver, no timing, no memory pressure, no silicon.${borrowed}` +
+        (verdictLine ? ` ${verdictLine}` : ""),
+      docLinks: [
+        ...(s.appPath ? [{ label: "descriptor", href: gh(`${s.appPath}/descriptor.md`) }] : []),
+        { label: "the board", href: gh(`packs/silhouettes/${s.silhouette}/AGENTS.md`) },
+        { label: "device.json", href: gh(`packs/silhouettes/${s.silhouette}/device.json`) },
+      ],
+      autoRotate: false,
+    });
+  }
 }
 
 // ---- agent-browsable surfaces: llms.txt, registry.json, convention docs,
@@ -1623,6 +1939,11 @@ function buildAgentSurfaces(): void {
 
   const descriptorHrefs: { name: string; href: string }[] = [];
   for (const app of apps) {
+    // An app published in its own repository has no descriptor here to
+    // serve: it lives at its own url, and copying a clone's copy of it
+    // under this domain would be presenting somebody else's document as
+    // this site's. The matrix links to their repository instead.
+    if (!app.path) continue;
     const outDir = join(DIST, "apps", app.name);
     mkdirSync(outDir, { recursive: true });
     const outPath = join(outDir, "descriptor.md");
@@ -1632,6 +1953,37 @@ function buildAgentSurfaces(): void {
   }
   const registryHref = withVersion("registry.json", contentHashOf(join(DIST, "registry.json")));
   const docHrefs = AGENT_DOCS.map((rel) => ({ rel, href: withVersion(rel, contentHashOf(join(DIST, rel))) }));
+
+  // /puck-publish/: where every empty cell in the matrix points. An empty
+  // state that only said "no port yet" would be a shrug; this is the
+  // procedure for making it not empty, which is a document this repository
+  // already has (skills/puck-publish/SKILL.md, the same one an agent is
+  // handed). Served whole rather than paraphrased, for the same reason
+  // llms.txt serves the convention docs raw: an agent with only a URL
+  // should read the real file, never this generator's summary of it.
+  const skill = readFileSync(join(REPO_ROOT, "skills", "puck-publish", "SKILL.md"), "utf8");
+  const publishDir = join(DIST, "puck-publish");
+  mkdirSync(publishDir, { recursive: true });
+  writeFileSync(join(publishDir, "SKILL.md"), skill);
+  const publishBody = `<div class="wrap">
+  <div class="run-header">
+    <div class="back"><a href="../index.html">&larr; puck</a></div>
+    <h1>porting an app</h1>
+    <p class="meta">the procedure behind every empty cell in the matrix: <a href="${gh("skills/puck-publish/SKILL.md")}">skills/puck-publish/SKILL.md</a>, served whole</p>
+  </div>
+  <section>
+    <div class="wrap" style="padding:0">
+      <p class="lede">Listing is a reproduction, not a submission. A port appears on this site once <code>bun run verify-bundle</code> has rebuilt its module from its own declared source and replayed its own declared traces, and <code>bun run ledger</code> has written the result down. Nothing here is listed on a claim.</p>
+      <pre class="agent-doc">${escapeHtml(skill)}</pre>
+    </div>
+  </section>
+  ${siteFooter("../")}
+</div>`;
+  writeFileSync(
+    join(publishDir, "index.html"),
+    page("puck: porting an app", "The step-by-step procedure for porting an app onto a puck device pack and getting it verified.", "../styles.css", publishBody)
+  );
+  console.log("wrote -> site/dist/puck-publish/index.html");
 
   const llms = `# puck
 
@@ -1732,12 +2084,15 @@ copyFlashArtifacts();
 // Every id the landing page's own demoThumb() calls link to: the primary
 // (first-proven-pack) combo per app, plus every reference tile - the same
 // set site/record-demos.ts records.
-const DEMO_IDS = [
-  ...apps.map((app) => combos.find((x) => x.app === app.name && x.pack === app.proven[0]!.pack)!.id),
-  ...REFERENCE_APPS.map((r) => r.id),
-  INSTRUMENT_EXAMPLE.id,
-];
+// Every combo the matrix can show a recorded loop for, rather than one per
+// app: a matrix cell is per app AND per device, so gameos on the RP2350 and
+// gameos on the ESP32-S3 are two different cells and two different clips.
+// Filtered by what site/record-demos.ts has actually recorded, since a
+// missing loop is a cell that reads fine without a picture, not a build
+// failure (copyDemoMedia's own warning covers the fresh-clone case).
+const DEMO_IDS = [...combos.map((c) => c.id).filter(hasDemoMedia), ...REFERENCE_APPS.map((r) => r.id), INSTRUMENT_EXAMPLE.id];
 copyDemoMedia(DEMO_IDS);
+copyProofs();
 // After copyFlashArtifacts (it reads which combos actually have a flashable
 // artifact) and before buildRunDir (it reads which combos got a plan).
 buildAttestPlans();

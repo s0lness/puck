@@ -22,3 +22,26 @@ Prefers:
 - A 368 by 448 color panel presented in landscape orientation.
 - Black seven-segment digits on white with the reference spacing and proportions.
 - Negligible compute beyond elapsed-time arithmetic and redrawing changed digits.
+
+The same requirements, in the form `bun run verdict` checks (see [`docs/convention/app-bundle.md`](../../docs/convention/app-bundle.md)'s "Demands are also machine-readable"). Two buttons is the hard one: the toggle and the reset are on separate controls on purpose, so the destructive one cannot be hit by accident, and collapsing them onto one control is not a smaller chrono, it is a different app.
+
+```json demands
+{
+  "convention": "0.1",
+  "panel": {
+    "minW": 200,
+    "minH": 200,
+    "scalesTo": { "minW": 128, "minH": 96 },
+    "orientation": "either",
+    "color": false
+  },
+  "buttons": [
+    { "role": "key", "why": "start and stop, and it must feel instant" },
+    { "role": "click", "why": "reset to 00:00:00, on a different control so it cannot be hit by accident" }
+  ],
+  "touch": { "points": 0 },
+  "sensors": [],
+  "memory": { "baseBytes": 96 },
+  "tick": { "needsMs": 2, "refuseUnderMs": 0.5 }
+}
+```

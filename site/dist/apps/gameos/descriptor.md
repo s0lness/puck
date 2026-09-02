@@ -177,3 +177,32 @@ Prefers:
   swing mechanic possible there, unmodified from the donor - that port's own GUNSHIP tilt aim is
   also fused from this same stream. The rp2350 sibling does not declare one: LUCKY 7 there keeps
   its own touch-drag fallback, and GOLF is not part of that port at all.
+
+The requirements above, in the form `bun run verdict` checks (see
+[`docs/convention/app-bundle.md`](../../docs/convention/app-bundle.md)'s "Demands are also
+machine-readable"). This is the strictest set in the repository and it is meant to be: the
+indexed pipeline renders 184x224 and upscales it 2x, so 368x448 is the size the shell and all
+three games were composed at, and `scalesTo` is the 1x pipeline with the upscale dropped, below
+which there is no picture left to shrink. The tilt vector carries no fallback because this
+show-phase bundle implements none: the donor's touch-drag aim exists upstream and is not in these
+ports, so a device with no gravity vector is refused rather than promised something.
+
+```json demands
+{
+  "convention": "0.1",
+  "panel": {
+    "minW": 368,
+    "minH": 448,
+    "scalesTo": { "minW": 184, "minH": 224 },
+    "orientation": "either",
+    "color": true
+  },
+  "buttons": [],
+  "touch": { "points": 1 },
+  "sensors": [
+    { "kind": "vector", "why": "GUNSHIP aims the reticle by tilt, the donor's own default aim mode" }
+  ],
+  "memory": { "baseBytes": 65536 },
+  "tick": { "needsMs": 16, "refuseUnderMs": 8 }
+}
+```
