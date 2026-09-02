@@ -93,7 +93,7 @@ export function buildHostileFirmware(name: string): BuildResult {
   // guess at blind: piped stdio means a genuine compile error is captured
   // and reported immediately instead of retried, and the artifact at
   // `out` is checked directly rather than trusted to zig's own exit code).
-  // maxAttempts left at tools/zigSpawn.ts's default (8, same as every
+  // maxAttempts left at tools/zigSpawn.ts's default (16, same as every
   // pack's own build.ts): this used to be capped at 5 with a flat 300ms
   // pause, measurably too thin under today's actual concurrent load (this
   // repo's other worktrees/agents building at the same time) - proven by

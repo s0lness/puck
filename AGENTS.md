@@ -110,7 +110,36 @@ use - so that link opts out of the repo-local cache entirely
 (`useAmbientCache: true`) and uses zig's own OS default instead. See
 `tools/zigSpawn.ts`'s header comment (the sixth failure mode) for the
 measured counts; `test:hostile` stayed red across every variant this
-bisect tried and remains unexplained. `bun run
+bisect tried and remains unexplained. A later session chased the same
+unexplained flake into `test:regression` (which had just failed 8/8
+attempts building its `regress_v2` fixture) and tried to pin it on
+`Bun.spawnSync` itself, on the theory that Bun corrupts argv or a stdio
+handle on this Windows-on-ARM64 machine under load - a previous worker
+had seen zig report a garbled flag and a garbled path once. Measured
+directly: the same command line run 20x solo from `Bun.spawnSync`
+direct, `Bun.spawnSync` of `cmd.exe /c`, Node's own
+`child_process.spawnSync`, and a PowerShell loop calling zig with no Bun
+involved at all - the PowerShell loop was the WORST of the four (5/20
+access-violation crashes), not the best, which rules Bun out: if Bun
+were corrupting the call, the launcher with no Bun in it should have
+been the cleanest. A `-###` dry-run diff on a subset of the
+`Bun.spawnSync` runs confirmed zig received the exact argv it was given,
+byte for byte, no corruption. Two more candidates fell the same way:
+`-c` (compile only, no link) misfired at the same rate as the full
+compile-and-link, ruling out the many-`-Wl,--export=`-flags mechanism
+for this specific flake (that one is real - see the fifth failure mode
+above - just not this); and replaying the exact failing sequence against
+a wiped cache, an already-warm cache, and a brand-new cache dir all
+misfired at varying rates (0 to 6 silent failures per 8 attempts) with
+no relation to cache state. Conclusion: still unexplained, now for both
+suites, reached by measuring three plausible mechanisms and ruling out
+every one rather than shipping a fix for a cause that was not there.
+The one change made from this: `DEFAULT_MAX_ATTEMPTS` in
+`tools/zigSpawn.ts` moved from 8 to 16, because the flake this session
+watched consumed 6 of its 8 attempts more than once and exhausted all 8
+at least once, for a build that a later attempt was going to succeed at
+anyway - not a fix for the flake, just enough more room not to run out
+of retries against it. `bun run
 pack:esp32:build` does the
 same for `packs/esp32-s3-touch-amoled-18/`, and `bun run pack:web:build`
 for `packs/web/`; `bun run pack:web:host` builds that pack's second mode
