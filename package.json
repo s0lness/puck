@@ -20,6 +20,7 @@
     "pack:web:gate": "bun run packs/web/gate/device-agrees.ts",
     "verdict": "bun run tools/verdict.ts",
     "test:verdict": "bun run test/verdict/run.ts",
+    "verify-silhouette": "bun run scripts/verify-silhouette.ts",
     "pack:screens": "bun run packs/rp2350-touch-amoled-18/tools/screens.ts",
     "pack:demo": "bun run packs/rp2350-touch-amoled-18/tools/demo.ts",
     "harness:selftest": "bun run harness/selftest.ts",
