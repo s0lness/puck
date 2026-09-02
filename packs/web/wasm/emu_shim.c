@@ -585,3 +585,18 @@ int emu_device(void) {
     *p = '\0';
     return (int)(intptr_t)g_deviceJson;
 }
+
+/* EMU_HOST_NATIVE: see packs/rp2350-touch-amoled-18/wasm/emu_shim.c's own
+ * copy of this comment for the full reasoning (emu_fb()/emu_device() truncate
+ * a pointer to `int` for wasm32's benefit; a native host's static/heap data
+ * commonly sits above 4GB, so harness/host/driver.c needs a full-width
+ * accessor instead). Dead code for the real wasm build: wasm/build.ts never
+ * defines EMU_HOST_NATIVE. */
+#ifdef EMU_HOST_NATIVE
+void *emu_fb_native(void) {
+    return (void *)gfx_fb;
+}
+const char *emu_device_json_native(void) {
+    return g_deviceJson;
+}
+#endif

@@ -92,5 +92,10 @@
     "model": "full-framebuffer",
     "sramKB": 520,
     "framebufferKB": 330
+  },
+  "stack": {
+    "core0Bytes": 2048,
+    "core1Bytes": 2048,
+    "source": "Pico SDK default (PICO_CORE0_STACK_SIZE / PICO_CORE1_STACK_SIZE, 0x800 each): firmware/CMakeLists.txt sets no override, and the SDK itself is fetched externally by firmware/pico_sdk_import.cmake rather than vendored in this repository, so this is the SDK's own documented default, not a value read out of a linker script that lives here. See tools/stack-usage.ts's header comment for what it checks this against and what it does not (a single function's frame, not a call-graph total)."
   }
 }

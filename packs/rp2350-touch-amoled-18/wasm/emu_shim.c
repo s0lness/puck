@@ -1055,3 +1055,34 @@ int emu_device(void) {
 void DEV_Delay_ms(uint32_t xms) {
     (void)xms;
 }
+
+/* ===========================================================================
+ * EMU_HOST_NATIVE: two extra accessors, for harness/hostSide.ts's native
+ * build only (harness/host/driver.c calls these; wasm/build.ts never
+ * defines EMU_HOST_NATIVE, so this block compiles to nothing for the real
+ * emulator module and changes it not at all).
+ *
+ * WHY THIS EXISTS: emu_fb() and emu_device() both return `(int)(intptr_t)
+ * ptr` because emu_abi.h's ABI is 32-bit-clean by design (a wasm32 module's
+ * whole address space fits in a JS number used as a byte offset). A native
+ * host executable has no such guarantee - this process's static/heap data
+ * commonly sits well above 4GB on a real 64-bit target (measured on this
+ * pack's own build: a 64-bit Windows PE's default image base alone is
+ * already past 4GB), so truncating that pointer to `int` silently corrupts
+ * it. Rather than change emu_fb()/emu_device()'s signatures (which would
+ * change the one ABI header every wasm firmware in this ecosystem depends
+ * on, for a problem wasm never has), the host driver gets its own pair of
+ * same-address accessors, at full pointer width, called ONLY after the
+ * matching emu_*() call already ran (emu_init() for the framebuffer,
+ * emu_device() for the JSON buffer) so the underlying data is the same
+ * either way - this is not a second code path, just a second RETURN TYPE
+ * for the one pointer emu_fb()/emu_device() already computed.
+ * ======================================================================= */
+#ifdef EMU_HOST_NATIVE
+void *emu_fb_native(void) {
+    return (void *)gfx_fb;
+}
+const char *emu_device_json_native(void) {
+    return g_deviceJson;
+}
+#endif

@@ -153,6 +153,26 @@ export function findOutOfOrderEvent(events: Trace["events"]): { index: number; t
   return null;
 }
 
+// A "pixel-exact" port bundle's own frame-naming convention
+// (<trace-stem>.t<ms>.png), read back off a directory listing: which
+// capture points a bundle proves for a given trace comes from what got
+// recorded, never a separate list restated in bundle.json (docs/convention/
+// app-bundle.md). Extracted from verifyPortFrames() below (its own,
+// unchanged behaviour) so a second caller with the same "what does this
+// bundle claim to check" question - harness/hostdiff.ts, diffing a wasm
+// build against a native host build at those SAME points - does not
+// reimplement this filename convention a second time.
+export function frameFilesFor(framesDir: string, traceStem: string): Map<number, string> {
+  const escapedStem = traceStem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const frameFileRe = new RegExp(`^${escapedStem}\\.t(\\d+)\\.png$`);
+  const fileForPoint = new Map<number, string>();
+  for (const name of readdirSync(framesDir)) {
+    const m = frameFileRe.exec(name);
+    if (m) fileForPoint.set(Number(m[1]), name);
+  }
+  return fileForPoint;
+}
+
 function capturePointsFor(events: Trace["events"], args: Args): number[] {
   const tickTimes = events.filter((e) => e.k === "tick").map((e) => e.t);
   if (args.at && args.at.length > 0) return args.at;
@@ -331,21 +351,12 @@ export async function verifyPortFrames(opts: VerifyPortFramesOptions): Promise<V
     }
 
     const stem = basename(tracePath).replace(/\.trace\.json$|\.json$/, "");
-    const escapedStem = stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const frameFileRe = new RegExp(`^${escapedStem}\\.t(\\d+)\\.png$`);
-
-    let entries: string[];
+    let fileForPoint: Map<number, string>;
     try {
-      entries = readdirSync(framesDir);
+      fileForPoint = frameFilesFor(framesDir, stem);
     } catch (err) {
       errors.push(`${framesDir}: could not read frames directory (${err instanceof Error ? err.message : String(err)})`);
       continue;
-    }
-
-    const fileForPoint = new Map<number, string>();
-    for (const name of entries) {
-      const m = frameFileRe.exec(name);
-      if (m) fileForPoint.set(Number(m[1]), name);
     }
     const capturePoints = [...fileForPoint.keys()].sort((a, b) => a - b);
     if (capturePoints.length === 0) {
