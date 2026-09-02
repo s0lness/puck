@@ -9,7 +9,7 @@
 <meta property="og:description" content="The same descriptor, ported to a second board with no persistent framebuffer. Pixel-identical to the reference, verified capture by capture." />
 <meta property="og:type" content="website" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2214%22%20fill%3D%22%232f6feb%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23fafafa%22%2F%3E%3C%2Fsvg%3E" />
-<link rel="stylesheet" href="../styles.css?v=2071d3998f" />
+<link rel="stylesheet" href="../styles.css?v=9889a7c216" />
 </head>
 <body>
 <div class="wrap">
@@ -61,7 +61,7 @@
     <div class="attest-actions">
       <button type="button" class="attest-btn">Run the trace on this board</button>
     </div>
-    <p class="attest-hint">Needs the board running this firmware, and Chrome or Edge on desktop. Nothing about you is sent: the result carries the app, the pack, the firmware&#39;s own sha256, the verdict and the pixel counts.</p>
+    <p class="attest-hint">Needs the board running this firmware, and Chrome or Edge on desktop. Nothing about you is sent: the result carries the app, the pack, the firmware&#39;s own sha256, the kind of check, the verdict and what each check measured.</p>
     <div class="attest-progress" hidden><p class="attest-status"></p></div>
     <ol class="attest-points" hidden></ol>
     <p class="attest-verdict" hidden></p>
@@ -74,12 +74,12 @@
 <footer>
     <div class="wrap" style="padding:0">
       <a href="https://github.com/s0lness/puck/blob/master/README.md">s0lness/puck</a> on GitHub, MIT licensed.
-      &middot; <a href="../agents.html?v=d1cb386cd7">agents</a>
+      &middot; <a href="../agents.html?v=ec21b179d1">agents</a>
     </div>
   </footer>
 </div>
 <script type="module" src="../flash/esp32-flash.js?v=d182195752"></script>
-<script type="module" src="../flash/attest.js?v=99ef72571e"></script>
+<script type="module" src="../flash/attest.js?v=615c762fcc"></script>
 <script>
 (function () {
   var NATIVE_W = 448, NATIVE_H = 618;

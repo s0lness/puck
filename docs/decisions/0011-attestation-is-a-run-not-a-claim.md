@@ -114,3 +114,62 @@ actually done on the bench, and deleting it would lose that. What changes is
 that it is no longer the only thing a reader has. Once a port has confirmed
 runs behind it, the counter is the live number and the `silicon` block is
 history.
+
+## Addendum, 2026-09-02: the second kind of check
+
+"It does not offer a weaker check to have something to say" above was right
+about the word and wrong about the check.
+
+An invariants port is not verified more weakly than a pixel-exact one. It is
+verified differently, because it is a different claim: a `faithful` port
+claims pixel identity with a second module, and an `adaptation` port has no
+second module to be identical to, so its bundle states behavioural
+invariants with thresholds measured red-before-green and `verify-bundle`
+runs those. Both are the port's own proof. What would have been dishonest is
+counting the two under one word with no way to tell them apart, and that is
+a property of the counter, not a reason to leave a board unable to answer.
+
+So both kinds get a button now, and every surface downstream carries the
+kind rather than flattening it: the plan says which check it is for, the
+POST carries it, the record stores it, the summary keeps a per-kind
+breakdown beside the total, and a card names the kind when one port holds
+runs of both. A port is verified one way at a time, so that last case only
+arises when a bundle's own verification changed - which is exactly when a
+reader needs telling.
+
+Nothing here is a second implementation. The page runs the bundle's OWN
+`invariants.ts`, the same function `bun run verify-bundle` runs, which is
+why that file had to become importable in a browser bundle: the checker
+contract moved to `harness/invariantTypes.ts`, which imports nothing but
+types, and `harness/invariantRun.ts` (which opens files) keeps the runner.
+A checker is now expected to report a per-invariant outcome rather than a
+list of failures, so a page can print PASS or FAIL beside each check with
+that check's own sentence and its own measured numbers.
+
+**And an unanswered check is not a passed one.** A checker reports two
+statuses that are neither pass nor fail, and the distance between them is
+the whole reason this record exists. `skip` means the invariant was never
+about this device: fluidbox's panel-push bound is the RP2350 pack's own
+QSPI and panel finding, and on an ESP32-S3 nothing went unanswered.
+`unevaluable` means it IS about this device and this run could not answer
+it - that same bound needs the emulator's push instrumentation, and a board
+answers `SHOT` with its framebuffer and reports nothing about what it
+pushed. So `fluidbox` on the RP2350 runs, shows four invariants holding and
+one it cannot answer, and posts nothing at all. A confirmation that counted
+an unanswered check as a passed one would be a sentence about a run that
+did not happen, which is what the `attestedAt` string was.
+
+The cost of that, stated rather than discovered: the one combo where this
+repository's own hardware finding lives is the one combo a board cannot
+fully confirm. That is the honest shape of it. The bound is still checked,
+every time, by `bun run verify-bundle` against the emulator, which is the
+only surface that can see a push at all.
+
+One more thing a board cannot do, worth writing down next to the rest:
+devlink's `SHOT` is one greyscale byte per pixel, so every frame a board
+returns is a grey. fluidbox's invariants read background-versus-not,
+surface shape and pixel deltas, all of which survive that; a checker that
+read a colour would have nothing to read, and would be measuring the wire
+rather than the firmware. `scripts/verify-attest-ui.ts` scripts its board
+from real emulator frames converted to those same grey bytes, so that
+property is proven rather than assumed.

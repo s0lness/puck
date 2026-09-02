@@ -180,6 +180,19 @@ module the bundle supplies. The bundle owns the checks; this file only
 owns replay-and-capture, so a new invariant-verified app costs zero
 changes here.
 
+The checker contract itself lives in `harness/invariantTypes.ts`, not in
+that runner, because a checker now runs in two places: under bun, loaded by
+path, and inside a browser page checking the frames a real board drew
+(`site/attest/`). `invariantRun.ts` opens files, so a checker importing its
+types from there would put `node:fs` in a page bundle's import graph.
+**A bundle's `invariants.ts` must therefore be a pure function of
+`{frames, meta}`** - no `node:*`, no `Bun.*`, no DOM - and must return a
+per-invariant outcome for each check it makes, not only a list of failures.
+Two of the four statuses carry a distinction worth keeping: `skip` means
+the invariant was never about this device, `unevaluable` means it is about
+this device and the run could not answer it (no board reports `pushStats`).
+Neither fails `verify-bundle`; only the second stops a result being posted.
+
 ### Proving a firmware regression, and the instrument's own hostile inputs
 
 `bun run test:devlink` proves the devlink protocol core
@@ -273,7 +286,9 @@ with no blank in it and every silhouette cell that claims to run opens at
 that board's declared panel size, that the "Flash to the real device"
 section renders and fails cleanly on an unsupported browser, that the
 attestation section renders and its counter falls back honestly with no
-endpoint, that every card's recorded-loop assets actually exist and the
+endpoint and walks a scripted board all the way to a posted result for
+both kinds of check (including an invariant that fails by name, and one a
+board cannot answer at all, which is shown and not posted), that every card's recorded-loop assets actually exist and the
 landing/run-page split behaves, and that `packs/web`'s own installable
 `/web/<app>/` pages actually instantiate their module, paint pixels,
 respond to a real tap or drag, and register their service worker.
@@ -369,7 +384,10 @@ harness/        the differential test harness. diff.ts (replay one trace
                 PORT differential harness: two modules, one trace, diffed
                 pixel-exact - a faithful port's proof), and
                 invariantRun.ts (the device-agnostic replay-and-capture
-                runner behind an adaptation port's stated invariants).
+                runner behind an adaptation port's stated invariants) with
+                invariantTypes.ts beside it (the checker contract alone,
+                importing nothing but types, so a bundle's own checker can
+                also be bundled into a browser page).
                 links/ is the one place the "nothing names one device" rule
                 above leaves a seam for a device-specific adapter.
                 devlinkProtocol.ts is the wire protocol with no transport
@@ -518,10 +536,14 @@ site/           the public gallery. build.ts writes dist/ (committed,
                 demo-media/ (recorded, encoded demo loops every gallery
                 card links to), record-demos.ts (regenerates them),
                 styles.css. attest/ makes a freshly flashed board replay
-                the port's own trace and diffs the frames against the
-                bundle's recorded ones (docs/decisions/0011); functions/
-                is the Pages Function, over the ATTEST KV namespace, that
-                counts the results. Read site/README.md before touching
+                the port's own trace and then puts the result through the
+                same check verify-bundle uses for that port: a pixel diff
+                against the bundle's recorded frames, or that bundle's own
+                invariants.ts, bundled into the page by attest/checkers.ts
+                (docs/decisions/0011 and its addendum). functions/ is the
+                Pages Function, over the ATTEST KV namespace, that counts
+                the results, both kinds under one number and tellable apart
+                beneath it. Read site/README.md before touching
                 any of it, especially where the functions directory has
                 to live for Pages to deploy it at all.
 skills/         skills/puck-publish/SKILL.md: the step-by-step publishing
