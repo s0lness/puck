@@ -167,6 +167,38 @@
         "verified": false,
         "note": "unverified against silicon. Panel (200x200 e-paper, Good Display GDEY0154D67 on current boards and GDEH0154D67 on earlier ones, SSD1681 controller), the four buttons (v2 hardware: MENU on GPIO26, BACK on GPIO25, UP on GPIO35, DOWN on GPIO4; v3 moves them to GPIO7/6/0/8), the accelerometer (Bosch BMA423) and the MCU (ESP32-PICO-D4 through v2, ESP32-S3FN8 on v3) are read off SQFMI's own hardware documentation and its firmware's src/config.h. The 520 KB SRAM figure is the ESP32-PICO-D4's, from Espressif, not from SQFMI, and this file describes the v2 board rather than the v3 because that is the one whose numbers are stated in both places. The refresh timings are Good Display's panel specification (https://www.good-display.com/product/388.html); SQFMI publishes no refresh figure of its own, and nothing here has measured one. FOUR THINGS ARE DERIVED RATHER THAN READ. The format is called mono1 because Watchy's own firmware drives this panel one bit per pixel through GxEPD2; the panel itself is specified with some greyscale capability, so this describes how the board is used rather than the outer limit of the glass. All four buttons are declared as plain clicks and none as a key: they are ordinary GPIOs, but the documented behaviour is a momentary press and a level-triggered wake from deep sleep, and nothing SQFMI publishes promises a short-versus-long verdict, so declaring one would be inventing a control. A device with no key at all is a real answer, and an app that wants one is told so rather than handed a substitute. The BMA423 reports a continuous acceleration vector, which is what that part does; SQFMI's own docs do not describe the output in those words. And the button edges and positions here place four corner buttons on two edges for a host to draw, which is a simplification of a square case with one button at each corner."
       }
+    },
+    {
+      "name": "m5stack-cores3",
+      "kind": "silhouette",
+      "label": "M5Stack CoreS3",
+      "path": "packs/silhouettes/m5stack-cores3",
+      "panel": {
+        "w": 320,
+        "h": 240,
+        "format": "rgb565be"
+      },
+      "provenance": {
+        "datasheet": "https://docs.m5stack.com/en/core/CoreS3",
+        "verified": false,
+        "note": "unverified against silicon. Panel (2.0 inch IPS, 320x240, ILI9342C), touch controller (FT6336U, I2C address 0x38), IMU (BMI270 6-axis) plus a BMM150 magnetometer, MCU (ESP32-S3 at up to 240MHz, 16MB flash, 8MB Quad PSRAM), the AXP2101 PMU and the AW9523B IO expander are read off M5Stack's own product documentation. The 512 KB SRAM figure is the ESP32-S3's, from Espressif's datasheet, not from that page. The pixel format is ILI9342C's standard 16-bit RGB565 interface, the same call the other ST7789-panel silhouettes here make; M5Stack's own page does not spell it out in those words. FT6336U's own datasheet (https://cdn-shop.adafruit.com/product-files/5826/FT6336U-DataSheet-V1.1.pdf) states two simultaneous touch points, which is where touch.points comes from rather than from M5Stack's page. THE BUTTON ROSTER IS THE PART OF THIS FILE THAT NEEDED THE MOST CARE, and every choice on it is named here because none of them is a plain transcription. PWR is declared role key: M5Stack's own Arduino tutorial for this exact board (https://docs.m5stack.com/en/arduino/m5cores3/button) states that M5Unified's BtnPWR.wasClicked() and BtnPWR.wasHold() both work on CoreS3, which is a stronger claim than packs/silhouettes/m5stickc-plus2 could make about its own power button (that vendor page never says software may read the pin at all) - so this is the one silhouette in this set where a power-path button earns role key instead of role power. longPressMs is 500, M5Unified's Button_Class default hold threshold (its own source, not this board's datasheet, and not a number CoreS3's hardware page states). RESET is undeclared, the same call every other silhouette here makes about its own reset: M5Stack's page describes it as a hardware delay circuit (a long press forces download mode by asserting a strap pin after a timer, a short press just resets), which means the ESP32 is rebooting rather than reading a button, so there is nothing for an app to be handed. A, B and C are declared, and NONE OF THEM IS A SEPARATE SWITCH: M5Stack's own hardware page for this board never mentions three bezel buttons at all, and the community's own troubleshooting threads (community.m5stack.com/topic/5809 and /topic/5565) are explicit that A/B/C are a software convention some M5Unified builds layer onto the SAME FT6336U digitizer this file already declares under touch, sensed as three zones across the bottom ~20 pixels of the LCD's own active area, not a printed pad below the glass the way the M5Stack Core2 predecessor built it. Two consequences follow, and both are stated as roles rather than silently averaged out: A is declared role click because it is the one zone the community confirms still resolves in current M5Unified; B and C are declared with NO role at all, the same treatment a reserved power or reset line gets elsewhere in this set, because nothing published says code can rely on them and this file does not get to guess a working control into existence. And because A shares its digitizer with the very touch surface `touch.points` above describes, an app that reads both loses the one guarantee every other silhouette's buttons give for free: that a button press and a touch report can never be the same physical event. A silhouette cannot express 'a button that lives inside the touch panel' in this schema (docs/convention/device-pack.md's buttons sit on an edge, outside the panel, and packs/web draws A's ghost button there too, which is not literally where CoreS3 puts it), so the ghost button's position is a placement of convenience, named as such, and a real port would still have to decide how a stroke ending near the bottom of the panel is told apart from a tap on A."
+      }
+    },
+    {
+      "name": "waveshare-esp32-s3-touch-lcd-2.8",
+      "kind": "silhouette",
+      "label": "Waveshare ESP32-S3-Touch-LCD-2.8",
+      "path": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8",
+      "panel": {
+        "w": 240,
+        "h": 320,
+        "format": "rgb565be"
+      },
+      "provenance": {
+        "datasheet": "https://docs.waveshare.com/ESP32-S3-Touch-LCD-2.8",
+        "verified": false,
+        "note": "unverified against silicon. Panel (2.8 inch IPS, 240x320, 262K colours, ST7789), touch controller (CST328 on the V1 board, CST3530 on V2, both I2C, both stated as 5-point with interrupt support), IMU (QMI8658, 6-axis accelerometer plus gyroscope, no magnetometer, which is why this file's sensors carry tilt but not the compass a BMM150-equipped board would add), MCU (ESP32-S3R8 at up to 240MHz, 16MB flash, 8MB PSRAM) and the on-board SW6106 battery charge/discharge IC are read off Waveshare's own documentation platform page for this exact board. The 512 KB SRAM figure is the ESP32-S3's, from Espressif's datasheet, not restated on Waveshare's page. The pixel format is ST7789's standard 16-bit RGB565 interface, the same call every other ST7789-panel silhouette here makes; Waveshare's own page does not spell it out in those words. touch.points is 5 because Waveshare's page states the controller's own point count directly, unlike every colour silhouette here so far, where a lower number was chosen out of caution; nothing here has exercised more than one finger on this board. THE BUTTON ROSTER: Waveshare's page lists a BOOT button, a RESET button and a 'Battery Power Control Button (relevant driver program is required)'. BOOT is declared role click, not key, for the same reason packs/silhouettes/lilygo-t-display-s3 gives for its own BOOT: GPIO0 on an ESP32-S3 is sampled by the ROM as a boot strap at power-on, so timing a long press on it during normal operation is asking the board for something it was not wired to promise. RESET is undeclared, the same call every silhouette here makes: it is wired to EN, and a press resets the MCU rather than producing an event any firmware could read. The battery power button is declared role key as pwr: Waveshare's own phrase 'relevant driver program is required' is a claim that firmware reads this line through the SW6106 rather than it being a pure hardware power-on latch, which is the same distinction packs/silhouettes/m5stack-cores3 draws between its own PWR (software-readable, cited) and RESET (not). Nothing Waveshare publishes states a short/long threshold for it, so longPressMs is 1200, this descriptor's own choice, the same kind of undefended number packs/silhouettes/lilygo-t-display-s3's own 800ms is."
+      }
     }
   ],
   "cells": {
@@ -206,7 +238,7 @@
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
         "packSha": "71997abbc23eae96",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -249,7 +281,7 @@
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
         "packSha": "a687c77e26084384-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -292,7 +324,50 @@
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
         "packSha": "3f454c635bf96bef-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "aliceisjustplaying/tinydraw:m5stack-cores3": {
+      "app": "aliceisjustplaying/tinydraw",
+      "target": "m5stack-cores3",
+      "targetKind": "silhouette",
+      "verdict": null,
+      "verdictUnavailable": "aliceisjustplaying/tinydraw's descriptor.md's Demands section carries no ```json demands block, so this app's requirements are prose only.\n        Add one (docs/convention/app-bundle.md, \"Demands are also machine-readable\"); nothing here guesses at prose.",
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "aliceisjustplaying/tinydraw's bundle.json declares no port for m5stack-cores3"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "aliceisjustplaying/tinydraw:m5stack-cores3"
+      },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
+      "silhouette": {
+        "mark": "build-failed",
+        "reason": "aliceisjustplaying/tinydraw's bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": {
+          "w": 320,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "0c0b2d980d30505c",
+        "packSha": "9e433abab6fdae06-bb5526c8eb7e931d",
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -335,7 +410,7 @@
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
         "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -378,7 +453,7 @@
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
         "packSha": "c857ff15659b6891-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -418,7 +493,7 @@
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
         "packSha": "5f7b37d2127fbf77",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -437,8 +512,8 @@
         "provenance": "built by aliceisjustplaying/tinydraw@000de0a, its own command: ./scripts/build-puck-wasm"
       },
       "emulator": {
-        "mark": "PASS",
-        "reason": "28/28 frame(s) matched"
+        "mark": "ERROR",
+        "reason": "build command exited 1 for https://github.com/aliceisjustplaying/tinydraw.git@000de0aa74: ./scripts/build-puck-wasm\nunsupported Puck build host: MINGW64_NT-10.0-26200-ARM64 x86_64"
       },
       "host": {
         "mark": "not run",
@@ -465,7 +540,7 @@
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -508,7 +583,50 @@
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
         "packSha": "7060628f4adbd72f-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "aliceisjustplaying/tinydraw:waveshare-esp32-s3-touch-lcd-2.8": {
+      "app": "aliceisjustplaying/tinydraw",
+      "target": "waveshare-esp32-s3-touch-lcd-2.8",
+      "targetKind": "silhouette",
+      "verdict": null,
+      "verdictUnavailable": "aliceisjustplaying/tinydraw's descriptor.md's Demands section carries no ```json demands block, so this app's requirements are prose only.\n        Add one (docs/convention/app-bundle.md, \"Demands are also machine-readable\"); nothing here guesses at prose.",
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "aliceisjustplaying/tinydraw's bundle.json declares no port for waveshare-esp32-s3-touch-lcd-2.8"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "aliceisjustplaying/tinydraw:waveshare-esp32-s3-touch-lcd-2.8"
+      },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
+      "silhouette": {
+        "mark": "build-failed",
+        "reason": "aliceisjustplaying/tinydraw's bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from",
+        "proof": null,
+        "source": null,
+        "via": null,
+        "buildArgs": [],
+        "panel": {
+          "w": 240,
+          "h": 320
+        }
+      },
+      "inputs": {
+        "bundleSha": "0c0b2d980d30505c",
+        "packSha": "07f8c704ae3d7c18-bb5526c8eb7e931d",
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -548,7 +666,7 @@
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
         "packSha": "bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -629,9 +747,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "4edb88d374b15fb7",
+        "bundleSha": "d0f5358bc5eaf2e6",
         "packSha": "71997abbc23eae96",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -696,9 +814,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against Feather-ESP32S2-TFT: 240x135, 1 button(s), 0 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-WiPaNK=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-WiPaNK\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\chrono\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\chrono\\ports\\web\\chrono.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-WiPaNK\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\feather-esp32s2-tft\\chrono\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "135x240 (this panel's 240x135, presented a quarter turn round), 14.4% of the panel painted, ghost buttons d0, and this panel is already landscape, so the host's own quarter turn puts the app across the device's short side rather than along it",
+        "proof": "packs/silhouettes/feather-esp32s2-tft/proof/chrono.png",
         "source": "apps/chrono/ports/web/chrono.c",
         "via": "web",
         "buildArgs": [
@@ -710,9 +828,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "4edb88d374b15fb7",
+        "bundleSha": "d0f5358bc5eaf2e6",
         "packSha": "a687c77e26084384-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -777,9 +895,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against LILYGO T-Display-S3: 170x320, 2 button(s), 0 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-5t9FTi=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-5t9FTi\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\chrono\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\chrono\\ports\\web\\chrono.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-5t9FTi\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\lilygo-t-display-s3\\chrono\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "320x170 (this panel's 170x320, presented a quarter turn round), 16.4% of the panel painted, ghost buttons boot, io14",
+        "proof": "packs/silhouettes/lilygo-t-display-s3/proof/chrono.png",
         "source": "apps/chrono/ports/web/chrono.c",
         "via": "web",
         "buildArgs": [
@@ -791,9 +909,90 @@
         }
       },
       "inputs": {
-        "bundleSha": "4edb88d374b15fb7",
+        "bundleSha": "d0f5358bc5eaf2e6",
         "packSha": "3f454c635bf96bef-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "chrono:m5stack-cores3": {
+      "app": "chrono",
+      "target": "m5stack-cores3",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "go",
+        "human": "chrono on M5Stack CoreS3 (silhouette): go. Every dimension the app states is met by what the device declares. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "320x240 covers the 200x200 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "96 bytes of app state (96) inside the 108544 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 2ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "chrono's bundle.json declares no port for m5stack-cores3"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "chrono:m5stack-cores3"
+      },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "240x320 (this panel's 320x240, presented a quarter turn round), 16.0% of the panel painted, ghost buttons pwr, a, b, c, and this panel is already landscape, so the host's own quarter turn puts the app across the device's short side rather than along it",
+        "proof": "packs/silhouettes/m5stack-cores3/proof/chrono.png",
+        "source": "apps/chrono/ports/web/chrono.c",
+        "via": "web",
+        "buildArgs": [
+          "--landscape"
+        ],
+        "panel": {
+          "w": 320,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "d0f5358bc5eaf2e6",
+        "packSha": "9e433abab6fdae06-bb5526c8eb7e931d",
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -858,9 +1057,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against M5StickC-PLUS2: 135x240, 3 button(s), 2 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-T4Y81h=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-T4Y81h\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\chrono\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\chrono\\ports\\web\\chrono.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-T4Y81h\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\m5stickc-plus2\\chrono\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "240x135 (this panel's 135x240, presented a quarter turn round), 16.7% of the panel painted, ghost buttons a, b, pwr",
+        "proof": "packs/silhouettes/m5stickc-plus2/proof/chrono.png",
         "source": "apps/chrono/ports/web/chrono.c",
         "via": "web",
         "buildArgs": [
@@ -872,9 +1071,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "4edb88d374b15fb7",
+        "bundleSha": "d0f5358bc5eaf2e6",
         "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -939,9 +1138,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against Pico Display Pack 2.0 on Pico 2: 320x240, 4 button(s), 0 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-MghHZi=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-MghHZi\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\chrono\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\chrono\\ports\\web\\chrono.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-MghHZi\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\pico-display-pack-2\\chrono\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "240x320 (this panel's 320x240, presented a quarter turn round), 16.0% of the panel painted, ghost buttons a, b, x, y, and this panel is already landscape, so the host's own quarter turn puts the app across the device's short side rather than along it",
+        "proof": "packs/silhouettes/pico-display-pack-2/proof/chrono.png",
         "source": "apps/chrono/ports/web/chrono.c",
         "via": "web",
         "buildArgs": [
@@ -953,9 +1152,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "4edb88d374b15fb7",
+        "bundleSha": "d0f5358bc5eaf2e6",
         "packSha": "c857ff15659b6891-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -1036,9 +1235,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "4edb88d374b15fb7",
+        "bundleSha": "d0f5358bc5eaf2e6",
         "packSha": "5f7b37d2127fbf77",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -1076,9 +1275,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "4edb88d374b15fb7",
+        "bundleSha": "d0f5358bc5eaf2e6",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -1143,9 +1342,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against Watchy: 200x200, 4 button(s), 1 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-IXBptE=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-IXBptE\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\chrono\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\chrono\\ports\\web\\chrono.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-IXBptE\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\watchy\\chrono\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "200x200 (this panel's 200x200, presented a quarter turn round), 15.4% of the panel painted, ghost buttons up, down, menu, back",
+        "proof": "packs/silhouettes/watchy/proof/chrono.png",
         "source": "apps/chrono/ports/web/chrono.c",
         "via": "web",
         "buildArgs": [
@@ -1157,9 +1356,90 @@
         }
       },
       "inputs": {
-        "bundleSha": "4edb88d374b15fb7",
+        "bundleSha": "d0f5358bc5eaf2e6",
         "packSha": "7060628f4adbd72f-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "chrono:waveshare-esp32-s3-touch-lcd-2.8": {
+      "app": "chrono",
+      "target": "waveshare-esp32-s3-touch-lcd-2.8",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "go",
+        "human": "chrono on Waveshare ESP32-S3-Touch-LCD-2.8 (silhouette): go. Every dimension the app states is met by what the device declares. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "240x320 covers the 200x200 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "96 bytes of app state (96) inside the 108544 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 2ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "chrono's bundle.json declares no port for waveshare-esp32-s3-touch-lcd-2.8"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "chrono:waveshare-esp32-s3-touch-lcd-2.8"
+      },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "320x240 (this panel's 240x320, presented a quarter turn round), 16.1% of the panel painted, ghost buttons boot, pwr",
+        "proof": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/proof/chrono.png",
+        "source": "apps/chrono/ports/web/chrono.c",
+        "via": "web",
+        "buildArgs": [
+          "--landscape"
+        ],
+        "panel": {
+          "w": 240,
+          "h": 320
+        }
+      },
+      "inputs": {
+        "bundleSha": "d0f5358bc5eaf2e6",
+        "packSha": "07f8c704ae3d7c18-bb5526c8eb7e931d",
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -1240,9 +1520,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "4edb88d374b15fb7",
+        "bundleSha": "d0f5358bc5eaf2e6",
         "packSha": "bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -1331,9 +1611,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "e3575ddc0cfcd1d7",
+        "bundleSha": "73c107ea4fe90235",
         "packSha": "71997abbc23eae96",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -1406,9 +1686,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against Feather-ESP32S2-TFT: 240x135, 1 button(s), 0 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-LIA74l=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-LIA74l\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\fluidbox\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\fluidbox\\ports\\web\\fluid.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-LIA74l\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\feather-esp32s2-tft\\fluid\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "240x135, 3.8% of the panel painted, ghost buttons d0",
+        "proof": "packs/silhouettes/feather-esp32s2-tft/proof/fluidbox.png",
         "source": "apps/fluidbox/ports/web/fluid.c",
         "via": "web",
         "buildArgs": [
@@ -1420,9 +1700,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "e3575ddc0cfcd1d7",
+        "bundleSha": "73c107ea4fe90235",
         "packSha": "a687c77e26084384-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -1495,9 +1775,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against LILYGO T-Display-S3: 170x320, 2 button(s), 0 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-zZNMmA=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-zZNMmA\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\fluidbox\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\fluidbox\\ports\\web\\fluid.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-zZNMmA\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\lilygo-t-display-s3\\fluid\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "170x320, 3.8% of the panel painted, ghost buttons boot, io14",
+        "proof": "packs/silhouettes/lilygo-t-display-s3/proof/fluidbox.png",
         "source": "apps/fluidbox/ports/web/fluid.c",
         "via": "web",
         "buildArgs": [
@@ -1509,9 +1789,98 @@
         }
       },
       "inputs": {
-        "bundleSha": "e3575ddc0cfcd1d7",
+        "bundleSha": "73c107ea4fe90235",
         "packSha": "3f454c635bf96bef-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "fluidbox:m5stack-cores3": {
+      "app": "fluidbox",
+      "target": "m5stack-cores3",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "degraded",
+        "human": "fluidbox on M5Stack CoreS3 (silhouette): degraded. It runs at 60 particles against the reference 130 (how many particles the fluid is made of), bound by panel area (320x240 at one per 1268 px). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "320x240 covers the 96x96 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key this app needs is declared"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "every sensor this app reads is declared (vector)"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "2976 bytes of app state (96 + 48 x 60 particles) inside the 108544 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 16ms this app needs"
+          }
+        ],
+        "degrades": [
+          {
+            "name": "particles",
+            "what": "how many particles the fluid is made of",
+            "value": 60,
+            "reference": 130,
+            "boundBy": "panel area (320x240 at one per 1268 px)"
+          }
+        ]
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "fluidbox's bundle.json declares no port for m5stack-cores3"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "fluidbox:m5stack-cores3"
+      },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "320x240, 3.8% of the panel painted, ghost buttons pwr, a, b, c",
+        "proof": "packs/silhouettes/m5stack-cores3/proof/fluidbox.png",
+        "source": "apps/fluidbox/ports/web/fluid.c",
+        "via": "web",
+        "buildArgs": [
+          "--shake"
+        ],
+        "panel": {
+          "w": 320,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "73c107ea4fe90235",
+        "packSha": "9e433abab6fdae06-bb5526c8eb7e931d",
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -1584,9 +1953,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against M5StickC-PLUS2: 135x240, 3 button(s), 2 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-jDzjzl=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-jDzjzl\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\fluidbox\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\fluidbox\\ports\\web\\fluid.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-jDzjzl\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\m5stickc-plus2\\fluid\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "135x240, 3.8% of the panel painted, ghost buttons a, b, pwr",
+        "proof": "packs/silhouettes/m5stickc-plus2/proof/fluidbox.png",
         "source": "apps/fluidbox/ports/web/fluid.c",
         "via": "web",
         "buildArgs": [
@@ -1598,9 +1967,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "e3575ddc0cfcd1d7",
+        "bundleSha": "73c107ea4fe90235",
         "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -1673,9 +2042,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against Pico Display Pack 2.0 on Pico 2: 320x240, 4 button(s), 0 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-0EuGG9=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-0EuGG9\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\fluidbox\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\fluidbox\\ports\\web\\fluid.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-0EuGG9\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\pico-display-pack-2\\fluid\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "320x240, 3.8% of the panel painted, ghost buttons a, b, x, y",
+        "proof": "packs/silhouettes/pico-display-pack-2/proof/fluidbox.png",
         "source": "apps/fluidbox/ports/web/fluid.c",
         "via": "web",
         "buildArgs": [
@@ -1687,9 +2056,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "e3575ddc0cfcd1d7",
+        "bundleSha": "73c107ea4fe90235",
         "packSha": "c857ff15659b6891-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -1778,9 +2147,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "e3575ddc0cfcd1d7",
+        "bundleSha": "73c107ea4fe90235",
         "packSha": "5f7b37d2127fbf77",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -1818,9 +2187,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "e3575ddc0cfcd1d7",
+        "bundleSha": "73c107ea4fe90235",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -1893,9 +2262,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against Watchy: 200x200, 4 button(s), 1 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-50Naz3=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-50Naz3\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\fluidbox\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\fluidbox\\ports\\web\\fluid.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-50Naz3\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\watchy\\fluid\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "200x200, 3.8% of the panel painted, ghost buttons up, down, menu, back",
+        "proof": "packs/silhouettes/watchy/proof/fluidbox.png",
         "source": "apps/fluidbox/ports/web/fluid.c",
         "via": "web",
         "buildArgs": [
@@ -1907,9 +2276,98 @@
         }
       },
       "inputs": {
-        "bundleSha": "e3575ddc0cfcd1d7",
+        "bundleSha": "73c107ea4fe90235",
         "packSha": "7060628f4adbd72f-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "fluidbox:waveshare-esp32-s3-touch-lcd-2.8": {
+      "app": "fluidbox",
+      "target": "waveshare-esp32-s3-touch-lcd-2.8",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "degraded",
+        "human": "fluidbox on Waveshare ESP32-S3-Touch-LCD-2.8 (silhouette): degraded. It runs at 60 particles against the reference 130 (how many particles the fluid is made of), bound by panel area (240x320 at one per 1268 px). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "240x320 covers the 96x96 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key this app needs is declared"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "this app reads no touch"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "every sensor this app reads is declared (vector)"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "2976 bytes of app state (96 + 48 x 60 particles) inside the 108544 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 16ms this app needs"
+          }
+        ],
+        "degrades": [
+          {
+            "name": "particles",
+            "what": "how many particles the fluid is made of",
+            "value": 60,
+            "reference": 130,
+            "boundBy": "panel area (240x320 at one per 1268 px)"
+          }
+        ]
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "fluidbox's bundle.json declares no port for waveshare-esp32-s3-touch-lcd-2.8"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "fluidbox:waveshare-esp32-s3-touch-lcd-2.8"
+      },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "240x320, 3.8% of the panel painted, ghost buttons boot, pwr",
+        "proof": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/proof/fluidbox.png",
+        "source": "apps/fluidbox/ports/web/fluid.c",
+        "via": "web",
+        "buildArgs": [
+          "--shake"
+        ],
+        "panel": {
+          "w": 240,
+          "h": 320
+        }
+      },
+      "inputs": {
+        "bundleSha": "73c107ea4fe90235",
+        "packSha": "07f8c704ae3d7c18-bb5526c8eb7e931d",
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -1998,9 +2456,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "e3575ddc0cfcd1d7",
+        "bundleSha": "73c107ea4fe90235",
         "packSha": "bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -2060,7 +2518,7 @@
       },
       "host": {
         "mark": "CRASHED",
-        "reason": "harness/hostdiff.ts: unexpected error: EOF: end of file, write Error: EOF: end of file, write     at async replayHost (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\harness\\hostSide.ts:330:20)     at async main (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\harness\\hostdiff.ts:280:30)"
+        "reason": "harness/hostdiff.ts: unexpected error: EOF: end of file, write Error: EOF: end of file, write     at async replayHost (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a8c3679ce402d6b36\\harness\\hostSide.ts:330:20)     at async main (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a8c3679ce402d6b36\\harness\\hostdiff.ts:280:30)"
       },
       "silicon": {
         "key": "gameos:esp32-s3-touch-amoled-18"
@@ -2083,7 +2541,7 @@
       "inputs": {
         "bundleSha": "5b8112c06c7f3adc",
         "packSha": "71997abbc23eae96",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -2148,9 +2606,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against Feather-ESP32S2-TFT: 240x135, 1 button(s), 0 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-aEBZz4=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-aEBZz4\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\gameos\\ports\\rp2350-touch-amoled-18 C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\gameos\\ports\\rp2350-touch-amoled-18\\gameos_port.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-aEBZz4\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\feather-esp32s2-tft\\gameos_port\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "240x135, 44.6% of the panel painted, ghost buttons d0",
+        "proof": "packs/silhouettes/feather-esp32s2-tft/proof/gameos.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
         "buildArgs": [],
@@ -2162,7 +2620,7 @@
       "inputs": {
         "bundleSha": "5b8112c06c7f3adc",
         "packSha": "a687c77e26084384-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -2227,9 +2685,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against LILYGO T-Display-S3: 170x320, 2 button(s), 0 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-M3YPVf=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-M3YPVf\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\gameos\\ports\\rp2350-touch-amoled-18 C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\gameos\\ports\\rp2350-touch-amoled-18\\gameos_port.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-M3YPVf\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\lilygo-t-display-s3\\gameos_port\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "170x320, 62.8% of the panel painted, ghost buttons boot, io14",
+        "proof": "packs/silhouettes/lilygo-t-display-s3/proof/gameos.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
         "buildArgs": [],
@@ -2241,7 +2699,86 @@
       "inputs": {
         "bundleSha": "5b8112c06c7f3adc",
         "packSha": "3f454c635bf96bef-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "gameos:m5stack-cores3": {
+      "app": "gameos",
+      "target": "m5stack-cores3",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "degraded",
+        "human": "gameos on M5Stack CoreS3 (silhouette): degraded. The cost is stated: panel, 320x240 is under the 368x448 this app asks for, and above the 184x224 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "degraded",
+            "reason": "320x240 is under the 368x448 this app asks for, and above the 184x224 it scales to: the layout comes out of the panel, so it fits, smaller"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "this app asks for no buttons"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "2 touch point(s) declared, 1 needed"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "every sensor this app reads is declared (vector)"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "65536 bytes of app state (65536) inside the 108544 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 16ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "gameos's bundle.json declares no port for m5stack-cores3"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "gameos:m5stack-cores3"
+      },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "320x240, 59.9% of the panel painted, ghost buttons pwr, a, b, c",
+        "proof": "packs/silhouettes/m5stack-cores3/proof/gameos.png",
+        "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
+        "via": "rp2350-touch-amoled-18",
+        "buildArgs": [],
+        "panel": {
+          "w": 320,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "5b8112c06c7f3adc",
+        "packSha": "9e433abab6fdae06-bb5526c8eb7e931d",
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -2306,9 +2843,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against M5StickC-PLUS2: 135x240, 3 button(s), 2 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-ecTOAv=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-ecTOAv\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\gameos\\ports\\rp2350-touch-amoled-18 C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\gameos\\ports\\rp2350-touch-amoled-18\\gameos_port.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-ecTOAv\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\m5stickc-plus2\\gameos_port\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "135x240, 66.1% of the panel painted, ghost buttons a, b, pwr",
+        "proof": "packs/silhouettes/m5stickc-plus2/proof/gameos.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
         "buildArgs": [],
@@ -2320,7 +2857,7 @@
       "inputs": {
         "bundleSha": "5b8112c06c7f3adc",
         "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -2385,9 +2922,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against Pico Display Pack 2.0 on Pico 2: 320x240, 4 button(s), 0 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-A0ebqV=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-A0ebqV\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\gameos\\ports\\rp2350-touch-amoled-18 C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\gameos\\ports\\rp2350-touch-amoled-18\\gameos_port.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-A0ebqV\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\pico-display-pack-2\\gameos_port\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "320x240, 59.9% of the panel painted, ghost buttons a, b, x, y",
+        "proof": "packs/silhouettes/pico-display-pack-2/proof/gameos.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
         "buildArgs": [],
@@ -2399,7 +2936,7 @@
       "inputs": {
         "bundleSha": "5b8112c06c7f3adc",
         "packSha": "c857ff15659b6891-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -2482,7 +3019,7 @@
       "inputs": {
         "bundleSha": "5b8112c06c7f3adc",
         "packSha": "5f7b37d2127fbf77",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -2522,7 +3059,7 @@
       "inputs": {
         "bundleSha": "5b8112c06c7f3adc",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -2587,9 +3124,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against Watchy: 200x200, 4 button(s), 1 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-6vspOS=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-6vspOS\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\gameos\\ports\\rp2350-touch-amoled-18 C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\gameos\\ports\\rp2350-touch-amoled-18\\gameos_port.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-6vspOS\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\watchy\\gameos_port\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "runs",
+        "reason": "200x200, 60.0% of the panel painted, ghost buttons up, down, menu, back",
+        "proof": "packs/silhouettes/watchy/proof/gameos.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
         "buildArgs": [],
@@ -2601,7 +3138,86 @@
       "inputs": {
         "bundleSha": "5b8112c06c7f3adc",
         "packSha": "7060628f4adbd72f-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "gameos:waveshare-esp32-s3-touch-lcd-2.8": {
+      "app": "gameos",
+      "target": "waveshare-esp32-s3-touch-lcd-2.8",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "degraded",
+        "human": "gameos on Waveshare ESP32-S3-Touch-LCD-2.8 (silhouette): degraded. The cost is stated: panel, 240x320 is under the 368x448 this app asks for, and above the 184x224 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "degraded",
+            "reason": "240x320 is under the 368x448 this app asks for, and above the 184x224 it scales to: the layout comes out of the panel, so it fits, smaller"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "this app asks for no buttons"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "5 touch point(s) declared, 1 needed"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "every sensor this app reads is declared (vector)"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "65536 bytes of app state (65536) inside the 108544 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 16ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "gameos's bundle.json declares no port for waveshare-esp32-s3-touch-lcd-2.8"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "gameos:waveshare-esp32-s3-touch-lcd-2.8"
+      },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
+      "silhouette": {
+        "mark": "runs",
+        "reason": "240x320, 55.6% of the panel painted, ghost buttons boot, pwr",
+        "proof": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/proof/gameos.png",
+        "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
+        "via": "rp2350-touch-amoled-18",
+        "buildArgs": [],
+        "panel": {
+          "w": 240,
+          "h": 320
+        }
+      },
+      "inputs": {
+        "bundleSha": "5b8112c06c7f3adc",
+        "packSha": "07f8c704ae3d7c18-bb5526c8eb7e931d",
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -2677,7 +3293,7 @@
       "inputs": {
         "bundleSha": "5b8112c06c7f3adc",
         "packSha": "bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -2760,7 +3376,7 @@
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
         "packSha": "71997abbc23eae96",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -2825,9 +3441,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against Feather-ESP32S2-TFT: 240x135, 1 button(s), 0 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-20yDYz=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-20yDYz\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\tinydraw\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\tinydraw\\ports\\web\\tinydraw.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-20yDYz\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\feather-esp32s2-tft\\tinydraw\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "blank",
+        "reason": "the app compiled, instantiated and painted this 240x135 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "proof": "packs/silhouettes/feather-esp32s2-tft/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
         "buildArgs": [],
@@ -2839,7 +3455,7 @@
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
         "packSha": "a687c77e26084384-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -2904,9 +3520,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against LILYGO T-Display-S3: 170x320, 2 button(s), 0 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-DzVBMb=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-DzVBMb\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\tinydraw\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\tinydraw\\ports\\web\\tinydraw.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-DzVBMb\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\lilygo-t-display-s3\\tinydraw\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "blank",
+        "reason": "the app compiled, instantiated and painted this 170x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "proof": "packs/silhouettes/lilygo-t-display-s3/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
         "buildArgs": [],
@@ -2918,7 +3534,86 @@
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
         "packSha": "3f454c635bf96bef-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "tinydraw:m5stack-cores3": {
+      "app": "tinydraw",
+      "target": "m5stack-cores3",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "go",
+        "human": "tinydraw on M5Stack CoreS3 (silhouette): go. Every dimension the app states is met by what the device declares. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "320x240 covers the 200x200 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "2 touch point(s) declared, 1 needed"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "16384 bytes of app state (16384) inside the 108544 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 8ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "tinydraw's bundle.json declares no port for m5stack-cores3"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "tinydraw:m5stack-cores3"
+      },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
+      "silhouette": {
+        "mark": "blank",
+        "reason": "the app compiled, instantiated and painted this 320x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "proof": "packs/silhouettes/m5stack-cores3/proof/tinydraw.png",
+        "source": "apps/tinydraw/ports/web/tinydraw.c",
+        "via": "web",
+        "buildArgs": [],
+        "panel": {
+          "w": 320,
+          "h": 240
+        }
+      },
+      "inputs": {
+        "bundleSha": "9f643682cdf2a62a",
+        "packSha": "9e433abab6fdae06-bb5526c8eb7e931d",
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -2983,9 +3678,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against M5StickC-PLUS2: 135x240, 3 button(s), 2 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-lIT6rK=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-lIT6rK\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\tinydraw\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\tinydraw\\ports\\web\\tinydraw.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-lIT6rK\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\m5stickc-plus2\\tinydraw\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "blank",
+        "reason": "the app compiled, instantiated and painted this 135x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "proof": "packs/silhouettes/m5stickc-plus2/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
         "buildArgs": [],
@@ -2997,7 +3692,7 @@
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
         "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -3062,9 +3757,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against Pico Display Pack 2.0 on Pico 2: 320x240, 4 button(s), 0 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-KHH4yr=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-KHH4yr\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\tinydraw\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\tinydraw\\ports\\web\\tinydraw.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-KHH4yr\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\pico-display-pack-2\\tinydraw\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "blank",
+        "reason": "the app compiled, instantiated and painted this 320x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "proof": "packs/silhouettes/pico-display-pack-2/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
         "buildArgs": [],
@@ -3076,7 +3771,7 @@
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
         "packSha": "c857ff15659b6891-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -3159,7 +3854,7 @@
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
         "packSha": "5f7b37d2127fbf77",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -3199,7 +3894,7 @@
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -3264,9 +3959,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "build-failed",
-        "reason": "compiling against Watchy: 200x200, 4 button(s), 1 sensor(s)\nzig cc -target wasm32-freestanding -O2 -ffile-prefix-map=C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-6lpj6a=puck-web-roster -include C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-6lpj6a\\puck_device.h -nostdlib -Wl,--no-entry -Wl,--import-symbols -Wl,--export=emu_device -Wl,--export=emu_init -Wl,--export=emu_tick -Wl,--export=emu_fb -Wl,--export=emu_push_count -Wl,--export=emu_push_x -Wl,--export=emu_push_y -Wl,--export=emu_push_w -Wl,--export=emu_push_h -Wl,--export=emu_touch -Wl,--export=emu_button -Wl,--export=emu_button_verdict -Wl,--export=emu_sensor_event -Wl,--export=emu_sensor_vector -Wl,--export=emu_app_current -Wl,--export=emu_app_switch -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\shim -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\wasm -I C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\tinydraw\\ports\\web C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\wasm\\emu_shim.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\runtime_core.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\gfx.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\runtime\\digits.c C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\apps\\tinydraw\\ports\\web\\tinydraw.c C:\\Users\\sylve\\AppData\\Local\\Temp\\puck-web-roster-6lpj6a\\roster.c -o C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\packs\\web\\dist\\silhouettes\\watchy\\tinydraw\\emu.wasm\n\n\u001b[0m\u001b[1m234 |\u001b[0m         \u001b[0m\u001b[2m// env vars on top.\u001b[0m\n\u001b[0m\u001b[1m235 |\u001b[0m         env: sanitizedEnv(opts.env),\n\u001b[0m\u001b[1m236 |\u001b[0m         timeout,\n\u001b[0m\u001b[1m237 |\u001b[0m       })\u001b[0m\u001b[2m;\u001b[0m\n\u001b[0m\u001b[1m238 |\u001b[0m     } \u001b[0m\u001b[35mcatch\u001b[0m (err) {\n\u001b[0m\u001b[1m239 |\u001b[0m       \u001b[0m\u001b[35mthrow\u001b[0m \u001b[0m\u001b[35mnew\u001b[0m \u001b[0m\u001b[1mError\u001b[0m(\u001b[0m\u001b[32m`could not run \"\u001b[0m${cmd[\u001b[0m\u001b[33m0\u001b[0m]}\u001b[0m\u001b[32m\": \u001b[0m${err \u001b[0m\u001b[35minstanceof\u001b[0m Error ? err.message : String(err)}\u001b[0m\u001b[32m (not installed, or not on PATH? for zig, set ZIG_EXE to its path)`\u001b[0m)\u001b[0m\u001b[2m;\u001b[0m\n                      \u001b[31m\u001b[1m^\u001b[0m\n\u001b[0m\u001b[31merror\u001b[0m\u001b[2m:\u001b[0m \u001b[1mcould not run \"zig\": Executable not found in $PATH: \"zig\" (not installed, or not on PATH? for zig, set ZIG_EXE to its path)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mspawnWithRetry\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mtools\\zigSpawn.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m239\u001b[0m\u001b[2m:\u001b[33m17\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mcompileModule\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m457\u001b[0m\u001b[2m:\u001b[33m18\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[1m\u001b[3mbuildHost\u001b[0m\u001b[2m (\u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m483\u001b[0m\u001b[2m:\u001b[33m3\u001b[0m\u001b[2m)\u001b[0m\n\u001b[0m      \u001b[2mat \u001b[0m\u001b[0m\u001b[36m\u001b[2mC:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-aa51f9382c0062102\\\u001b[0m\u001b[36mpacks\\web\\wasm\\build.ts\u001b[0m\u001b[2m:\u001b[0m\u001b[33m587\u001b[0m\u001b[2m:\u001b[33m9\u001b[0m\n\u001b[0m\n\u001b[2mBun v1.3.14 (Windows arm64)\u001b[0m",
-        "proof": null,
+        "mark": "blank",
+        "reason": "the app compiled, instantiated and painted this 200x200 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "proof": "packs/silhouettes/watchy/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
         "buildArgs": [],
@@ -3278,7 +3973,86 @@
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
         "packSha": "7060628f4adbd72f-bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
+      },
+      "computedAt": "2026-09-02"
+    },
+    "tinydraw:waveshare-esp32-s3-touch-lcd-2.8": {
+      "app": "tinydraw",
+      "target": "waveshare-esp32-s3-touch-lcd-2.8",
+      "targetKind": "silhouette",
+      "verdict": {
+        "verdict": "go",
+        "human": "tinydraw on Waveshare ESP32-S3-Touch-LCD-2.8 (silhouette): go. Every dimension the app states is met by what the device declares. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.",
+        "checks": [
+          {
+            "dimension": "panel",
+            "status": "go",
+            "reason": "240x320 covers the 200x200 this app asks for"
+          },
+          {
+            "dimension": "buttons",
+            "status": "go",
+            "reason": "the key and click this app needs are declared, on 2 separate controls"
+          },
+          {
+            "dimension": "touch",
+            "status": "go",
+            "reason": "5 touch point(s) declared, 1 needed"
+          },
+          {
+            "dimension": "sensors",
+            "status": "go",
+            "reason": "this app reads no sensors"
+          },
+          {
+            "dimension": "memory",
+            "status": "go",
+            "reason": "16384 bytes of app state (16384) inside the 108544 this target budgets"
+          },
+          {
+            "dimension": "tick",
+            "status": "go",
+            "reason": "16ms per tick against the 8ms this app needs"
+          }
+        ],
+        "degrades": []
+      },
+      "verdictUnavailable": null,
+      "port": null,
+      "emulator": {
+        "mark": "no port",
+        "reason": "tinydraw's bundle.json declares no port for waveshare-esp32-s3-touch-lcd-2.8"
+      },
+      "host": {
+        "mark": "not run",
+        "reason": "a silhouette has no firmware to build natively: it is one device.json and nothing else"
+      },
+      "silicon": {
+        "key": "tinydraw:waveshare-esp32-s3-touch-lcd-2.8"
+      },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
+      "silhouette": {
+        "mark": "blank",
+        "reason": "the app compiled, instantiated and painted this 240x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "proof": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/proof/tinydraw.png",
+        "source": "apps/tinydraw/ports/web/tinydraw.c",
+        "via": "web",
+        "buildArgs": [],
+        "panel": {
+          "w": 240,
+          "h": 320
+        }
+      },
+      "inputs": {
+        "bundleSha": "9f643682cdf2a62a",
+        "packSha": "07f8c704ae3d7c18-bb5526c8eb7e931d",
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     },
@@ -3361,7 +4135,7 @@
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
         "packSha": "bb5526c8eb7e931d",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
     }
