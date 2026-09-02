@@ -1480,7 +1480,7 @@ async function saveTraceToServer(): Promise<void> {
   }
   const trace = recorder.toTrace(device);
   try {
-    const res = await fetch("/api/trace", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(trace) });
+    const res = await fetch("/api/trace", { method: "POST", headers: { "content-type": "application/json", "x-puck-emulator": "1" }, body: JSON.stringify(trace) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = (await res.json()) as { path: string };
     consoleLog.push(`trace saved -> ${data.path}`);
