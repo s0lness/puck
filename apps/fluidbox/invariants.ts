@@ -22,7 +22,14 @@
 // temporarily zeroed) that this file's own thresholds were checked against
 // before being finalised.
 
-import type { TimedFrame, InvariantMeta, InvariantResult } from "../../harness/invariantRun";
+// The types and the two small helpers come from harness/invariantTypes.ts,
+// not from harness/invariantRun.ts: this file is now ALSO bundled into a
+// browser page (site/attest/checkers.ts), where the same check runs over
+// the frames a real board drew, and invariantRun.ts opens files. Nothing
+// here touches a file, a socket or the DOM - it is a pure function of
+// {frames, meta} and always was.
+import { held, summariseInvariants } from "../../harness/invariantTypes";
+import type { InvariantMeta, InvariantOutcome, InvariantResult, TimedFrame } from "../../harness/invariantTypes";
 
 const BG_R = 0, BG_G = 0, BG_B = 0; // FLUID_BG in fluid.c: pure black
 
@@ -189,55 +196,92 @@ const PUSH_PIXELS_MAX = 90000; // checked against the WORST tick, not the mean
 const PUSH_COUNT_MAX = 4;
 
 export function check(frames: TimedFrame[], meta: InvariantMeta): InvariantResult {
-  const failures: string[] = [];
-
   if (frames.length !== 3) {
-    return {
-      pass: false,
-      failures: [
-        `expected exactly 3 captures (settled1, afterShake, settled2) per this trace's own contract, got ${frames.length}`,
-      ],
-    };
+    return summariseInvariants([
+      {
+        id: "capture-contract",
+        name: "the trace's own three capture points arrived",
+        status: "fail",
+        message: `expected exactly 3 captures (settled1, afterShake, settled2) per this trace's own contract, got ${frames.length}`,
+      },
+    ]);
   }
 
   const [settled1, afterShake, settled2] = frames;
+  const outcomes: InvariantOutcome[] = [];
 
   // (1) mass proxy
   const mass1 = countNonBackground(settled1!.frame);
   const mass2 = countNonBackground(settled2!.frame);
   const massDriftPct = mass1 === 0 ? 100 : (Math.abs(mass1 - mass2) / mass1) * 100;
+  const massFails: string[] = [];
   if (mass1 === 0) {
-    failures.push(`mass proxy: settled1 (t=${settled1!.atMs}) has zero non-background pixels - nothing rendered`);
+    massFails.push(`mass proxy: settled1 (t=${settled1!.atMs}) has zero non-background pixels - nothing rendered`);
   } else if (massDriftPct > MASS_DRIFT_MAX_PCT) {
-    failures.push(
+    massFails.push(
       `mass proxy: non-background pixel count drifted ${massDriftPct.toFixed(2)}% between settled1 (${mass1}px) and settled2 (${mass2}px), max allowed ${MASS_DRIFT_MAX_PCT}%`
     );
   }
+  outcomes.push(
+    held(
+      "mass",
+      "the same fluid is still there after the shake",
+      massFails,
+      `mass proxy: ${mass1}px non-background at settled1, ${mass2}px at settled2, a ${massDriftPct.toFixed(2)}% drift (max allowed ${MASS_DRIFT_MAX_PCT}%)`
+    )
+  );
 
   // (2) settled surface flatness, both settled captures
   const flat1 = bucketFlatness(settled1!.frame);
   const flat2 = bucketFlatness(settled2!.frame);
+  const flatFails: string[] = [];
   if (flat1 > FLATNESS_MAX_SPREAD_PX) {
-    failures.push(`flat surface: settled1 (t=${settled1!.atMs}) bucket-median spread ${flat1}px exceeds max ${FLATNESS_MAX_SPREAD_PX}px`);
+    flatFails.push(`flat surface: settled1 (t=${settled1!.atMs}) bucket-median spread ${flat1}px exceeds max ${FLATNESS_MAX_SPREAD_PX}px`);
   }
   if (flat2 > FLATNESS_MAX_SPREAD_PX) {
-    failures.push(`flat surface: settled2 (t=${settled2!.atMs}) bucket-median spread ${flat2}px exceeds max ${FLATNESS_MAX_SPREAD_PX}px`);
+    flatFails.push(`flat surface: settled2 (t=${settled2!.atMs}) bucket-median spread ${flat2}px exceeds max ${FLATNESS_MAX_SPREAD_PX}px`);
   }
+  outcomes.push(
+    held(
+      "flatness",
+      "the settled surface lies roughly flat",
+      flatFails,
+      `flat surface: bucket-median spread ${flat1}px at settled1 and ${flat2}px at settled2 (max allowed ${FLATNESS_MAX_SPREAD_PX}px)`
+    )
+  );
 
   // (3) shake visibly agitates
   const shakeDiff = diffPixelCount(settled1!.frame, afterShake!.frame);
+  const shakeFails: string[] = [];
   if (shakeDiff < SHAKE_DIFF_MIN_PX) {
-    failures.push(
+    shakeFails.push(
       `shake agitation: only ${shakeDiff}px differ between settled1 (t=${settled1!.atMs}) and afterShake (t=${afterShake!.atMs}), min required ${SHAKE_DIFF_MIN_PX}px`
     );
   }
+  outcomes.push(
+    held(
+      "shake",
+      "a shake visibly agitates the fluid",
+      shakeFails,
+      `shake agitation: ${shakeDiff}px differ between settled1 (t=${settled1!.atMs}) and afterShake (t=${afterShake!.atMs}), min required ${SHAKE_DIFF_MIN_PX}px`
+    )
+  );
 
   // (4) inside panel bounds, every captured frame
+  const boundsFails: string[] = [];
   for (const f of frames) {
     if (!borderIsClean(f.frame)) {
-      failures.push(`bounds: fluid pixel found in the panel's outermost 1px border at t=${f.atMs} (wall containment broken)`);
+      boundsFails.push(`bounds: fluid pixel found in the panel's outermost 1px border at t=${f.atMs} (wall containment broken)`);
     }
   }
+  outcomes.push(
+    held(
+      "bounds",
+      "wall containment keeps every particle off the panel edge",
+      boundsFails,
+      `bounds: the panel's outermost 1px border is clear on all ${frames.length} captures`
+    )
+  );
 
   // (5) panel push stays a bounding box, not the whole panel, every tick -
   // see PUSH_PIXELS_MAX/PUSH_COUNT_MAX's own comment. Scoped to the rp2350
@@ -252,23 +296,58 @@ export function check(frames: TimedFrame[], meta: InvariantMeta): InvariantResul
   // across three unrelated displays would either be meaningless for two of
   // them or would fail two ports for a defect this task never touched or
   // verified on their hardware - apps/fluidbox/ports/rp2350-touch-amoled-18/
-  // README.md's own before/after numbers are this pack's alone. Also
-  // skipped, not failed, for a module built without the push-tracking
-  // export (meta.pushStats undefined): this invariant is additive and must
-  // never turn a module that predates it into an infra failure.
-  if (meta.device.name === "RP2350-Touch-AMOLED-1.8" && meta.pushStats) {
+  // README.md's own before/after numbers are this pack's alone. On any
+  // other device this reports "skip": nothing went unanswered, this check
+  // was never about that board.
+  //
+  // On the rp2350 with no push instrumentation it reports "unevaluable"
+  // instead, and the difference is load-bearing (harness/invariantTypes.ts's
+  // InvariantStatus). Neither status touches `pass` - an emulator module
+  // built before this export existed must not go red for it - but a surface
+  // making a public claim about a board reads the outcomes rather than the
+  // boolean, and refuses to post a run with a hole in it. That is the case
+  // every devlink run is in: a board answers SHOT with its framebuffer and
+  // never reports what it pushed, so on the one silicon this invariant was
+  // written for, a board cannot answer it.
+  if (meta.device.name !== "RP2350-Touch-AMOLED-1.8") {
+    outcomes.push({
+      id: "push",
+      name: "one tick never pushes the whole panel",
+      status: "skip",
+      message: `panel push: not checked on ${meta.device.name ?? "this device"} - this bound is the RP2350 pack's own QSPI and panel finding, and its numbers are that pack's alone`,
+    });
+  } else if (!meta.pushStats) {
+    outcomes.push({
+      id: "push",
+      name: "one tick never pushes the whole panel",
+      status: "unevaluable",
+      message:
+        `panel push: this run reports the framebuffer and not what was pushed to the panel, so the ${PUSH_PIXELS_MAX}px-per-tick ` +
+        `bound cannot be answered from it. A board answers SHOT with its framebuffer; the bound is checked against the emulator ` +
+        `by "bun run verify-bundle".`,
+    });
+  } else {
     const { maxPushesPerTick, maxPushPixelsPerTick, tickCount } = meta.pushStats;
+    const pushFails: string[] = [];
     if (maxPushPixelsPerTick > PUSH_PIXELS_MAX) {
-      failures.push(
+      pushFails.push(
         `panel push: worst tick pushed ${maxPushPixelsPerTick}px (of ${tickCount} ticks replayed), max allowed ${PUSH_PIXELS_MAX}px - see this port's README's "Panel push" section`
       );
     }
     if (maxPushesPerTick > PUSH_COUNT_MAX) {
-      failures.push(
+      pushFails.push(
         `panel push: worst tick issued ${maxPushesPerTick} gfx_push call(s), max allowed ${PUSH_COUNT_MAX} - looks like a return of per-particle pushes`
       );
     }
+    outcomes.push(
+      held(
+        "push",
+        "one tick never pushes the whole panel",
+        pushFails,
+        `panel push: worst of ${tickCount} ticks pushed ${maxPushPixelsPerTick}px in ${maxPushesPerTick} call(s), max allowed ${PUSH_PIXELS_MAX}px in ${PUSH_COUNT_MAX}`
+      )
+    );
   }
 
-  return { pass: failures.length === 0, failures };
+  return summariseInvariants(outcomes);
 }

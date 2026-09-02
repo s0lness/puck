@@ -33,7 +33,14 @@
 // to catch, confirming THIS check (and not some other one) fails, then
 // restoring and confirming green again.
 
-import type { TimedFrame, InvariantMeta, InvariantResult } from "../../harness/invariantRun";
+// The types and the two small helpers come from harness/invariantTypes.ts,
+// not from harness/invariantRun.ts: this file is now ALSO bundled into a
+// browser page (site/attest/checkers.ts), where the same check runs over
+// the frames a real board drew, and invariantRun.ts opens files. Nothing
+// here touches a file, a socket or the DOM - it is a pure function of
+// {frames, meta} and always was.
+import { held, summariseInvariants } from "../../harness/invariantTypes";
+import type { InvariantMeta, InvariantOutcome, InvariantResult, TimedFrame } from "../../harness/invariantTypes";
 
 function isWhite(rgb: Uint8Array, idx: number): boolean {
   return rgb[idx] === 255 && rgb[idx + 1] === 255 && rgb[idx + 2] === 255;
@@ -143,31 +150,39 @@ const MIN_SECOND_STROKE_DELTA_PX = 150;
 const MAX_UNDO_DIFF_PX = 0;
 
 export function check(frames: TimedFrame[], meta: InvariantMeta): InvariantResult {
-  const failures: string[] = [];
-
+  void meta; // every check here reads pixels; nothing here needs the device
   if (frames.length !== 4) {
-    return {
-      pass: false,
-      failures: [
-        `expected exactly 4 captures (drawn, zoomed, twoStrokes, afterUndo) per this trace's own contract, got ${frames.length}`,
-      ],
-    };
+    return summariseInvariants([
+      {
+        id: "capture-contract",
+        name: "the trace's own four capture points arrived",
+        status: "fail",
+        message: `expected exactly 4 captures (drawn, zoomed, twoStrokes, afterUndo) per this trace's own contract, got ${frames.length}`,
+      },
+    ]);
   }
 
   const [drawn, zoomed, twoStrokes, afterUndo] = frames;
+  const outcomes: InvariantOutcome[] = [];
 
   // (1) ink drawn at all
   const inkDrawn = countInk(drawn!.frame);
+  const inkFails: string[] = [];
   if (inkDrawn < MIN_INK_PX) {
-    failures.push(`ink drawn: only ${inkDrawn}px non-white at drawn (t=${drawn!.atMs}), min required ${MIN_INK_PX}px`);
+    inkFails.push(`ink drawn: only ${inkDrawn}px non-white at drawn (t=${drawn!.atMs}), min required ${MIN_INK_PX}px`);
   }
+  outcomes.push(
+    held("ink", "the stroke is actually drawn", inkFails, `ink drawn: ${inkDrawn}px non-white at drawn (t=${drawn!.atMs}), min required ${MIN_INK_PX}px`)
+  );
 
   // (2) variable width, measured on the "drawn" frame (unzoomed, single stroke)
   const heights = colHeights(drawn!.frame);
   const nonZeroXs: number[] = [];
   for (let x = 0; x < heights.length; x++) if (heights[x]! > 0) nonZeroXs.push(x);
+  const widthFails: string[] = [];
+  let widthPassMessage = "";
   if (nonZeroXs.length < 10) {
-    failures.push(`variable width: too little ink at drawn (t=${drawn!.atMs}) to measure a width profile (${nonZeroXs.length} ink columns)`);
+    widthFails.push(`variable width: too little ink at drawn (t=${drawn!.atMs}) to measure a width profile (${nonZeroXs.length} ink columns)`);
   } else {
     const lo = nonZeroXs[0]!, hi = nonZeroXs[nonZeroXs.length - 1]!;
     const span = hi - lo;
@@ -177,38 +192,69 @@ export function check(frames: TimedFrame[], meta: InvariantMeta): InvariantResul
     const ratioStart = startAvg > 0 ? midAvg / startAvg : 0;
     const ratioEnd = endAvg > 0 ? midAvg / endAvg : 0;
     if (ratioStart < WIDTH_RATIO_MIN || ratioEnd < WIDTH_RATIO_MIN) {
-      failures.push(
+      widthFails.push(
         `variable width: mid-band avg height ${midAvg.toFixed(2)}px is not >= ${WIDTH_RATIO_MIN}x both end bands (start ${startAvg.toFixed(2)}px, end ${endAvg.toFixed(2)}px) at drawn (t=${drawn!.atMs}) - line reads roughly constant width`
       );
     }
+    widthPassMessage =
+      `variable width: mid-band avg height ${midAvg.toFixed(2)}px against start ${startAvg.toFixed(2)}px (${ratioStart.toFixed(2)}x) and ` +
+      `end ${endAvg.toFixed(2)}px (${ratioEnd.toFixed(2)}x), min required ${WIDTH_RATIO_MIN}x`;
   }
+  outcomes.push(held("width", "the stroke is thicker in its middle than at either end", widthFails, widthPassMessage));
 
   // (3) zoom reprojects existing ink at ~2x, neither a no-op nor fresh ink
   const inkZoomed = countInk(zoomed!.frame);
   const zoomRatio = inkDrawn > 0 ? inkZoomed / inkDrawn : 0;
+  const zoomFails: string[] = [];
   if (zoomRatio < ZOOM_RATIO_MIN || zoomRatio > ZOOM_RATIO_MAX) {
-    failures.push(
+    zoomFails.push(
       `zoom scaling: ink went from ${inkDrawn}px (drawn, t=${drawn!.atMs}) to ${inkZoomed}px (zoomed, t=${zoomed!.atMs}), a ${zoomRatio.toFixed(2)}x change, expected between ${ZOOM_RATIO_MIN}x and ${ZOOM_RATIO_MAX}x`
     );
   }
+  outcomes.push(
+    held(
+      "zoom",
+      "zoom reprojects the ink already there, at about 2x",
+      zoomFails,
+      `zoom scaling: ${inkDrawn}px (drawn) to ${inkZoomed}px (zoomed), a ${zoomRatio.toFixed(2)}x change, expected between ${ZOOM_RATIO_MIN}x and ${ZOOM_RATIO_MAX}x`
+    )
+  );
 
   // (4) a second stroke actually adds ink
   const inkTwoStrokes = countInk(twoStrokes!.frame);
   const secondStrokeDelta = inkTwoStrokes - inkZoomed;
+  const secondFails: string[] = [];
   if (secondStrokeDelta < MIN_SECOND_STROKE_DELTA_PX) {
-    failures.push(
+    secondFails.push(
       `second stroke: only +${secondStrokeDelta}px between zoomed (t=${zoomed!.atMs}, ${inkZoomed}px) and twoStrokes (t=${twoStrokes!.atMs}, ${inkTwoStrokes}px), min required +${MIN_SECOND_STROKE_DELTA_PX}px`
     );
   }
+  outcomes.push(
+    held(
+      "second-stroke",
+      "a second stroke adds real ink of its own",
+      secondFails,
+      `second stroke: +${secondStrokeDelta}px between zoomed (${inkZoomed}px) and twoStrokes (${inkTwoStrokes}px), min required +${MIN_SECOND_STROKE_DELTA_PX}px`
+    )
+  );
 
   // (5) undo removes exactly the most recent stroke and nothing else:
   // afterUndo must be bit-identical to zoomed.
   const undoDiff = diffPixelCount(zoomed!.frame, afterUndo!.frame);
+  const undoFails: string[] = [];
   if (undoDiff > MAX_UNDO_DIFF_PX) {
-    failures.push(
+    undoFails.push(
       `undo exactness: afterUndo (t=${afterUndo!.atMs}) differs from zoomed (t=${zoomed!.atMs}) by ${undoDiff}px, expected ${MAX_UNDO_DIFF_PX} (undo must reproduce the pre-second-stroke panel exactly)`
     );
   }
+  outcomes.push(
+    held(
+      "undo",
+      "undo removes exactly the most recent stroke and nothing else",
+      undoFails,
+      `undo exactness: afterUndo (t=${afterUndo!.atMs}) differs from zoomed (t=${zoomed!.atMs}) by ${undoDiff}px, expected ${MAX_UNDO_DIFF_PX}`
+    )
+  );
 
-  return { pass: failures.length === 0, failures };
+  return summariseInvariants(outcomes);
 }

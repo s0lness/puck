@@ -50,64 +50,50 @@
 // failed to instantiate, a checker that failed to load or does not export
 // `check`).
 //
-// THE CHECKER INTERFACE, small and documented here because it is the
-// contract between this file and every bundle's own invariants.ts:
+// THE CHECKER INTERFACE, declared in harness/invariantTypes.ts and
+// re-exported below, because it is a contract between a bundle and TWO
+// runners now, not one:
 //
 //   export function check(frames: TimedFrame[], meta: InvariantMeta): InvariantResult
 //
 // `frames` is one TimedFrame per requested capture point, IN THE SAME ORDER
-// the capture points were requested (see TimedFrame/InvariantMeta/
-// InvariantResult below) - a checker is free to assume that order encodes
-// meaning (frames[0] is "before", frames[1] is "right after", etc.) as long
-// as it documents what it assumes, since this file makes no promise beyond
-// "same order you asked for."
+// the capture points were requested - a checker is free to assume that
+// order encodes meaning (frames[0] is "before", frames[1] is "right
+// after", etc.) as long as it documents what it assumes, since neither
+// runner promises more than "same order you asked for."
+//
+// The second runner is site/attest/run.ts, which replays the same trace on
+// a real board over devlink and hands the frames it captured to the same
+// checker, inside a browser page. That is why the types moved out of this
+// file: this one opens files (node:fs, node:path, node:url) and a checker
+// importing its types from here would drag node:fs into a page bundle.
+// Nothing else changed - this file's own behaviour, output and exit codes
+// are what they were.
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { replayEmulator } from "./emulatorSide";
-import type { CapturedFrame, Trace } from "./types";
+import type { Trace } from "./types";
 import type { DeviceDescriptor } from "../src/wasm";
-import type { PushLoadStats } from "../src/replayCore";
+import type { InvariantChecker, InvariantMeta, InvariantResult, TimedFrame } from "./invariantTypes";
+
+// Re-exported so `import type { TimedFrame } from "../../harness/invariantRun"`
+// keeps resolving for anything outside this repository that already wrote
+// it that way. Everything in here imports from invariantTypes.ts directly.
+export type {
+  InvariantChecker,
+  InvariantMeta,
+  InvariantOutcome,
+  InvariantResult,
+  InvariantStatus,
+  TimedFrame,
+} from "./invariantTypes";
+export { held, summariseInvariants } from "./invariantTypes";
 
 const EXIT_OK = 0;
 const EXIT_FAIL = 1;
 const EXIT_INFRA = 2;
-
-// One captured frame plus the trace-relative millisecond it was captured
-// at - the same pairing harness/portdiff.ts's own ReplayResult.frames
-// already uses, renamed here so a checker file importing this module's
-// types does not have to reach into harness/emulatorSide.ts's return shape
-// to name it.
-export interface TimedFrame {
-  atMs: number;
-  frame: CapturedFrame;
-}
-
-// Deliberately small. A checker that needs more than "what device is this"
-// can read it off `device` (panel size/format, buttons, sensors - the same
-// DeviceDescriptor every other consumer in this repo already uses) rather
-// than this file inventing a second, app-specific metadata shape per
-// bundle.
-export interface InvariantMeta {
-  device: DeviceDescriptor;
-  // Panel-push load aggregated over the WHOLE replayed trace (every tick,
-  // not just the requested capture points), from src/replayCore.ts's own
-  // emu_push_count()/emu_push_x/y/w/h() instrumentation. Undefined only for
-  // a module built without that export (see PushLoadStats's own comment).
-  // Exists so a bundle can assert a bus-load bound - "no tick should ever
-  // push more than X pixels" - a class of regression the framebuffer-only
-  // pixel checks in this same file's `frames` argument cannot see by
-  // construction (docs/harness.md's "Does not see bus-load artifacts").
-  pushStats?: PushLoadStats;
-}
-
-export interface InvariantResult {
-  pass: boolean;
-  failures: string[];
-}
-
-export type InvariantChecker = (frames: TimedFrame[], meta: InvariantMeta) => InvariantResult;
 
 // Thrown by runInvariants() for a failure that isn't the checker reporting
 // a real invariant failure (a checker that won't load, doesn't export
