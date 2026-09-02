@@ -113,7 +113,12 @@ export type HostBuildResult = HostBuildOk | HostBuildFail;
 // on success.
 function compileOne(src: string, includes: string[], defines: string[], sanitizeFlags: string[], outObj: string): string | null {
   const args = ["cc", "-c", "-O1", "-g", ...sanitizeFlags, ...defines, ...includes.flatMap((d) => ["-I", d]), src, "-o", outObj];
-  const result = runZigCc(args, outObj);
+  // useAmbientCache: true - see tools/zigSpawn.ts's ZigCcOptions comment
+  // (the sixth failure mode). This is the sanitized native compile that
+  // needs compiler-rt built, measured to fail far more often against a
+  // cold, never-used cache than against zig's own OS default, which is
+  // warm from ordinary everyday use across every project on the machine.
+  const result = runZigCc(args, outObj, { useAmbientCache: true });
   if (result.ok) return null;
   return result.stderr.trim().length > 0
     ? `zig cc failed compiling ${src} (see diagnostics above)`
@@ -131,7 +136,10 @@ function linkAll(objs: string[], sanitizeFlags: string[], outExe: string): strin
   // tools/zigSpawn.ts's header comment documents zig cc crashing on -
   // reproduced here too, not just in the wasm builds that flag list was
   // originally found in.
-  const result = runZigCc(args, outExe, { cwd: tmpdir() });
+  // useAmbientCache: true - see compileOne's own comment above and
+  // tools/zigSpawn.ts's ZigCcOptions comment (the sixth failure mode):
+  // the link step needs the ubsan runtime, same reasoning.
+  const result = runZigCc(args, outExe, { cwd: tmpdir(), useAmbientCache: true });
   if (result.ok) return null;
   return result.stderr.trim().length > 0
     ? `zig cc failed linking (see diagnostics above)`

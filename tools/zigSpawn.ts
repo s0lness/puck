@@ -108,6 +108,47 @@
 // spawn (with `cwd: REPO_ROOT` set to match), which cannot change what
 // file zig opens and measurably returns the flake rate to the ordinary,
 // already-handled range instead of a deterministic wall.
+//
+// A SIXTH failure mode, found bisecting test:host and test:hostile going
+// red on the same tree that had just made every OTHER gate here green
+// (typecheck, pack:lint, example:build, pack:build, harness:selftest,
+// test:wasi, test:external, test:verdict, test:devlink, verify,
+// verify-bundle, every site verifier). Measured, one variable at a time,
+// solo, no other zig process alive: disabling the wipe alone - 0/3 both
+// suites. Disabling relativizeArgs alone - 0/3 both. Both disabled - 0/3
+// both. None of the three explains it. What DOES: swapping in this
+// file's own pre-cache-isolation version (no ZIG_GLOBAL_CACHE_DIR
+// override at all, so zig falls back to its OS default,
+// `~/AppData/Local/zig` here) made test:host pass 4/4 across two separate
+// sessions, while the repo-local `.zig-global-cache` - EMPTY, since a
+// fresh checkout has never populated it - failed reliably even wiping
+// disabled, even with a deliberately SHORT cache path (ruling out the
+// fifth failure mode's own path-length mechanism), even after several
+// runs let it accumulate a few dozen files without ever fully warming.
+// harness/hostSide.ts's native, SANITIZED link needs compiler-rt and the
+// ubsan runtime built - real, first-time work a cache that has done it
+// thousands of times over ordinary daily use does instantly, and a cache
+// that has never done it has to do from nothing, which is exactly the
+// long, first-time-heavy build this repo's whole "zig cc exit 5" flake
+// hits hardest. Wiping on every silent failure (the fourth failure mode's
+// own fix) made this WORSE, not better: every retry started that
+// first-time work over again in an emptied cache instead of ever getting
+// the chance to finish it once. Fixed two ways, both below: wipe now
+// fires ONLY on a timeout kill (the one shape this repo has actual
+// evidence of poisoning for), never on a plain silent exit; and
+// harness/hostSide.ts's own two zig calls opt out of the repo-local cache
+// override entirely (`useAmbientCache: true`) and use zig's own OS
+// default instead, warm from everyday use and not this file's own
+// poisoning suspect to manage.
+//
+// test:hostile (wasm32-freestanding, no sanitizer, no compiler-rt) was
+// NOT explained by any of the above: it stayed red across every variant
+// tried, including zig's own warm default cache, on different fixtures
+// each run (button_trap, push_rect_out_of_bounds, sensor_missing_id,
+// fb_out_of_bounds) rather than the same one every time - not the
+// deterministic shape the fifth failure mode's own fix targets, and not
+// fixed by anything cache-related either. Left red and reported as such
+// rather than papered over: whatever this is remains unexplained.
 import { readFileSync, rmSync, statSync } from "node:fs";
 import { resolve, join, isAbsolute, relative } from "node:path";
 import { sanitizedEnv } from "./env";
@@ -142,11 +183,14 @@ export interface SpawnRetryOptions {
   // earlier run's) leftover file still sitting at that same path.
   beforeAttempt?: () => void;
   // Run once a SILENT failure is actually detected (not on a diagnosed
-  // one), before the pause-and-retry below. runZigCc below supplies one
-  // that wipes zig's own global cache directory: see this file's header
-  // comment for why a silent failure can mean a poisoned cache entry, not
-  // just ordinary contention.
-  onSilentFailure?: () => void;
+  // one), before the pause-and-retry below - `wasTimeoutKill` says whether
+  // THIS attempt was a signal-killed timeout (this file's own
+  // ATTEMPT_TIMEOUT_MS) rather than a plain non-zero exit. runZigCc below
+  // supplies one that wipes zig's own global cache directory ONLY on a
+  // timeout kill: see this file's header comment (the sixth failure mode)
+  // for why a wipe on every silent failure was measured to be
+  // counterproductive for a long, sanitized native link.
+  onSilentFailure?: (wasTimeoutKill: boolean) => void;
 }
 
 export const DEFAULT_MAX_ATTEMPTS = 8;
@@ -217,11 +261,11 @@ export function spawnWithRetry(cmd: string[], opts: SpawnRetryOptions = {}): Spa
     // treated as the silent failure it is (see diagnosed() above).
     if (stderr.trim().length > 0) console.error(stderr.trim());
     // A genuinely silent failure: no diagnostics, no accepted artifact.
-    // Wipe whatever onSilentFailure protects (runZigCc: its own global
-    // cache) BEFORE deciding whether there is a next attempt left, so the
-    // cache is left clean either way - including on the attempt that
-    // exhausts the budget, for whichever script runs next.
-    opts.onSilentFailure?.();
+    // Tell onSilentFailure whether THIS attempt was a timeout kill, BEFORE
+    // deciding whether there is a next attempt left, so the caller can
+    // react (runZigCc: wipe its cache) even on the attempt that exhausts
+    // the budget, for whichever script runs next.
+    opts.onSilentFailure?.(r.signalCode != null);
     if (attempt >= maxAttempts) {
       return { ok: false, stdout, stderr, exitCode: r.exitCode, signalCode: r.signalCode ?? null, attempts: attempt };
     }
@@ -320,6 +364,19 @@ export interface ZigCcOptions {
   // artifact check also requires the wasm magic bytes, not just a
   // non-empty file.
   isWasm?: boolean;
+  // Opts OUT of the repo-local cache override entirely: ZIG_GLOBAL_CACHE_DIR
+  // is left unset (zig's own OS default, whatever ambient env this process
+  // already has), and no wipe-on-timeout runs against it either. For
+  // harness/hostSide.ts's native, sanitized link specifically - see this
+  // file's header comment (the sixth failure mode): that link needs to
+  // build compiler-rt and the ubsan runtime, and a cache that has never
+  // done that before is measurably far more exposed to zig's own silent
+  // exit-5 than a cache that already has them, which a fresh repo-local
+  // cache never gets the chance to become without first surviving the
+  // very builds it keeps failing. zig's own default cache is warm from
+  // ordinary, everyday use and is not this file's own poisoning suspect
+  // to manage - see AGENTS.md for the measurement.
+  useAmbientCache?: boolean;
 }
 
 // Runs `zig cc ...args`, writing to `outPath`. See spawnWithRetry above
@@ -329,12 +386,18 @@ export interface ZigCcOptions {
 // run, must never be mistaken for THIS attempt's output.
 export function runZigCc(args: string[], outPath: string, opts: ZigCcOptions = {}): SpawnRetryResult {
   // ZIG_GLOBAL_CACHE_DIR: repo-local by default (DEFAULT_ZIG_GLOBAL_CACHE_DIR
-  // above), UNLESS it is already set - by this call's own opts.env, or by
-  // the ambient process env this script itself was started with - in
-  // which case that choice is respected verbatim, wipe-on-failure
-  // included: a caller naming its own cache dir is taking responsibility
-  // for it being safe to wipe, the same way this file's own default is.
-  const globalCacheDir = opts.env?.ZIG_GLOBAL_CACHE_DIR ?? process.env.ZIG_GLOBAL_CACHE_DIR ?? DEFAULT_ZIG_GLOBAL_CACHE_DIR;
+  // above), UNLESS opts.useAmbientCache opts all the way out (see that
+  // field's own comment), or it is already set - by this call's own
+  // opts.env, or by the ambient process env this script itself was
+  // started with - in which case that choice is respected verbatim,
+  // wipe-on-timeout included: a caller naming its own cache dir is taking
+  // responsibility for it being safe to wipe, the same way this file's
+  // own default is. `globalCacheDir` is null exactly when
+  // useAmbientCache left ZIG_GLOBAL_CACHE_DIR out of the spawn's env
+  // entirely - there is then no single directory this file could safely
+  // wipe even if it wanted to (zig's own OS default is not this file's
+  // secret to compute or own).
+  const globalCacheDir = opts.useAmbientCache ? null : (opts.env?.ZIG_GLOBAL_CACHE_DIR ?? process.env.ZIG_GLOBAL_CACHE_DIR ?? DEFAULT_ZIG_GLOBAL_CACHE_DIR);
   // See this file's header comment (the fifth failure mode) and
   // relativizeArgs() above: every caller here builds args with absolute
   // paths (resolve()/join() from its own import.meta.dir), which this
@@ -344,7 +407,7 @@ export function runZigCc(args: string[], outPath: string, opts: ZigCcOptions = {
   const relativeArgs = relativizeArgs(args, cwd);
   return spawnWithRetry([ZIG_EXE, ...relativeArgs], {
     cwd,
-    env: { ...opts.env, ZIG_GLOBAL_CACHE_DIR: globalCacheDir },
+    env: globalCacheDir ? { ...opts.env, ZIG_GLOBAL_CACHE_DIR: globalCacheDir } : opts.env,
     timeoutMs: opts.timeoutMs,
     maxAttempts: opts.maxAttempts,
     beforeAttempt: () => {
@@ -356,16 +419,20 @@ export function runZigCc(args: string[], outPath: string, opts: ZigCcOptions = {
       }
     },
     artifactOk: () => artifactWritten(outPath, opts.isWasm ?? false),
-    // A silent failure (no diagnostics, no accepted artifact) can mean a
-    // POISONED cache entry a killed or colliding attempt left behind -
-    // see this file's header comment for what was actually found there.
-    // Wiping the whole cache is coarse (every object this repo has ever
-    // compiled, gone, so the next attempt recompiles from nothing) but
-    // correct is what matters here, not fast: a retry loop whose retries
-    // can never succeed because the SAME poisoned entry answers every one
-    // of them is worse than a slow recovery.
-    onSilentFailure: () => {
-      console.warn(`zig cc: silent failure, wiping the zig global cache at ${globalCacheDir} before the next attempt (a killed or colliding attempt can leave a poisoned entry there - see this file's header comment)`);
+    // Wipe ONLY on a timeout kill, not on every silent failure - see this
+    // file's header comment (the sixth failure mode) for the measurement:
+    // a plain silent exit is far more often the ordinary, already-handled
+    // flake than cache poisoning, and wiping on every one of them made a
+    // long, sanitized native link (which recompiles compiler-rt and the
+    // ubsan runtime from nothing every time the cache is emptied) far more
+    // likely to exhaust its whole retry budget than to ever land a clean
+    // attempt. A signal-killed attempt is the one shape this repo has
+    // actual evidence of poisoning for (an attempt caught mid-write), so
+    // that is the one case still worth the coarse, whole-cache wipe - and
+    // only when there is a globalCacheDir this file actually owns.
+    onSilentFailure: (wasTimeoutKill) => {
+      if (!wasTimeoutKill || !globalCacheDir) return;
+      console.warn(`zig cc: timeout kill, wiping the zig global cache at ${globalCacheDir} before the next attempt (a killed attempt can leave a poisoned entry there - see this file's header comment)`);
       try {
         rmSync(globalCacheDir, { recursive: true, force: true });
       } catch {

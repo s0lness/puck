@@ -98,8 +98,19 @@ same silent way, for the SAME fixture, every time - fixed by giving every
 zig spawn its own global cache under `.zig-global-cache/` (a sibling of the
 `.zig-cache/` zig uses as its local cache: nesting one inside the other made
 every compile exit 5 deterministically; private to this checkout, so
-no other project can poison it again) and wiping it on a silent failure,
-both in `tools/zigSpawn.ts`. `bun run
+no other project can poison it again) and wiping it ONLY after a timeout
+kill (the one shape this repo has actual evidence of poisoning for -
+wiping on every silent failure was measured to make things worse, below),
+both in `tools/zigSpawn.ts`. A fourth cause, bisected the same way: a
+repo-local cache starts EMPTY, and `harness/hostSide.ts`'s native,
+sanitized link needs to build compiler-rt and the ubsan runtime from
+nothing the first time, which an empty cache is measurably far more
+likely to exit 5 silently on than a cache warm from months of ordinary
+use - so that link opts out of the repo-local cache entirely
+(`useAmbientCache: true`) and uses zig's own OS default instead. See
+`tools/zigSpawn.ts`'s header comment (the sixth failure mode) for the
+measured counts; `test:hostile` stayed red across every variant this
+bisect tried and remains unexplained. `bun run
 pack:esp32:build` does the
 same for `packs/esp32-s3-touch-amoled-18/`, and `bun run pack:web:build`
 for `packs/web/`; `bun run pack:web:host` builds that pack's second mode
