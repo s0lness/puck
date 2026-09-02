@@ -8,9 +8,24 @@
 // with a date they typed by hand (apps/chrono/bundle.json's own "silicon"
 // block). This replaces that with the thing itself: the page just wrote
 // firmware to a board, so the page can run that app's own recorded trace on
-// that board and diff the frames against the same recorded frames
-// `bun run verify-bundle` compares against. Then the person can post the
-// verdict, and the card counts it.
+// that board and check the result the same way `bun run verify-bundle`
+// checks that port. Then the person can post the verdict, and the card
+// counts it.
+//
+// TWO KINDS OF CHECK, ONE WORD ONLY WHEN IT IS EARNED. A pixel-exact port
+// is diffed frame by frame against its own recorded frames; an invariants
+// port is put through its own bundle's invariants.ts, the same function,
+// bundled into this page. Both are runs a board performed, both are
+// counted, and the section says which one it ran rather than flattening
+// them into one word (docs/decisions/0011).
+//
+// AND AN UNANSWERED CHECK IS NOT A PASSED ONE. An invariant that applies to
+// this board but needs something a board does not report (fluidbox's
+// panel-push bound needs the emulator's push instrumentation) comes back
+// "unevaluable". The section shows it, says plainly that the run is
+// incomplete, and offers no post button: a verdict computed as though that
+// check had held would be the same kind of unbacked claim this whole step
+// exists to replace.
 //
 // It is deliberately a SEPARATE gesture from flashing, and stays visible
 // whether or not the flash happened in this tab: a board flashed five
@@ -21,9 +36,9 @@
 // WHAT IS POSTED, and it is worth being able to read the whole list at a
 // glance: the app name, the pack name, the sha256 of the artifact this page
 // fetched (computed here, from the bytes, not taken from the build), the
-// verdict, the per-point results, the board family, and today's date. There
-// is no identifier of any kind, no cookie is set or read, and nothing is
-// measured about the browser.
+// kind of check, the verdict, the per-point or per-invariant results, the
+// board family, and today's date. There is no identifier of any kind, no
+// cookie is set or read, and nothing is measured about the browser.
 
 import { WebSerialLink } from "../../harness/links/webSerialLink";
 import { onSections } from "../flasher/flash-ui-common";
@@ -47,27 +62,56 @@ function hide(node: HTMLElement | null): void {
   if (node) node.hidden = true;
 }
 
-/** MATCH/DIVERGE per capture point, in the order they were captured. */
-function renderPoints(list: HTMLElement, result: AttestResult): void {
+function row(mark: string, markClass: string, label: string, detail: string): HTMLLIElement {
+  const li = document.createElement("li");
+  li.className = `attest-point ${markClass}`;
+  const markEl = document.createElement("span");
+  markEl.className = "attest-point-mark";
+  markEl.textContent = mark;
+  const labelEl = document.createElement("span");
+  labelEl.className = "attest-point-label";
+  labelEl.textContent = label;
+  const detailEl = document.createElement("span");
+  detailEl.className = "attest-point-detail";
+  detailEl.textContent = detail;
+  li.append(markEl, labelEl, detailEl);
+  return li;
+}
+
+/**
+ * One row per check, in the order the run produced them: MATCH/DIVERGE per
+ * capture point for a pixel-exact run, PASS/FAIL/N/A/UNANSWERED per
+ * invariant for an invariants one. Either way the row carries the check's
+ * OWN number - "164864 pixels identical", "4789px differ, min required
+ * 1500px" - rather than a bare mark, because the number is what makes it a
+ * result instead of an assertion.
+ */
+function renderChecks(list: HTMLElement, result: AttestResult): void {
   list.textContent = "";
   for (const point of result.points) {
-    const li = document.createElement("li");
-    li.className = point.match ? "attest-point attest-point-match" : "attest-point attest-point-diverge";
-    const mark = document.createElement("span");
-    mark.className = "attest-point-mark";
-    mark.textContent = point.match ? "MATCH" : "DIVERGE";
-    const label = document.createElement("span");
-    label.className = "attest-point-label";
-    label.textContent = `${point.trace} at ${point.atMs}ms`;
-    const detail = document.createElement("span");
-    detail.className = "attest-point-detail";
-    // A matching frame's own number is worth printing: "164864 pixels
-    // identical" is a different claim from "no error was reported".
-    detail.textContent = point.match
-      ? `${point.totalPixels} pixels identical`
-      : `${point.diffPixels}/${point.totalPixels} pixels differ`;
-    li.append(mark, label, detail);
-    list.appendChild(li);
+    list.appendChild(
+      row(
+        point.match ? "MATCH" : "DIVERGE",
+        point.match ? "attest-point-match" : "attest-point-diverge",
+        `${point.trace} at ${point.atMs}ms`,
+        // A matching frame's own number is worth printing: "164864 pixels
+        // identical" is a different claim from "no error was reported".
+        point.match ? `${point.totalPixels} pixels identical` : `${point.diffPixels}/${point.totalPixels} pixels differ`
+      )
+    );
+  }
+  for (const inv of result.invariants) {
+    const mark =
+      inv.status === "pass" ? "PASS" : inv.status === "fail" ? "FAIL" : inv.status === "skip" ? "N/A" : "UNANSWERED";
+    const cls =
+      inv.status === "pass"
+        ? "attest-point-match"
+        : inv.status === "fail"
+          ? "attest-point-diverge"
+          : inv.status === "skip"
+            ? "attest-point-skip"
+            : "attest-point-unevaluable";
+    list.appendChild(row(mark, cls, inv.name, inv.message));
   }
   list.hidden = false;
 }
@@ -96,6 +140,30 @@ function resolveFramesBase(planUrl: string, framesBase: string): string {
   return new URL(framesBase, new URL(planUrl, window.location.href)).href;
 }
 
+/** The one sentence under the run: what happened, in the vocabulary of the check that ran. */
+function verdictSentence(result: AttestResult): string {
+  if (result.kind === "pixel-exact") {
+    const matched = result.points.filter((p) => p.match).length;
+    return result.verdict === "match"
+      ? `✓ Runs on this board: ${matched}/${result.points.length} frames matched the recorded ones, pixel for pixel.`
+      : `This board drew something else: ${result.points.length - matched}/${result.points.length} frames diverged. That is a result worth posting too.`;
+  }
+  const held = result.invariants.filter((i) => i.status === "pass").length;
+  const failed = result.invariants.filter((i) => i.status === "fail");
+  if (result.incomplete) {
+    const unanswered = result.invariants.filter((i) => i.status === "unevaluable");
+    return (
+      `This run is incomplete: ${unanswered.map((i) => i.name).join(", ")} cannot be answered by a board, only by the emulator. ` +
+      `Nothing is posted, because a verdict that counted an unanswered check as a passed one would be a claim this run cannot support.`
+    );
+  }
+  return result.verdict === "match"
+    ? `✓ Runs on this board: all ${held} of this port's own invariants held on the frames it drew.`
+    : `This board behaves differently: ${failed.length} of this port's own invariants failed (${failed
+        .map((i) => i.name)
+        .join(", ")}). That is a result worth posting too.`;
+}
+
 function wireAttestSection(section: HTMLElement): void {
   const planUrl = section.dataset.attestPlan;
   if (!planUrl) return;
@@ -122,14 +190,15 @@ function wireAttestSection(section: HTMLElement): void {
     pending = null;
     runBtn!.disabled = true;
     show(progressEl);
-    statusEl!.textContent = "Loading this port's recorded frames…";
+    statusEl!.textContent = "Loading this port's own trace…";
 
     try {
       if (!navigator.serial) {
         throw new Error("Web Serial isn't available in this browser, so a board can't be driven from this page. Use Chrome or Edge on desktop.");
       }
-      const plan = await loadPlan(planUrl!);
-      const framesBase = resolveFramesBase(planUrl!, plan.framesBase);
+      const loaded = await loadPlan(planUrl!);
+      const plan: AttestPlan =
+        loaded.kind === "pixel-exact" ? { ...loaded, framesBase: resolveFramesBase(planUrl!, loaded.framesBase) } : loaded;
 
       // The port picker is opened from inside this click, which is the user
       // gesture Web Serial requires. Everything before it is a same-origin
@@ -140,33 +209,36 @@ function wireAttestSection(section: HTMLElement): void {
       });
 
       const result = await runAttestation({
-        plan: { ...plan, framesBase },
+        plan,
         link,
         report: (p) => {
           statusEl!.textContent = p.message;
         },
       });
 
-      renderPoints(pointsEl!, result);
-      const matched = result.points.filter((p) => p.match).length;
-      verdictEl!.className = result.verdict === "match" ? "attest-verdict attest-verdict-match" : "attest-verdict attest-verdict-diverge";
-      show(
-        verdictEl,
-        result.verdict === "match"
-          ? `✓ Runs on this board: ${matched}/${result.points.length} frames matched the recorded ones, pixel for pixel.`
-          : `This board drew something else: ${result.points.length - matched}/${result.points.length} frames diverged. That is a result worth posting too.`
-      );
+      renderChecks(pointsEl!, result);
+      verdictEl!.className = result.incomplete
+        ? "attest-verdict attest-verdict-incomplete"
+        : result.verdict === "match"
+          ? "attest-verdict attest-verdict-match"
+          : "attest-verdict attest-verdict-diverge";
+      show(verdictEl, verdictSentence(result));
       hide(progressEl);
+
+      // An incomplete run is shown in full and stops here: there is nothing
+      // to hash and nothing to post. See this file's header.
+      if (result.incomplete) return;
 
       const portSha = await fetchArtifactSha(planUrl!, plan.artifact);
       pending = {
         app: plan.app,
         pack: plan.pack,
         portSha,
+        kind: result.kind,
         verdict: result.verdict,
-        points: result.points,
         boardFamily: plan.boardFamily,
         date: todayISO(),
+        ...(result.kind === "pixel-exact" ? { points: result.points } : { invariants: result.invariants }),
       };
       show(postWrap!);
     } catch (err) {

@@ -21,6 +21,16 @@
 // (see site/attest/plan.ts's AttestPost), and no cookie is set or read by
 // any of it.
 
+/** The two kinds of check a board can be put through. Same strings as site/attest/plan.ts's AttestKind. */
+export type AttestationKind = "pixel-exact" | "invariants";
+export const ATTESTATION_KINDS: AttestationKind[] = ["pixel-exact", "invariants"];
+
+/** How one kind of check has gone for one app+pack pair. */
+export interface AttestationKindCount {
+  confirmations: number;
+  diverged: number;
+}
+
 /** One app+pack pair's standing, as GET /api/attest reports it. */
 export interface AttestationCount {
   app: string;
@@ -37,6 +47,15 @@ export interface AttestationCount {
   lastConfirmedAt: string | null;
   /** Runs that came back diverged. Shown nowhere yet; carried so a card can stop lying by omission later. */
   diverged: number;
+  /**
+   * The same two numbers again, split by which kind of check produced them.
+   * `confirmations` above is their sum, and that is the point: a pixel diff
+   * and a bundle's own invariants are both runs a board performed, so they
+   * are counted together. They are named apart here because they are not
+   * the same claim, and a card that could only ever say one number would be
+   * unable to tell a reader which claim its number is about.
+   */
+  kinds: Record<AttestationKind, AttestationKindCount>;
 }
 
 export interface AttestationIndex {
@@ -75,12 +94,26 @@ export async function fetchAttestations(endpoint = "/api/attest"): Promise<Attes
     if (!value || typeof value !== "object") continue;
     const v = value as Partial<AttestationCount>;
     if (typeof v.confirmations !== "number") continue;
+    // An endpoint that predates the per-kind split (or a hand-written one)
+    // simply has no `kinds`, and a missing breakdown reads as zeroes rather
+    // than as a broken response: the total is still true, and the only
+    // thing lost is the suffix naming which kind confirmed it.
+    const rawKinds = (v as { kinds?: Record<string, unknown> }).kinds ?? {};
+    const kinds = {} as Record<AttestationKind, AttestationKindCount>;
+    for (const kind of ATTESTATION_KINDS) {
+      const entry = (rawKinds as Record<string, { confirmations?: unknown; diverged?: unknown }>)[kind];
+      kinds[kind] = {
+        confirmations: typeof entry?.confirmations === "number" ? entry.confirmations : 0,
+        diverged: typeof entry?.diverged === "number" ? entry.diverged : 0,
+      };
+    }
     out[key] = {
       app: typeof v.app === "string" ? v.app : key.split(":")[0]!,
       pack: typeof v.pack === "string" ? v.pack : key.split(":").slice(1).join(":"),
       confirmations: v.confirmations,
       lastConfirmedAt: typeof v.lastConfirmedAt === "string" ? v.lastConfirmedAt : null,
       diverged: typeof v.diverged === "number" ? v.diverged : 0,
+      kinds,
     };
   }
   return { counts: out };
@@ -118,8 +151,31 @@ export function describeAge(lastConfirmedAt: string | null, now = new Date()): s
 export function describeAttestation(count: AttestationCount | undefined | null): string {
   if (!count || count.confirmations === 0) return ATTEST_EMPTY_STATE;
   const runs = count.confirmations === 1 ? "1 confirmation" : `${count.confirmations} confirmations`;
+  const kind = describeKinds(count);
   const age = describeAge(count.lastConfirmedAt);
-  return age ? `${runs} · ${age}` : runs;
+  return [kind ? `${runs} (${kind})` : runs, age].filter(Boolean).join(" · ");
+}
+
+/**
+ * Which kind of check confirmed this port, said only when it needs saying.
+ *
+ * A port is verified ONE way at a time, so almost every card's runs are all
+ * of one kind and naming it would be noise on every card in the gallery. It
+ * stops being noise the moment a card holds runs of BOTH kinds, which is
+ * what a port re-verified the other way looks like from here (a bundle
+ * moved from an adaptation's invariants to a faithful port's pixel
+ * identity, or the reverse): the two are then different claims sharing one
+ * number, and a reader has to be told which one the confirmations are.
+ *
+ * "confirmed" is never softened by this: a kind with zero confirmations is
+ * simply not named, and a card whose only runs of one kind diverged says so
+ * by leaving that kind out.
+ */
+function describeKinds(count: AttestationCount): string {
+  const seen = ATTESTATION_KINDS.filter((k) => count.kinds[k].confirmations > 0 || count.kinds[k].diverged > 0);
+  if (seen.length < 2) return "";
+  const confirmed = ATTESTATION_KINDS.filter((k) => count.kinds[k].confirmations > 0);
+  return confirmed.join(" and ");
 }
 
 /**

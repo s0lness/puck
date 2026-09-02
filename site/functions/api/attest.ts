@@ -16,11 +16,24 @@
 //
 // WHAT THIS ENDPOINT KNOWS ABOUT THE PERSON USING IT: nothing that outlives
 // a minute, and nothing that is ever stored next to an attestation. The
-// record it writes carries an app name, a pack name, an artifact hash, a
-// verdict, per-point pixel counts, and a board family (site/attest/plan.ts's
-// AttestPost). It reads no cookie and sets no cookie. The one exception is
-// the rate-limit key, and it is deliberately shaped so it cannot become
-// anything else: see "the rate limit" below.
+// record it writes carries an app name, a pack name, an artifact hash, the
+// kind of check, a verdict, that check's own per-point or per-invariant
+// results, and a board family (site/attest/plan.ts's AttestPost). It reads
+// no cookie and sets no cookie. The one exception is the rate-limit key,
+// and it is deliberately shaped so it cannot become anything else: see
+// "the rate limit" below.
+//
+// TWO KINDS OF EVIDENCE, ONE COUNTER, AND NEITHER ALLOWED TO STAND IN FOR
+// THE OTHER. A "pixel-exact" post carries per-capture-point pixel counts; an
+// "invariants" post carries the outcome of each of that bundle's own
+// invariants. The summary adds both kinds up (they are both runs a board
+// performed) and keeps a per-kind breakdown beside the total (they are not
+// the same claim). Two rules keep a record from asserting more than its own
+// evidence: a verdict must agree with the results it claims to summarise -
+// the rule that was already here, now written for both shapes - and an
+// invariant that could not be answered at all may not appear in a posted
+// record. site/attest/ never posts such a run; this refuses it a second
+// time, because an endpoint is where a claim actually becomes public.
 //
 // THE DATE IS STAMPED HERE, NOT ACCEPTED. The body carries the browser's own
 // date because a person reading their own posted record should see what
@@ -67,6 +80,23 @@ interface FunctionContext {
 
 type Verdict = "match" | "diverge";
 type BoardFamily = "rp2350" | "esp32";
+type Kind = "pixel-exact" | "invariants";
+const KINDS: Kind[] = ["pixel-exact", "invariants"];
+
+/**
+ * An invariant's status, as harness/invariantTypes.ts defines it. Only three
+ * of the four may be posted: "unevaluable" means the run had a hole in it,
+ * and a record carrying one would be a public claim with an unanswered
+ * check inside it.
+ */
+type InvariantStatus = "pass" | "fail" | "skip";
+
+interface InvariantResult {
+  id: string;
+  name: string;
+  status: InvariantStatus;
+  message: string;
+}
 
 interface PointResult {
   trace: string;
@@ -80,20 +110,41 @@ interface AttestBody {
   app: string;
   pack: string;
   portSha: string;
+  kind: Kind;
   verdict: Verdict;
-  points: PointResult[];
+  /** Exactly one of these two, per `kind`. */
+  points?: PointResult[];
+  invariants?: InvariantResult[];
   boardFamily: BoardFamily;
   date: string;
 }
 
+interface KindTally {
+  count: number;
+  diverged: number;
+}
+
 /** The value (and the list metadata) under a summary key. */
 interface Summary {
-  /** Matching runs. Confirmations, never boards: nothing here identifies a board. */
+  /** Matching runs, both kinds together. Confirmations, never boards: nothing here identifies a board. */
   count: number;
   /** Runs that came back diverged. Kept because a divergence is evidence, not a discarded failure. */
   diverged: number;
   /** Server-stamped UTC date of the most recent MATCHING run, or null. */
   lastConfirmedAt: string | null;
+  /**
+   * The same two numbers per kind. Small enough to ride in the key's
+   * metadata beside the total (KV allows 1 KB there and this is under a
+   * hundred bytes), which is what keeps rendering every card's counter one
+   * list call. A summary written before this field existed simply has none,
+   * and readKinds below treats that as zeroes rather than as corruption:
+   * the total was true then and stays true.
+   */
+  kinds?: Record<Kind, KindTally>;
+}
+
+function emptyKinds(): Record<Kind, KindTally> {
+  return { "pixel-exact": { count: 0, diverged: 0 }, invariants: { count: 0, diverged: 0 } };
 }
 
 const EMPTY_SUMMARY: Summary = { count: 0, diverged: 0, lastConfirmedAt: null };
@@ -108,6 +159,12 @@ const SHA_RE = /^[0-9a-f]{64}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_POINTS = 64;
 const MAX_TRACE_NAME = 128;
+// A bundle states its invariants in its own checker file; the largest in
+// this repository has eight. 32 is generous and still bounds a body.
+const MAX_INVARIANTS = 32;
+// An invariant's message carries its own measured numbers, which is the
+// point of storing it; it is a sentence, not a report.
+const MAX_INVARIANT_TEXT = 400;
 // A real body for the largest bundle in this repository is a couple of
 // hundred bytes. 4 KB is generous by an order of magnitude and still bounds
 // what one request can push into KV.
@@ -156,9 +213,19 @@ function parseBody(raw: unknown): AttestBody | string {
   if (typeof b.app !== "string" || !NAME_RE.test(b.app)) return "app must be a registry.json app name";
   if (typeof b.pack !== "string" || !NAME_RE.test(b.pack)) return "pack must be a registry.json pack name";
   if (typeof b.portSha !== "string" || !SHA_RE.test(b.portSha)) return "portSha must be the artifact's sha256 as 64 hex characters";
+  if (b.kind !== "pixel-exact" && b.kind !== "invariants") return 'kind must be "pixel-exact" or "invariants"';
   if (b.verdict !== "match" && b.verdict !== "diverge") return 'verdict must be "match" or "diverge"';
   if (b.boardFamily !== "rp2350" && b.boardFamily !== "esp32") return 'boardFamily must be "rp2350" or "esp32"';
   if (typeof b.date !== "string" || !DATE_RE.test(b.date)) return "date must be YYYY-MM-DD";
+
+  // Each kind carries its own evidence and only its own: a post holding
+  // both, or holding the other kind's, is a body whose shape does not agree
+  // with what it says it is.
+  if (b.kind === "invariants") {
+    if (b.points !== undefined) return 'a "invariants" post carries invariants, not points';
+    return parseInvariantsBody(b);
+  }
+  if (b.invariants !== undefined) return 'a "pixel-exact" post carries points, not invariants';
   if (!Array.isArray(b.points) || b.points.length === 0) return "points must be a non-empty array of capture-point results";
   if (b.points.length > MAX_POINTS) return `points must hold at most ${MAX_POINTS} entries`;
 
@@ -191,10 +258,70 @@ function parseBody(raw: unknown): AttestBody | string {
     app: b.app,
     pack: b.pack,
     portSha: b.portSha,
+    kind: "pixel-exact",
     verdict: b.verdict,
     points,
     boardFamily: b.boardFamily,
     date: b.date,
+  };
+}
+
+/**
+ * The invariants half of parseBody, split out so neither shape's validation
+ * has to be read around the other's. Called only once `kind`, `verdict`,
+ * `boardFamily`, `date`, `app`, `pack` and `portSha` are already good.
+ *
+ * "unevaluable" is refused by name rather than ignored: it is the one
+ * status that means the run did not answer the question, and a stored
+ * record holding one would be a confirmation with a hole in it. The page
+ * does not post such a run at all (site/attest/attest-ui.ts); this is the
+ * same refusal at the point where the claim would become public.
+ */
+function parseInvariantsBody(b: Record<string, unknown>): AttestBody | string {
+  if (!Array.isArray(b.invariants) || b.invariants.length === 0) return "invariants must be a non-empty array of invariant outcomes";
+  if (b.invariants.length > MAX_INVARIANTS) return `invariants must hold at most ${MAX_INVARIANTS} entries`;
+
+  const invariants: InvariantResult[] = [];
+  for (const entry of b.invariants) {
+    if (!entry || typeof entry !== "object") return "every invariant must be an object";
+    const i = entry as Record<string, unknown>;
+    if (typeof i.id !== "string" || !NAME_RE.test(i.id)) return "every invariant needs an id the checker gave it";
+    if (typeof i.name !== "string" || i.name.length === 0 || i.name.length > MAX_INVARIANT_TEXT) return "every invariant needs a name";
+    if (i.status === "unevaluable") {
+      return (
+        `the invariant "${i.id}" could not be evaluated on this run, so this result cannot be posted: ` +
+        `a confirmation that counted an unanswered check as a passed one would claim more than the run showed`
+      );
+    }
+    if (i.status !== "pass" && i.status !== "fail" && i.status !== "skip") return 'every invariant needs a status of "pass", "fail" or "skip"';
+    if (typeof i.message !== "string" || i.message.length === 0 || i.message.length > MAX_INVARIANT_TEXT) {
+      return `every invariant needs its own message, at most ${MAX_INVARIANT_TEXT} characters`;
+    }
+    invariants.push({ id: i.id, name: i.name, status: i.status, message: i.message });
+  }
+
+  // The same rule the pixel-exact side has always had, in this shape's own
+  // vocabulary: a "skip" is not a failure (that invariant was never about
+  // this device), so a match is "nothing failed" and a divergence is "at
+  // least one did".
+  const nothingFailed = invariants.every((i) => i.status !== "fail");
+  if ((b.verdict === "match") !== nothingFailed) {
+    return 'verdict "match" requires every invariant to have held, and "diverge" requires at least one that did not';
+  }
+  // A record whose every invariant was skipped would confirm nothing at all.
+  if (invariants.every((i) => i.status === "skip")) {
+    return "every invariant was skipped on this device, so this run confirms nothing and is not a confirmation to post";
+  }
+
+  return {
+    app: b.app as string,
+    pack: b.pack as string,
+    portSha: b.portSha as string,
+    kind: "invariants",
+    verdict: b.verdict as Verdict,
+    invariants,
+    boardFamily: b.boardFamily as BoardFamily,
+    date: b.date as string,
   };
 }
 
@@ -277,8 +404,9 @@ export async function onRequestPost(context: FunctionContext): Promise<Response>
     app: parsed.app,
     pack: parsed.pack,
     portSha: parsed.portSha,
+    kind: parsed.kind,
     verdict: parsed.verdict,
-    points: parsed.points,
+    ...(parsed.kind === "pixel-exact" ? { points: parsed.points } : { invariants: parsed.invariants }),
     boardFamily: parsed.boardFamily,
     confirmedAt,
     clientDate: parsed.date,
@@ -306,28 +434,48 @@ export async function onRequestPost(context: FunctionContext): Promise<Response>
         count: typeof prev.count === "number" ? prev.count : 0,
         diverged: typeof prev.diverged === "number" ? prev.diverged : 0,
         lastConfirmedAt: typeof prev.lastConfirmedAt === "string" ? prev.lastConfirmedAt : null,
+        kinds: readKinds(prev.kinds),
       };
     } catch {
       // A corrupt summary is recoverable (it is derived data); starting it
       // over is better than refusing the post that found it.
     }
   }
+  const kinds = readKinds(summary.kinds);
   if (parsed.verdict === "match") {
     summary.count++;
+    kinds[parsed.kind].count++;
     if (!summary.lastConfirmedAt || confirmedAt > summary.lastConfirmedAt) summary.lastConfirmedAt = confirmedAt;
   } else {
     summary.diverged++;
+    kinds[parsed.kind].diverged++;
   }
+  summary.kinds = kinds;
   // The metadata copy is what the listing below reads, so rendering every
   // card's counter is one list call rather than a get per app+pack.
   await kv.put(key, JSON.stringify(summary), { metadata: summary });
 
   if (rateKey) await kv.put(rateKey, "1", { expirationTtl: RATE_LIMIT_SECONDS });
 
-  return json({ recorded: true, app: parsed.app, pack: parsed.pack, verdict: parsed.verdict }, 201);
+  return json({ recorded: true, app: parsed.app, pack: parsed.pack, kind: parsed.kind, verdict: parsed.verdict }, 201);
+}
+
+/** A stored (or absent, or corrupt) per-kind breakdown, read back as numbers. */
+function readKinds(raw: unknown): Record<Kind, KindTally> {
+  const out = emptyKinds();
+  if (!raw || typeof raw !== "object") return out;
+  for (const kind of KINDS) {
+    const entry = (raw as Record<string, { count?: unknown; diverged?: unknown }>)[kind];
+    out[kind] = {
+      count: typeof entry?.count === "number" ? entry.count : 0,
+      diverged: typeof entry?.diverged === "number" ? entry.diverged : 0,
+    };
+  }
+  return out;
 }
 
 function countEntry(app: string, pack: string, summary: Summary): Record<string, unknown> {
+  const kinds = readKinds(summary.kinds);
   return {
     app,
     pack,
@@ -338,6 +486,14 @@ function countEntry(app: string, pack: string, summary: Summary): Record<string,
     confirmations: summary.count,
     diverged: summary.diverged,
     lastConfirmedAt: summary.lastConfirmedAt,
+    // The same two numbers again, split by which kind of check produced
+    // them. The total above is their sum: both kinds are runs a board
+    // performed. This is what lets a card name the kind when a port holds
+    // runs of both (site/attest-client.ts's describeKinds).
+    kinds: {
+      "pixel-exact": { confirmations: kinds["pixel-exact"].count, diverged: kinds["pixel-exact"].diverged },
+      invariants: { confirmations: kinds.invariants.count, diverged: kinds.invariants.diverged },
+    },
   };
 }
 
@@ -361,6 +517,7 @@ export async function onRequestGet(context: FunctionContext): Promise<Response> 
           count: typeof parsed.count === "number" ? parsed.count : 0,
           diverged: typeof parsed.diverged === "number" ? parsed.diverged : 0,
           lastConfirmedAt: typeof parsed.lastConfirmedAt === "string" ? parsed.lastConfirmedAt : null,
+          kinds: readKinds(parsed.kinds),
         };
       } catch {
         // fall through to the empty summary: an unreadable derived value is
@@ -391,6 +548,7 @@ export async function onRequestGet(context: FunctionContext): Promise<Response> 
         count: typeof m?.count === "number" ? m.count : 0,
         diverged: typeof m?.diverged === "number" ? m.diverged : 0,
         lastConfirmedAt: typeof m?.lastConfirmedAt === "string" ? m.lastConfirmedAt : null,
+        kinds: readKinds(m?.kinds),
       };
       counts[`${entryApp}:${entryPack}`] = countEntry(entryApp, entryPack, summary);
     }

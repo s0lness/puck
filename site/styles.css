@@ -500,9 +500,19 @@ footer { padding: 30px 0 60px; color: var(--text-soft); font-size: 0.85rem; bord
 .attest-points { list-style: none; margin: 14px 0 0; padding: 0; font-size: 0.85rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .attest-point { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--border); }
 .attest-point:last-child { border-bottom: 0; }
-.attest-point-mark { font-weight: 700; min-width: 7ch; }
+/* 11ch, not 7: the invariants rows read PASS / FAIL / N/A / UNANSWERED,
+   and the longest of those is what the column has to fit before the names
+   stop lining up. */
+.attest-point-mark { font-weight: 700; min-width: 11ch; }
 .attest-point-match .attest-point-mark { color: var(--success); }
 .attest-point-diverge .attest-point-mark { color: var(--accent); }
+/* An invariant that was never about this device (N/A) is quiet: nothing
+   went unanswered, so it must not read like something did. An invariant
+   this board cannot answer (UNANSWERED) is the opposite - it is the reason
+   the run is not postable - so it carries the same accent a divergence
+   does, plus its own weight. */
+.attest-point-skip .attest-point-mark { color: var(--text-soft); font-weight: 400; }
+.attest-point-unevaluable .attest-point-mark { color: var(--accent); }
 .attest-point-label { color: var(--text); }
 .attest-point-detail { color: var(--text-soft); }
 
@@ -520,6 +530,11 @@ footer { padding: 30px 0 60px; color: var(--text-soft); font-size: 0.85rem; bord
    this silicon and it is worth posting. So it gets the accent, not the
    error card's muted grey, and never a red. */
 .attest-verdict-diverge { border-color: var(--accent); color: var(--accent); }
+/* An incomplete run is neither: the board did answer every check it could,
+   and one check it could not. Same accent as a divergence (this is a
+   result, not an error) with the plain text colour, because the sentence
+   next to it is an explanation rather than a verdict. */
+.attest-verdict-incomplete { border-color: var(--accent); color: var(--text); }
 .attest-post { margin-top: 14px; }
 .attest-posted { margin-top: 12px; color: var(--success); font-size: 0.88rem; font-weight: 600; }
 .attest-error {

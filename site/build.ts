@@ -44,6 +44,14 @@ import { createHash } from "node:crypto";
 // with no /api/attest behind it never flashes a placeholder), and the
 // client rewrites the same node once the counts arrive.
 import { ATTEST_EMPTY_STATE } from "./attest-client";
+// The SAME table site/dist/flash/attest.js is built around
+// (site/attest/checkers.ts). Imported here so buildAttestPlans can look
+// a bundle's own checker path up at BUILD time and refuse to emit a plan
+// the page could not run - the alternative is a button that loads, opens
+// somebody's port, replays a trace on their board and then discovers it
+// has nothing to check the result with.
+import { INVARIANT_CHECKERS } from "./attest/checkers";
+import type { DeviceDescriptor } from "../src/wasm";
 
 const SITE_DIR = import.meta.dir;
 const REPO_ROOT = resolve(SITE_DIR, "..");
@@ -97,12 +105,13 @@ interface Registry {
 interface BundlePort {
   pack: string;
   mode: string;
-  // Read down to the "kind" discriminator plus, for a pixel-exact port
-  // only, the two fields the attestation step needs to emit a plan (the
-  // traces it replays and the directory its recorded frames live in). Both
-  // are optional here because an invariants port carries neither, and this
-  // generator has to read both shapes without knowing which it has.
-  verification: { kind: string; traces?: string[]; frames?: string };
+  // Read down to the "kind" discriminator plus the fields the attestation
+  // step needs to emit a plan of that kind: a pixel-exact port's traces and
+  // recorded-frame directory, or an invariants port's checker, trace and
+  // capture points. All optional here because the two shapes carry
+  // different ones, and this generator has to read both without knowing
+  // which it has until it looks at "kind".
+  verification: { kind: string; traces?: string[]; frames?: string; checker?: string; trace?: string; captureAt?: number[] };
   source: string;
   // Optional, beyond the bundle schema's minimal shape (documented in
   // app-bundle.md alongside "buildArgs"): the porting flow's own
@@ -126,12 +135,16 @@ interface ProvenEntry {
   mode: string;
   verification: string;
   degraded: boolean;
-  // Only a pixel-exact port has these, and only a pixel-exact port can be
-  // attested on a board: the attestation replays the bundle's own traces
-  // and diffs against the bundle's own recorded frames, which is exactly
-  // what an invariants port does not have.
+  // A pixel-exact port's own inputs: the traces to replay, and the
+  // directory holding the frames to diff against.
   traces: string[] | null;
   framesDir: string | null;
+  // An invariants port's own inputs: the checker that owns the checks, the
+  // trace to replay, and the moments the checker's contract is written
+  // against. A port has one set or the other, never both.
+  checker: string | null;
+  invariantTrace: string | null;
+  captureAt: number[] | null;
 }
 
 function readJson<T>(path: string): T {
@@ -170,6 +183,14 @@ const packButtons = new Map<string, PackButton[]>();
 // is only possible because none of those three ever asks whether a target
 // has firmware. That is the whole "a silhouette runs, it does not draw"
 // claim, spelled out in code rather than in prose.
+// The whole device.json, kept as read, for the ONE consumer that needs more
+// than a field or two of it: an invariants attestation plan carries it as
+// the checker's own meta.device, because a checker reads the device the
+// same way every other consumer in this repository does (a checker may key
+// a bound on the device's name - fluidbox does) and a board reports only
+// its panel geometry over devlink. The pack's own declaration is what the
+// firmware was built against, and the page checks the board against it.
+const packDevice = new Map<string, DeviceDescriptor>();
 for (const p of [...registry.packs, ...(registry.silhouettes ?? [])]) {
   const device = readJson<{
     name?: string;
@@ -177,6 +198,7 @@ for (const p of [...registry.packs, ...(registry.silhouettes ?? [])]) {
     sensors?: { id: string; kind: string }[];
     buttons?: { edge: "left" | "right" | "top" | "bottom"; at: number }[];
   }>(join(REPO_ROOT, p.path, "device.json"));
+  packDevice.set(p.name, readJson<DeviceDescriptor>(join(REPO_ROOT, p.path, "device.json")));
   packLabel.set(p.name, device.name || p.name);
   if (device.panel) packPanel.set(p.name, device.panel);
   packHasVectorSensor.set(p.name, (device.sensors || []).some((sensor) => sensor.kind === "vector" || sensor.kind === "gravity"));
@@ -351,6 +373,12 @@ const apps: AppEntry[] = ledgerApps.map((a) => {
       degraded: cell.port.declaredVerdict === "degraded",
       traces: bundlePort?.verification.kind === "pixel-exact" && Array.isArray(bundlePort.verification.traces) ? bundlePort.verification.traces : null,
       framesDir: bundlePort?.verification.kind === "pixel-exact" && bundlePort.verification.frames ? bundlePort.verification.frames : null,
+      checker: bundlePort?.verification.kind === "invariants" && bundlePort.verification.checker ? bundlePort.verification.checker : null,
+      invariantTrace: bundlePort?.verification.kind === "invariants" && bundlePort.verification.trace ? bundlePort.verification.trace : null,
+      captureAt:
+        bundlePort?.verification.kind === "invariants" && Array.isArray(bundlePort.verification.captureAt)
+          ? bundlePort.verification.captureAt
+          : null,
     });
   }
   return { name: a.name, path: a.path, url: a.url, provenance: a.provenance, external: a.kind !== "local", proven };
@@ -787,18 +815,29 @@ const ESP32_MANIFEST = readEsp32Manifest();
 //   1. This page can flash it (an .uf2 in FLASH_ARTIFACTS, or an image in
 //      the ESP32 artifact index). A verdict about firmware the visitor
 //      could not have put on the board is not evidence about anything.
-//   2. Its bundle port is verified pixel-exact, so it HAS recorded frames.
-//      An invariants port has a checker, not frames; asking a board to
-//      confirm it would mean inventing a second, weaker check here and
-//      calling the two by one name.
+//   2. Its bundle port is verified in a way a board can be put through:
+//      pixel-exact (it has recorded frames to diff against) or invariants
+//      (it has a checker, and this gallery carries that checker - see the
+//      INVARIANT_CHECKERS lookup below).
 // Everything else gets no plan and no button, rather than a button that
 // would have to lie about what it proved.
 //
-// The capture points come from the frames directory's own
-// <trace-stem>.t<ms>.png filenames, which is the SAME rule
-// harness/portdiff.ts's verifyPortFrames() applies. Restating a capture
-// point list here would be a second source of truth for which moments a
-// port is checked at.
+// BOTH KINDS, NOT ONE, and that is this step's own change. Until now only a
+// pixel-exact port got a plan, on the argument that running "a different,
+// weaker check under the same word would make two different things share
+// one number on a card" (docs/decisions/0011). The word is what was wrong
+// there, not the check: an invariants port IS verified, by its own
+// bundle's own checker, and a board can be put through that same function.
+// So both get a plan, the plan says which kind it is, and every surface
+// downstream carries the kind rather than flattening it - see that
+// decision's own addendum.
+//
+// The capture points come from each kind's own source of truth, never from
+// a list restated here: a pixel-exact port's from the frames directory's
+// <trace-stem>.t<ms>.png filenames (the SAME rule harness/portdiff.ts's
+// verifyPortFrames() applies), an invariants port's from its bundle.json's
+// own verification.captureAt (the SAME array tools/verify-bundle.ts hands
+// runInvariants).
 const ATTEST_DIR_NAME = "attest";
 
 // Which browser flashing path a pack's board uses, and therefore how its
@@ -817,8 +856,16 @@ interface AttestPlanTrace {
   points: { atMs: number; frame: string }[];
 }
 
+interface AttestPlanInvariantTrace {
+  name: string;
+  events: unknown[];
+  captureAt: number[];
+}
+
 /** Combo ids that got a plan, read back by writeRunPage to decide whether to render the section. */
 const attestPlans = new Set<string>();
+/** Which kind of plan each of those got, read back by renderAttestSection for its intro line. */
+const attestKinds = new Map<string, "pixel-exact" | "invariants">();
 
 function attestArtifactHref(combo: Combo): string | null {
   const uf2 = FLASH_ARTIFACTS[combo.id];
@@ -828,17 +875,34 @@ function attestArtifactHref(combo: Combo): string | null {
   return null;
 }
 
+/** The stem a bundle's trace path is known by, on both sides of the wire. */
+function traceStem(tracePath: string): string {
+  return tracePath.split(/[\\/]/).pop()!.replace(/\.trace\.json$|\.json$/, "");
+}
+
+function writeAttestPlan(comboId: string, plan: Record<string, unknown>, what: string): void {
+  writeFileSync(join(DIST, ATTEST_DIR_NAME, `${comboId}.json`), JSON.stringify(plan, null, 2) + "\n");
+  attestPlans.add(comboId);
+  attestKinds.set(comboId, plan.kind as "pixel-exact" | "invariants");
+  console.log(`wrote -> site/dist/${ATTEST_DIR_NAME}/${comboId}.json (${what})`);
+}
+
 function buildAttestPlans(): void {
   const outDir = join(DIST, ATTEST_DIR_NAME);
   mkdirSync(outDir, { recursive: true });
 
   for (const combo of combos) {
     const entry = combo.proven;
-    if (!entry.traces || !entry.framesDir) continue;
     const artifact = attestArtifactHref(combo);
     if (!artifact) continue;
     const board = PACK_BOARD_FAMILY[combo.pack];
     if (!board) continue;
+
+    if (entry.checker) {
+      buildInvariantsPlan(combo, artifact, board);
+      continue;
+    }
+    if (!entry.traces || !entry.framesDir) continue;
 
     const framesSrc = join(REPO_ROOT, entry.framesDir);
     if (!existsSync(framesSrc)) continue;
@@ -851,7 +915,7 @@ function buildAttestPlans(): void {
       if (!existsSync(abs)) {
         throw new Error(`${combo.appPath}/bundle.json names the trace ${tracePath}, which does not exist`);
       }
-      const stem = tracePath.split(/[\\/]/).pop()!.replace(/\.trace\.json$|\.json$/, "");
+      const stem = traceStem(tracePath);
       const escaped = stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const frameRe = new RegExp(`^${escaped}\\.t(\\d+)\\.png$`);
       const points: { atMs: number; frame: string }[] = [];
@@ -872,6 +936,7 @@ function buildAttestPlans(): void {
       combo: combo.id,
       app: combo.app,
       pack: combo.pack,
+      kind: "pixel-exact",
       boardFamily: board.family,
       // Zero, and it stays zero: a pixel-exact port's whole claim is that
       // the frames are identical, and a tolerance here would quietly turn
@@ -887,11 +952,65 @@ function buildAttestPlans(): void {
       dataTerminalReady: board.dataTerminalReady,
       traces,
     };
-    writeFileSync(join(outDir, `${combo.id}.json`), JSON.stringify(plan, null, 2) + "\n");
-    attestPlans.add(combo.id);
     const frameCount = traces.reduce((n, t) => n + t.points.length, 0);
-    console.log(`wrote -> site/dist/${ATTEST_DIR_NAME}/${combo.id}.json (${traces.length} trace(s), ${frameCount} recorded frame(s))`);
+    writeAttestPlan(combo.id, plan, `pixel-exact, ${traces.length} trace(s), ${frameCount} recorded frame(s)`);
   }
+}
+
+// An invariants port's plan: the bundle's own trace, the bundle's own
+// capture points, the bundle's own checker named by the bundle's own path,
+// and the pack's own device.json as the checker's meta.device. Everything
+// in it is quoted from a file that already existed; nothing about which
+// moments matter or what they mean is decided here.
+function buildInvariantsPlan(combo: Combo, artifact: string, board: { family: "rp2350" | "esp32"; dataTerminalReady: boolean }): void {
+  const entry = combo.proven;
+  const checker = entry.checker!;
+  // Refused loudly rather than skipped: a bundle that declares a checker
+  // this gallery cannot run is a gap somebody has to close (one line in
+  // site/attest/checkers.ts), not a port to quietly drop off the page.
+  if (!INVARIANT_CHECKERS[checker]) {
+    throw new Error(
+      `${combo.appPath}/bundle.json verifies ${combo.pack} with the checker ${checker}, which site/attest/checkers.ts does not carry. ` +
+        `Add it there (one import and one line) so the flash page can actually run it, or this gallery would offer a button with nothing behind it.`
+    );
+  }
+  if (!entry.invariantTrace || !entry.captureAt || entry.captureAt.length === 0) {
+    throw new Error(
+      `${combo.appPath}/bundle.json verifies ${combo.pack} by invariants but names no trace and captureAt for it, so a board has nothing to replay.`
+    );
+  }
+  const abs = join(REPO_ROOT, entry.invariantTrace);
+  if (!existsSync(abs)) {
+    throw new Error(`${combo.appPath}/bundle.json names the trace ${entry.invariantTrace}, which does not exist`);
+  }
+  const device = packDevice.get(combo.pack);
+  if (!device) return;
+
+  const trace = readJson<{ events: unknown[] }>(abs);
+  const traces: AttestPlanInvariantTrace[] = [
+    { name: traceStem(entry.invariantTrace), events: trace.events, captureAt: entry.captureAt },
+  ];
+
+  writeAttestPlan(
+    combo.id,
+    {
+      combo: combo.id,
+      app: combo.app,
+      pack: combo.pack,
+      kind: "invariants",
+      boardFamily: board.family,
+      checker,
+      device,
+      artifact,
+      // The emulator side of every recorded frame started from emu_init(),
+      // which enters app 0, so this is the only value that makes the two
+      // sides start alike.
+      appIndex: 0,
+      dataTerminalReady: board.dataTerminalReady,
+      traces,
+    },
+    `invariants via ${checker}, ${entry.captureAt.length} capture point(s)`
+  );
 }
 
 // ---- 1.6. landing demo loops: recorded, tracked source, copied out -------
@@ -1663,22 +1782,30 @@ function renderFlashSection(comboId: string, pack: string): string {
 // ---- attest section: the board answers for itself -----------------------
 // Rendered under the flash section, on every combo that got a plan
 // (buildAttestPlans above). The framing matters: this is not "did the flash
-// work", it is "does this port draw what the bundle says it draws, on YOUR
-// board", answered by replaying that port's own recorded trace over devlink
-// and diffing the frames against the same recorded PNGs the command-line
-// verifier compares against.
+// work", it is "does this port do what the bundle says it does, on YOUR
+// board", answered by replaying that port's own trace over devlink and then
+// putting the result through the same check the command-line verifier puts
+// it through - a frame-by-frame pixel diff for a pixel-exact port, that
+// bundle's own invariants.ts for an invariants one.
+//
+// TWO INTROS, because the two checks are different claims and the section
+// has to say which one it is about to make. The rest of the section is
+// identical for both: same button, same rows, same counter, same endpoint.
 //
 // The counter under it is the same counter the gallery cards carry, filled
 // from the same endpoint by the same helper (site/attest-client.ts), with
 // its empty state already in the HTML so a page served with no function
 // behind it never flashes a placeholder.
-const ATTEST_INTRO =
+const ATTEST_INTRO_PIXEL =
   "The board can answer for itself. This replays this port's own recorded trace over the board's devlink port and compares every captured frame against the frames the verifier uses, pixel for pixel.";
+const ATTEST_INTRO_INVARIANTS =
+  "The board can answer for itself. This port is verified by behaviour rather than by pixel identity, so this replays its own trace over the board's devlink port and puts the frames it captures through this bundle's own invariants - the same checks, the same thresholds, the same file the verifier runs.";
 const ATTEST_HINT =
-  "Needs the board running this firmware, and Chrome or Edge on desktop. Nothing about you is sent: the result carries the app, the pack, the firmware's own sha256, the verdict and the pixel counts.";
+  "Needs the board running this firmware, and Chrome or Edge on desktop. Nothing about you is sent: the result carries the app, the pack, the firmware's own sha256, the kind of check, the verdict and what each check measured.";
 
 function renderAttestSection(comboId: string, app: string, pack: string): string {
   if (!attestPlans.has(comboId)) return "";
+  const ATTEST_INTRO = attestKinds.get(comboId) === "invariants" ? ATTEST_INTRO_INVARIANTS : ATTEST_INTRO_PIXEL;
   const planHref = `../${ATTEST_DIR_NAME}/${comboId}.json`;
   return `  <section class="attest-section" data-attest-plan="${planHref}">
     <h2>Prove it runs</h2>
