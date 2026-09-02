@@ -46,18 +46,39 @@ surface did change:
 Verification is therefore invariants, against the same checker and the same
 three capture points the RP2350 port uses.
 
-## Zero-diff: achieved
+## Zero-diff: achieved, then spent once, deliberately
 
-`apps/fluidbox/ports/web/fluid.c` is **byte-for-byte identical** to
+`apps/fluidbox/ports/web/fluid.c` landed **byte-for-byte identical** to
 `apps/fluidbox/ports/rp2350-touch-amoled-18/fluid.c`. Not "essentially
-identical", not "identical except the includes": `cmp` reports no
-difference, and it compiles and runs here with no edit at all.
+identical", not "identical except the includes": `cmp` reported no
+difference, and it compiled and ran here with no edit at all. That result
+is the milestone this port exists for, and it stands: the file still
+compiles unedited on either pack, because the only thing that changed is
+expressed in terms both packs define.
+
+**One block now differs**, the particle count:
 
 ```
-$ cmp apps/fluidbox/ports/rp2350-touch-amoled-18/fluid.c apps/fluidbox/ports/web/fluid.c
-$ echo $?
-0
+-#define FLUID_N 130
++#define FLUID_N_FIT ((PANEL_W * PANEL_H) / FLUID_PX_PER_PARTICLE)
++#define FLUID_N     (clamped between 16 and 130, see the file)
 ```
+
+`PANEL_W`/`PANEL_H` are `gfx.h`'s, which both packs declare, so this is
+not a retarget: dropped into the RP2350 port unchanged it evaluates to
+`164864 / 1268 = 130`, the number that file already writes down, and the
+same is true here. Nothing about either 368x448 build moves, and both
+bundles still verify.
+
+What it buys is the reason it was spent: this port can now be compiled
+against a device that is not 368x448 at all (`packs/web/wasm/build.ts
+--device`, `docs/convention/device-pack.md`'s silhouette packs), and the
+fluid arrives at a density rather than at a count. On the M5StickC PLUS2
+silhouette's 135x240 panel it is 25 particles, which is what `bun run
+verdict fluidbox m5stickc-plus2` prints, from this app's own descriptor,
+evaluating this same expression. A count written down in a file could not
+have done that, and a fluid that filled a small box wall to wall would not
+have been this app made small.
 
 Re-verified 2026-08-20, after `fluid.c` stopped reading a private, non-ABI accessor
 (`emu_shim_tilt_get()`) and started reading `app_frame_t.tilt` directly - the same

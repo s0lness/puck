@@ -2,13 +2,24 @@
 // for the verdict and for the exact diff against the reference.
 //
 // This file is apps/chrono/reference/rp2350-touch-amoled-18/chrono.c with
-// ONE edit: its `const app_t g_chronoApp = {...}` initializer is replaced
-// by the two-line port_enter/port_tick adapter at the bottom, because the
-// web pack's --app build generates the app_t itself (the same contract the
-// rp2350 pack's own --app flag uses, adopted unchanged - see
-// packs/web/wasm/build.ts). Every line above that, all 155 of them, is
-// byte-for-byte the reference: the same include lines, the same layout
-// constants, the same state struct, the same arithmetic, the same
+// TWO edits, and no third:
+//
+//   1. its `const app_t g_chronoApp = {...}` initializer is replaced by
+//      the two-line port_enter/port_tick adapter at the bottom, because
+//      the web pack's --app build generates the app_t itself (the same
+//      contract the rp2350 pack's own --app flag uses, adopted unchanged -
+//      see packs/web/wasm/build.ts);
+//   2. the layout block below states the reference layout as PROPORTIONS
+//      of LAND_W/LAND_H (gfx.h) instead of as the eleven numbers the
+//      reference writes out, so this port can be compiled against a device
+//      whose panel is not 368x448 (packs/web/wasm/build.ts's --device, and
+//      docs/convention/device-pack.md's silhouette packs). Every one of
+//      those expressions evaluates to the reference's own number on a
+//      368x448 panel, which is why chrono's recorded frames still match at
+//      tolerance 0: see that block's own comment for the arithmetic.
+//
+// Everything else is byte-for-byte the reference: the same include lines,
+// the same state struct, the same arithmetic, the same
 // redraw-only-what-changed loop. Nothing was retargeted, not even an
 // include path, because the web pack vendors app.h, gfx.h, digits.h and
 // sensors.h under those exact names.
@@ -33,36 +44,55 @@
 #include "sensors.h"
 
 /* ---------------------------------------------------------------------
- * Layout, in LANDSCAPE coordinates (448 wide x 368 tall). 6 digits + 2
- * colons, sized to comfortably fill the 448px landscape width with an even
- * margin on both sides, vertically centred in the 368px landscape height.
+ * Layout, in LANDSCAPE coordinates (LAND_W wide x LAND_H tall, gfx.h: the
+ * panel's own dimensions swapped). 6 digits + 2 colons, sized to
+ * comfortably fill the landscape width with an even margin on both sides,
+ * vertically centred in the landscape height.
  *
- * DIGIT_H (120) is the digit's landscape *height* (its long axis, since
- * digits stand upright), and it is the dimension that becomes the panel
- * push's row length after rotation (gfx_land_rect swaps w and h). It is
- * kept a multiple of 8 for exactly the reason gfx_push rounds row length up
- * to a multiple of 8: so that rounding never has anything to do, and every
- * digit push is exactly its drawn size with no padding.
+ * DERIVED FROM THE PANEL, NOT WRITTEN DOWN. The reference layout is the
+ * one the descriptor states (448 x 368: digits 48 x 120, separators 24
+ * wide, 12px gaps, 14px margins, y 124), and every number below is the
+ * PROPORTION that layout is, so the same face comes out of a 240x135
+ * panel. The row is eight elements wide - six digits, two separators at
+ * half a digit each - with a gap of a quarter digit between each pair and
+ * a margin of 14/48 of a digit at both ends:
+ *
+ *   6 D + 2 (D/2) + 7 (D/4) + 2 (14D/48) = 28D/3 = LAND_W
+ *
+ * so DIGIT_W is 3 * LAND_W / 28, which is exactly 48 at 448 and 25 at 240.
+ * The margin is then whatever is left over, halved, which keeps the row
+ * centred at any width instead of trusting the division to come out even.
+ *
+ * DIGIT_H is the digit's landscape *height* (its long axis, since digits
+ * stand upright), and it is the dimension that becomes the panel push's
+ * row length after rotation (gfx_land_rect swaps w and h). It is kept a
+ * multiple of 8 for exactly the reason gfx_push rounds row length up to a
+ * multiple of 8: so that rounding never has anything to do, and every
+ * digit push is exactly its drawn size with no padding. 120/368 reduces to
+ * 15/46, and rounding that DOWN to a multiple of 8 is a no-op at 368
+ * (120 already is one) and gives 40 at 135.
  *
  *   layout, left to right (element widths in brackets, all landscape x):
- *   [48][48] [24:] [48][48] [24:] [48][48]
+ *   [D][D] [D/2 :] [D][D] [D/2 :] [D][D]
  *    MM tens/units   SS tens/units   CC tens/units
- *   margin 14px each side, 12px gaps between every element (all landscape x).
  * ------------------------------------------------------------------- */
-#define DIGIT_W 48
-#define DIGIT_H 120
-#define SEG_T   18
-#define SEP_W   24
-#define Y0      124   // (368 - DIGIT_H) / 2, landscape y
+#define DIGIT_W (3 * LAND_W / 28)
+#define DIGIT_H (((LAND_H * 15 / 46)) & ~7)
+#define SEG_T   (DIGIT_W * 3 / 8)
+#define SEP_W   (DIGIT_W / 2)
+#define GAP_W   (DIGIT_W / 4)
+#define ROW_W   (6 * DIGIT_W + 2 * SEP_W + 7 * GAP_W)
+#define MARGIN  ((LAND_W - ROW_W) / 2)
+#define Y0      ((LAND_H - DIGIT_H) / 2)
 
-#define X_MM_TENS  14
-#define X_MM_UNITS 74
-#define X_COLON1   134
-#define X_SS_TENS  170
-#define X_SS_UNITS 230
-#define X_COLON2   290
-#define X_CS_TENS  326
-#define X_CS_UNITS 386
+#define X_MM_TENS  MARGIN
+#define X_MM_UNITS (X_MM_TENS + DIGIT_W + GAP_W)
+#define X_COLON1   (X_MM_UNITS + DIGIT_W + GAP_W)
+#define X_SS_TENS  (X_COLON1 + SEP_W + GAP_W)
+#define X_SS_UNITS (X_SS_TENS + DIGIT_W + GAP_W)
+#define X_COLON2   (X_SS_UNITS + DIGIT_W + GAP_W)
+#define X_CS_TENS  (X_COLON2 + SEP_W + GAP_W)
+#define X_CS_UNITS (X_CS_TENS + DIGIT_W + GAP_W)
 
 static const int DIGIT_X[6] = { X_MM_TENS, X_MM_UNITS, X_SS_TENS, X_SS_UNITS, X_CS_TENS, X_CS_UNITS };
 
@@ -157,8 +187,9 @@ static void chrono_tick(const app_frame_t *f) {
     };
 
     // Only repaint digits that actually changed, in this same tick. Each
-    // push here covers exactly one 48x120 landscape digit cell, and DIGIT_H
-    // (120) is already a multiple of 8, so gfx_push_land never has to pad
+    // push here covers exactly one DIGIT_W x DIGIT_H landscape digit cell,
+    // and DIGIT_H is a multiple of 8 by construction (see the layout block
+    // above: 120 on this panel), so gfx_push_land never has to pad
     // the pushed window's row length (the panel-space width, which is this
     // cell's landscape height after rotation).
     for (int i = 0; i < 6; i++) {
