@@ -42,9 +42,16 @@ function findChrome(): string {
 }
 const CHROME = process.env.CHROME_PATH || findChrome();
 
+// Thrown, not process.exit()'d: a bare process.exit() inside main()'s try
+// below skips its finally entirely, which is what used to leave Chrome and
+// the dev server running after a failed run. See main()'s own invocation at
+// the bottom for where the exit code actually gets set, after that finally
+// has run.
+class VerifyFailure extends Error {}
+
 function fail(msg: string): never {
   console.error(`FAIL: ${msg}`);
-  process.exit(1);
+  throw new VerifyFailure(msg);
 }
 
 async function waitForServer(url: string, timeoutMs: number): Promise<void> {
@@ -365,4 +372,7 @@ async function main(): Promise<void> {
   }
 }
 
-await main();
+main().catch((err) => {
+  if (!(err instanceof VerifyFailure)) console.error(err);
+  process.exitCode = 1;
+});

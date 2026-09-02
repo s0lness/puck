@@ -67,9 +67,16 @@ function findChrome(): string {
 }
 const CHROME = process.env.CHROME_PATH || findChrome();
 
+// Thrown, not process.exit()'d: a bare process.exit() inside the try below
+// skips its finally entirely, which is what used to leave Chrome and the
+// dev server running after a failed run. See main()'s own catch at the
+// bottom for where the exit code actually gets set, after that finally has
+// run.
+class VerifyFailure extends Error {}
+
 function fail(msg: string): never {
   console.error(`FAIL: ${msg}`);
-  process.exit(1);
+  throw new VerifyFailure(msg);
 }
 
 async function waitForServer(url: string, timeoutMs: number): Promise<void> {
@@ -88,6 +95,7 @@ if (!existsSync(WASM_FILE)) {
   fail(`${WASM_FILE} does not exist. Run "bun run example:build" (or any pack build) first.`);
 }
 
+async function main(): Promise<void> {
 const server = Bun.spawn(["bun", "run", "server.ts"], {
   cwd: ROOT,
   env: { ...process.env, PORT: String(PORT) },
@@ -461,3 +469,9 @@ try {
   } catch {}
   server.kill();
 }
+}
+
+main().catch((err) => {
+  if (!(err instanceof VerifyFailure)) console.error(err);
+  process.exitCode = 1;
+});
