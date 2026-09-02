@@ -271,13 +271,17 @@ export async function buildExternalPort(build: ExternalBuild, options: ExternalB
       clearTimeout(timer);
     }
     if (exitCode !== 0) {
+      // Last 40 lines, not 8: enough of the actual compiler/linker error to
+      // read what broke without pasting an entire log, and kept on their
+      // own lines (not joined into one) so a stack trace or a multi-line
+      // diagnostic stays legible instead of turning into one long ribbon.
       const tail = [stdout, stderr]
         .join("\n")
         .trim()
         .split("\n")
-        .slice(-8)
-        .join(" | ");
-      throw new ExternalBuildError(`build command exited ${exitCode} for ${provenance}: ${build.command}${tail ? ` -- ${tail}` : ""}`);
+        .slice(-40)
+        .join("\n");
+      throw new ExternalBuildError(`build command exited ${exitCode} for ${provenance}: ${build.command}${tail ? `\n${tail}` : ""}`);
     }
     if (!existsSync(artifactPath)) {
       throw new ExternalBuildError(
