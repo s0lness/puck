@@ -140,13 +140,43 @@ export interface ExternalBuildOutcome {
 
 const DEFAULT_TIMEOUT_MS = 600_000;
 
+// `bun run <script-name>` (the package.json alias form, e.g. `bun run
+// test:external`) prepends one `node_modules/.bin` entry PER ANCESTOR
+// DIRECTORY of the repo root to PATH, ahead of everything else - verified
+// directly (not assumed) by printing process.env.PATH from inside a script
+// invoked both ways: `bun run tools/externalBuild.ts`'s own process saw a
+// plain PATH, `bun run <alias-that-runs-the-same-file>` saw nine extra
+// `.../node_modules/.bin` segments in front of it, walking all the way up
+// to the filesystem root, NONE of which exist on disk on this machine.
+// Every one of those is a directory bash (and anything bash spawns) has to
+// stat() and find missing before it reaches the real Git/System32 entries
+// behind them - for EVERY unqualified command a build script runs (mkdir,
+// the compiler's own PATH-searched helpers, etc.), not just once. Under
+// concurrent filesystem load (this machine regularly runs several parallel
+// agents' own builds at once) that is extra, avoidable contention on the
+// exact path a silent, false-positive "succeeded" build command takes
+// (see buildExternalPort's own retry loop below, added for the same
+// symptom). A nonexistent directory can never resolve a real binary, so
+// dropping it from PATH before spawning bash or git can only remove noise,
+// never change which binary answers a real command.
+function sanitizedEnv(extra?: Record<string, string | undefined>): Record<string, string | undefined> {
+  const raw = process.env.PATH ?? "";
+  const pathSep = process.platform === "win32" ? ";" : ":";
+  const seen = new Set<string>();
+  const cleaned = raw
+    .split(pathSep)
+    .filter((p) => p.length > 0 && !seen.has(p) && seen.add(p) && existsSync(p))
+    .join(pathSep);
+  return { ...process.env, ...extra, PATH: cleaned };
+}
+
 // timeoutMs applies here too, not just to the build command below: a git
 // clone/fetch/checkout against a host that stalls (a bad URL, a network
 // that hangs instead of refusing) is exactly the same "looks like it's
 // still working" failure mode the build command's own timeout exists for.
 function runGit(args: string[], cwd: string | undefined, timeoutMs: number, onLog?: (line: string) => void): { ok: boolean; stdout: string; stderr: string } {
   onLog?.(`git ${args.join(" ")}`);
-  const result = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", timeout: timeoutMs });
+  const result = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", timeout: timeoutMs, env: sanitizedEnv() });
   return {
     ok: result.success,
     stdout: result.stdout ? result.stdout.toString().trim() : "",
@@ -288,29 +318,66 @@ export async function buildExternalPort(build: ExternalBuild, options: ExternalB
         cwd: workDir,
         stdout: "pipe",
         stderr: "pipe",
-        env: { ...process.env, ...(options.env ?? {}) },
+        env: sanitizedEnv(options.env),
       });
+
+    // Spawning `bash -c <command>` through this many process layers
+    // (this script -> bash -> the compiler it invokes) was, on this
+    // machine, reliably lost specifically when invoked as `bun run
+    // <script-name>` (the package.json alias form): that form pollutes
+    // PATH with several nonexistent node_modules/.bin ancestor
+    // directories (sanitizedEnv() above, and its own comment, is the
+    // actual fix for that). sanitizedEnv() removes the dominant cause;
+    // this loop is defense in depth for whatever OS-level process-spawn
+    // contention is left under concurrent load - observed directly as
+    // either exit 127 with EMPTY stdout AND stderr (bash itself never got
+    // far enough to report which command it could not find), or exit 0
+    // with EMPTY output and no artifact written at all (the compiler's
+    // own process never actually ran, yet the shell reported success).
+    // Both are the same class of failure this repository already retries
+    // zig cc's own linker crashes for (see e.g. example/build.ts): a
+    // transient failure that reports NOTHING is indistinguishable from
+    // "this is genuinely what the command does" only by content, so a
+    // completely silent exit is retried, short pause between attempts,
+    // same as those.
+    //
+    // This is intentionally narrow: any real build failure (a compiler
+    // error, a missing file, a shell syntax error) always prints
+    // SOMETHING to stdout or stderr, so it is never retried here, and a
+    // build command that legitimately does nothing (a no-op used in a
+    // test, say) fails after these extra attempts exactly as it would
+    // have without them - slower by a few short pauses, not wrong.
+    const SILENT_FAILURE_MAX_ATTEMPTS = 5;
+    const SILENT_FAILURE_PAUSE_MS = 400;
     let proc: ReturnType<typeof startBuild>;
-    try {
-      proc = startBuild();
-    } catch (err) {
-      throw new ExternalBuildError(
-        `could not run the build command: ${err instanceof Error ? err.message : String(err)} ` +
-          `(a bundle's build command runs through bash; on Windows that is Git Bash's, which must be on PATH)`
-      );
-    }
-    const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    const timer = setTimeout(() => proc.kill(), timeoutMs);
     let exitCode: number;
     let stdout = "";
     let stderr = "";
-    try {
-      [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
-      exitCode = await proc.exited;
-    } finally {
-      clearTimeout(timer);
+    let artifactWritten = false;
+    for (let attempt = 1; attempt <= SILENT_FAILURE_MAX_ATTEMPTS; attempt++) {
+      try {
+        proc = startBuild();
+      } catch (err) {
+        throw new ExternalBuildError(
+          `could not run the build command: ${err instanceof Error ? err.message : String(err)} ` +
+            `(a bundle's build command runs through bash; on Windows that is Git Bash's, which must be on PATH)`
+        );
+      }
+      const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+      const timer = setTimeout(() => proc.kill(), timeoutMs);
+      try {
+        [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+        exitCode = await proc.exited;
+      } finally {
+        clearTimeout(timer);
+      }
+      artifactWritten = existsSync(artifactPath);
+      const silentFailure = !artifactWritten && stdout.trim() === "" && stderr.trim() === "";
+      if (!silentFailure || attempt === SILENT_FAILURE_MAX_ATTEMPTS) break;
+      options.onLog?.(`build command exited ${exitCode} with no output and no artifact (attempt ${attempt}/${SILENT_FAILURE_MAX_ATTEMPTS}), retrying - see this call's comment`);
+      Bun.sleepSync(SILENT_FAILURE_PAUSE_MS);
     }
-    if (exitCode !== 0) {
+    if (exitCode! !== 0) {
       // Last 40 lines, not 8: enough of the actual compiler/linker error to
       // read what broke without pasting an entire log, and kept on their
       // own lines (not joined into one) so a stack trace or a multi-line
@@ -321,12 +388,19 @@ export async function buildExternalPort(build: ExternalBuild, options: ExternalB
         .split("\n")
         .slice(-40)
         .join("\n");
-      throw new ExternalBuildError(`build command exited ${exitCode} for ${provenance}: ${build.command}${tail ? `\n${tail}` : ""}`);
+      throw new ExternalBuildError(`build command exited ${exitCode!} for ${provenance}: ${build.command}${tail ? `\n${tail}` : ""}`);
     }
-    if (!existsSync(artifactPath)) {
+    if (!artifactWritten) {
+      // A command that exits 0 while writing nothing still deserves
+      // whatever it DID print (a cache warning, a "nothing to do" notice)
+      // shown here, not silently dropped: the difference between a
+      // deliberate no-op and a build tool complaining and quitting early
+      // is exactly the content this omitted before.
+      const tail = [stdout, stderr].join("\n").trim().split("\n").slice(-40).join("\n");
       throw new ExternalBuildError(
         `build command succeeded but produced no ${build.artifact} for ${provenance} ` +
-          `(looked at ${artifactPath}; the artifact is deleted before the build, so a file committed into the repository does not count)`
+          `(looked at ${artifactPath}; the artifact is deleted before the build, so a file committed into the repository does not count)` +
+          `${tail ? `\n${tail}` : ""}`
       );
     }
 
