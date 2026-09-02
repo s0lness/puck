@@ -118,7 +118,7 @@ export function spawnWithRetry(cmd: string[], opts: SpawnRetryOptions = {}): Spa
     // that exited non-zero with nothing on stderr, but that left a real
     // artifact behind, is accepted rather than retried - see this file's
     // header comment for the measurement.
-    const lied = !r.success && stderr.trim().length === 0 && (opts.artifactOk?.() ?? false);
+    const lied = !r.success && !diagnosed(stderr) && (opts.artifactOk?.() ?? false);
     const ok = r.success || lied;
 
     if (ok) {
@@ -126,11 +126,14 @@ export function spawnWithRetry(cmd: string[], opts: SpawnRetryOptions = {}): Spa
       if (output.length > 0) console.log(output);
       return { ok: true, stdout, stderr, exitCode: r.exitCode, signalCode: r.signalCode ?? null, attempts: attempt };
     }
-    if (stderr.trim().length > 0) {
+    if (diagnosed(stderr)) {
       // A real diagnosed failure: printed once, here, and never retried.
       console.error(stderr.trim());
       return { ok: false, stdout, stderr, exitCode: r.exitCode, signalCode: r.signalCode ?? null, attempts: attempt };
     }
+    // Only warnings on stderr: printed, so nothing is swallowed, and then
+    // treated as the silent failure it is (see diagnosed() above).
+    if (stderr.trim().length > 0) console.error(stderr.trim());
     if (attempt >= maxAttempts) {
       return { ok: false, stdout, stderr, exitCode: r.exitCode, signalCode: r.signalCode ?? null, attempts: attempt };
     }
@@ -139,6 +142,29 @@ export function spawnWithRetry(cmd: string[], opts: SpawnRetryOptions = {}): Spa
     Bun.sleepSync(pause);
     pause = Math.min(pause * 2, RETRY_PAUSE_CAP_MS);
   }
+}
+
+/**
+ * Whether this attempt's stderr DIAGNOSED something, as opposed to merely
+ * saying something.
+ *
+ * The rule used to be "any stderr at all means a real compile error, never
+ * retry", and it was wrong in one specific and costly way: a source that
+ * emits a WARNING prints on stderr on every single run, clean ones
+ * included, so the flake this whole file exists to absorb was misread as a
+ * diagnosed failure and never retried. apps/gameos's ports redefine an SFX
+ * macro and warn about it, which is exactly why gameos was the one build
+ * that blocked `bun run site:build` again and again while every other
+ * module sailed through on a retry.
+ *
+ * So: a line naming an error is a real failure and is never retried; stderr
+ * carrying nothing but warnings and notes is treated as silence, printed
+ * either way so nothing is swallowed. Both clang ("error: ", "fatal
+ * error:") and zig's own ("error: ") say the word, and a compiler that
+ * failed for a reason it could name always names it.
+ */
+function diagnosed(stderr: string): boolean {
+  return /(^|\s)(fatal error|error)\s*:/i.test(stderr) || /^error/im.test(stderr);
 }
 
 // ---- zig cc specifically --------------------------------------------------
