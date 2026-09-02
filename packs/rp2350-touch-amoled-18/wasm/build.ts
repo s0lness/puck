@@ -38,6 +38,7 @@
 // this file works around (malloc, printf, the three extra math functions)
 // is compiled INTO the module by emu_shim.c or shim/math.h, never imported.
 import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { runZigCc, ZIG_EXE } from "../../../tools/zigSpawn";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -74,10 +75,6 @@ const OUT_TMP = `${OUT}.tmp-${process.pid}`;
 // The ABI header is the emulator's, at the repo root: one copy, so the
 // firmware cannot compile against a stale private fork of the contract.
 const ABI_DIR = join(REPO_ROOT, "wasm");
-
-// zig is a binary this script invokes, exactly like cmake (AGENTS.md). No
-// machine-specific default: it comes off PATH unless ZIG_EXE says otherwise.
-const ZIG = process.env.ZIG_EXE ?? "zig";
 
 // Every symbol emu_abi.h declares. Exported explicitly (see the header
 // comment above on why --export-dynamic was dropped) rather than derived by
@@ -303,12 +300,12 @@ function cleanupRoster(): void {
   if (generatedRosterDir) rmSync(generatedRosterDir, { recursive: true, force: true });
 }
 
-if (ZIG.includes("/") || ZIG.includes("\\")) {
+if (ZIG_EXE.includes("/") || ZIG_EXE.includes("\\")) {
   // An explicit path was given (ZIG_EXE): check it, so a typo fails here
   // rather than as an opaque spawn error. A bare "zig" is resolved by PATH
   // and cannot be checked this way.
-  if (!existsSync(ZIG)) {
-    console.error(`zig not found at ${ZIG} (set ZIG_EXE to override)`);
+  if (!existsSync(ZIG_EXE)) {
+    console.error(`zig not found at ${ZIG_EXE} (set ZIG_EXE to override)`);
     cleanupRoster();
     process.exit(1);
   }
@@ -362,7 +359,7 @@ const args = [
   "-o", OUT_TMP,
 ];
 
-console.log(`${ZIG} ${args.join(" ")}`);
+console.log(`${ZIG_EXE} ${args.join(" ")}`);
 
 // zig cc crashes inside its own linker roughly one run in three with this
 // many -Wl,--export= flags: exit code 5, no diagnostic, and the very next
@@ -389,24 +386,27 @@ console.log(`${ZIG} ${args.join(" ")}`);
 // which is a far worse failure than a crash: a build that never returns
 // looks like a build that is working. Two minutes is many times what a
 // real compile of these files takes, even under a saturated machine.
-const MAX_ATTEMPTS = 8;
-const RETRY_PAUSE_MS = 400;
-const ATTEMPT_TIMEOUT_MS = 120_000;
-let result = Bun.spawnSync([ZIG, ...args], { stdout: "inherit", stderr: "inherit", timeout: ATTEMPT_TIMEOUT_MS });
-for (let attempt = 2; !result.success && attempt <= MAX_ATTEMPTS; attempt++) {
-  const how = result.signalCode ? `was killed (${result.signalCode}, most likely this build's own ${ATTEMPT_TIMEOUT_MS}ms timeout)` : `exited ${result.exitCode}`;
-  console.error(`zig cc ${how}, retrying (${attempt}/${MAX_ATTEMPTS}) - see this call's comment`);
-  Bun.sleepSync(RETRY_PAUSE_MS);
-  result = Bun.spawnSync([ZIG, ...args], { stdout: "inherit", stderr: "inherit", timeout: ATTEMPT_TIMEOUT_MS });
-}
+//
+// The retry/verdict mechanics themselves live in tools/zigSpawn.ts now
+// (one shared implementation across every pack and every test build
+// script - see that file's header comment for the measurement this loop
+// used to guess at blind: piped stdio means a genuine compile error is
+// captured and reported immediately instead of retried, and the artifact
+// at OUT_TMP is checked directly rather than trusted to zig's own exit
+// code).
+const result = runZigCc(args, OUT_TMP, { isWasm: true });
 
-if (!result.success) {
+if (!result.ok) {
   // Whatever half-written module the crashed linker left behind goes with it,
   // rather than sitting in dist/ as a *.tmp-1234 nobody will ever look at. The
   // previous emu.wasm is untouched and still valid, which is the other half of
   // what the temp file buys.
   rmSync(OUT_TMP, { force: true });
-  console.error(`zig cc exited ${result.exitCode} on all ${MAX_ATTEMPTS} attempts, so this is a real build failure`);
+  console.error(
+    result.stderr.trim().length > 0
+      ? `zig cc failed (exit ${result.exitCode}), so this is a real build failure - see diagnostics above`
+      : `zig cc exited ${result.exitCode} on all ${result.attempts} attempts with no diagnostic text and wrote nothing, so this is a real build failure`
+  );
   cleanupRoster();
   process.exit(result.exitCode ?? 1);
 }

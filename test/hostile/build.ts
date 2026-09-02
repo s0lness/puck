@@ -10,13 +10,12 @@
 // which calls buildHostileFirmware() per case before driving it.
 import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { join, resolve, basename } from "node:path";
+import { runZigCc } from "../../tools/zigSpawn";
 
 const ROOT = resolve(import.meta.dir, "..", ".."); // repo root
 const FIRMWARE_DIR = join(import.meta.dir, "firmware");
 const ABI_DIR = join(ROOT, "wasm");
 const DIST = join(import.meta.dir, "dist");
-
-const ZIG = process.env.ZIG_EXE ?? "zig";
 
 // The base ABI every hostile firmware implements (identical set to
 // example/build.ts's EMU_EXPORTS). One case (audio_bad_buffer) also
@@ -61,10 +60,11 @@ function exportsFor(name: string): string[] {
 }
 
 // Compiles one firmware/<name>.c -> dist/<name>.wasm. Throws (with zig's
-// own stderr already printed, per "inherit" below) rather than returning a
-// pass/fail flag: a build failure here means the test suite itself cannot
-// run, which is categorically different from a hostile firmware behaving
-// hostilely at runtime, and must not be swallowed into a false pass.
+// own diagnostics already printed by tools/zigSpawn.ts's runZigCc, on a
+// real failure) rather than returning a pass/fail flag: a build failure
+// here means the test suite itself cannot run, which is categorically
+// different from a hostile firmware behaving hostilely at runtime, and
+// must not be swallowed into a false pass.
 export function buildHostileFirmware(name: string): BuildResult {
   const src = join(FIRMWARE_DIR, `${name}.c`);
   if (!existsSync(src)) throw new Error(`no such hostile firmware: ${src}`);
@@ -87,34 +87,28 @@ export function buildHostileFirmware(name: string): BuildResult {
     out,
   ];
 
-  // zig cc on this machine is documented (AGENTS.md's toolchain notes,
-  // docs/findings-first-adversarial-pass.md's "A note on the method") as
-  // segfaulting roughly one attempt in four under cache contention, clean
-  // on immediate retry -- a property of the local toolchain invocation,
-  // unrelated to whether the source itself is correct. A real compile
-  // error (bad C, a missing export) fails identically on every attempt, so
-  // retrying costs a little time on the flaky case and changes nothing
-  // about the outcome on a genuine one.
-  const MAX_ATTEMPTS = 5;
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    let result: ReturnType<typeof Bun.spawnSync>;
-    try {
-      result = Bun.spawnSync([ZIG, ...args], { stdout: "inherit", stderr: "inherit" });
-    } catch (err) {
-      throw new Error(
-        `could not run "${ZIG}" building ${name}: ${err instanceof Error ? err.message : String(err)} ` +
-          `(zig not found? set ZIG_EXE to its path)`
-      );
-    }
-    if (result.success) return { name, wasmPath: out };
-    lastError = new Error(`zig cc exited ${result.exitCode} building ${name}`);
-    if (attempt < MAX_ATTEMPTS) {
-      console.warn(`zig cc exited ${result.exitCode} building ${name} (attempt ${attempt}/${MAX_ATTEMPTS}), retrying...`);
-      Bun.sleepSync(300); // a beat before retrying: the segfaults are documented as cache contention, not a code bug
-    }
-  }
-  throw lastError;
+  // The retry/verdict mechanics live in tools/zigSpawn.ts now (one shared
+  // implementation across every pack and every test build script - see
+  // that file's header comment for the measurement this loop used to
+  // guess at blind: piped stdio means a genuine compile error is captured
+  // and reported immediately instead of retried, and the artifact at
+  // `out` is checked directly rather than trusted to zig's own exit code).
+  // maxAttempts left at tools/zigSpawn.ts's default (8, same as every
+  // pack's own build.ts): this used to be capped at 5 with a flat 300ms
+  // pause, measurably too thin under today's actual concurrent load (this
+  // repo's other worktrees/agents building at the same time) - proven by
+  // running it directly, which succeeded immediately, right after five
+  // straight failures through `bun run test:hostile`'s own extra process
+  // layer. The flake is real contention, not a coin flip; the fix is
+  // giving it the same room every other zig invocation in this repo now
+  // gets, not a smaller one for no reason tied to this file.
+  const result = runZigCc(args, out, { isWasm: true });
+  if (result.ok) return { name, wasmPath: out };
+  throw new Error(
+    result.stderr.trim().length > 0
+      ? `zig cc failed building ${name} (see diagnostics above)`
+      : `zig cc exited ${result.exitCode} building ${name} on all ${result.attempts} attempts and wrote nothing, with no diagnostic text`
+  );
 }
 
 export function listHostileFirmwareNames(): string[] {

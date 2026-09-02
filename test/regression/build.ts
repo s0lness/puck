@@ -10,13 +10,12 @@
 // test/regression/run.ts, which calls buildRegressionFixture() per build.
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { runZigCc } from "../../tools/zigSpawn";
 
 const ROOT = resolve(import.meta.dir, "..", "..");
 const SRC = join(import.meta.dir, "firmware", "fixture.c");
 const ABI_DIR = join(ROOT, "wasm");
 const DIST = join(import.meta.dir, "dist");
-
-const ZIG = process.env.ZIG_EXE ?? "zig";
 
 // Exactly what fixture.c implements - deliberately a smaller set than
 // example/build.ts's EMU_EXPORTS (no apps, no sound, and this fixture
@@ -70,26 +69,23 @@ export function buildRegressionFixture(name: string, changed: boolean): FixtureB
     out,
   ];
 
-  const MAX_ATTEMPTS = 5; // zig cc's own cache-contention flakiness, see AGENTS.md
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    let result: ReturnType<typeof Bun.spawnSync>;
-    try {
-      result = Bun.spawnSync([ZIG, ...args], { stdout: "inherit", stderr: "inherit" });
-    } catch (err) {
-      throw new Error(
-        `could not run "${ZIG}" building ${name}: ${err instanceof Error ? err.message : String(err)} ` +
-          `(zig not found? set ZIG_EXE to its path)`
-      );
-    }
-    if (result.success) return { name, wasmPath: out };
-    lastError = new Error(`zig cc exited ${result.exitCode} building ${name}`);
-    if (attempt < MAX_ATTEMPTS) {
-      console.warn(`zig cc exited ${result.exitCode} building ${name} (attempt ${attempt}/${MAX_ATTEMPTS}), retrying...`);
-      Bun.sleepSync(300); // a beat before retrying: documented as cache contention, not a code bug
-    }
-  }
-  throw lastError;
+  // The retry/verdict mechanics live in tools/zigSpawn.ts now (one shared
+  // implementation across every pack and every test build script - see
+  // that file's header comment for the measurement this loop used to
+  // guess at blind: piped stdio means a genuine compile error is captured
+  // and reported immediately instead of retried, and the artifact at
+  // `out` is checked directly rather than trusted to zig's own exit code).
+  // maxAttempts left at tools/zigSpawn.ts's default (8, same as every
+  // pack's own build.ts) - see test/hostile/build.ts's equivalent comment
+  // for why the previous 5-attempt, flat-300ms-pause budget measurably
+  // was not enough under today's real concurrent load.
+  const result = runZigCc(args, out, { isWasm: true });
+  if (result.ok) return { name, wasmPath: out };
+  throw new Error(
+    result.stderr.trim().length > 0
+      ? `zig cc failed building ${name} (see diagnostics above)`
+      : `zig cc exited ${result.exitCode} building ${name} on all ${result.attempts} attempts and wrote nothing, with no diagnostic text`
+  );
 }
 
 // Runnable standalone: `bun run test/regression/build.ts` builds both

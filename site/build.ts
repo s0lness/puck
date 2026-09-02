@@ -44,6 +44,7 @@ import { createHash } from "node:crypto";
 // with no /api/attest behind it never flashes a placeholder), and the
 // client rewrites the same node once the counts arrive.
 import { ATTEST_EMPTY_STATE } from "./attest-client";
+import { spawnWithRetry } from "../tools/zigSpawn";
 
 const SITE_DIR = import.meta.dir;
 const REPO_ROOT = resolve(SITE_DIR, "..");
@@ -608,44 +609,43 @@ for (const app of apps) {
 const REPO_WASM_OUT = join(REPO_ROOT, "wasm", "dist", "emu.wasm");
 const MODULES_DIR = join(DIST, "modules");
 
-// Retried here too, not just inside packs/rp2350-touch-amoled-18/wasm/build.ts's own loop
-// (AGENTS.md: "its wasm link segfaults on roughly one run in three; that is
-// a known zig bug, not your change, so run it again"). That pack's own
-// build.ts already retries internally, but example/build.ts and the
-// esp32-s3 pack's build.ts do not, and this function invokes every one of
-// them - without a retry HERE, a whole `bun run site:build` fails on a
-// single flaky exit from a script that has no retry loop of its own, for a
-// reason that has nothing to do with anything this task changed.
+// Retried here too, not just inside packs/rp2350-touch-amoled-18/wasm/build.ts's own loop.
+// That pack's own build.ts already retries internally (via
+// tools/zigSpawn.ts, as does every other pack and test build script now -
+// see that file's header comment for the measurement: `zig cc` on this
+// machine can exit non-zero having written a complete, correct module, and
+// piped stdio plus an artifact check is what tells that apart from a real
+// compile error). This function invokes each of those scripts as a CHILD
+// PROCESS in turn - without a retry HERE too, a whole `bun run site:build`
+// fails on a single flaky exit from underneath, for a reason that has
+// nothing to do with the site itself.
+//
+// No artifact check at this outer layer (tools/zigSpawn.ts's
+// `spawnWithRetry`, not `runZigCc`): the module every combo's build writes
+// to, REPO_WASM_OUT, is a SHARED path rewritten by every combo in turn, so
+// "the file exists and is non-empty" would still be true here after a
+// genuine failure, left over from whichever combo built successfully
+// moments before - checking it would silently turn that failure into a
+// false success. What IS safe to reuse from that same helper: piped
+// stdio (so a child spawned while this process's own stdout is itself a
+// pipe cannot die silently the same way), and retrying only a run that
+// printed no diagnostics at all - a real error from the child script
+// (which already ran its own internal zig retries before giving up) is
+// reported immediately rather than retried four more times for nothing.
 const BUILD_MAX_ATTEMPTS = 4;
 
 function runBuild(script: string, args: string[]): void {
   console.log(`\n--- building: bun run ${script} ${args.join(" ")}`);
-  let result = Bun.spawnSync(["bun", "run", script, ...args], {
+  const result = spawnWithRetry(["bun", "run", script, ...args], {
     cwd: REPO_ROOT,
-    stdout: "inherit",
-    stderr: "inherit",
-    env: { ...process.env },
+    maxAttempts: BUILD_MAX_ATTEMPTS,
   });
-  // Backing off between attempts, not hammering: measured while writing
-  // tools/ledger.ts, this flake is a WINDOW rather than a coin toss, and it
-  // widens with machine load. Four attempts with no pause at all can land
-  // inside one window and fail a whole `bun run site:build` for a reason
-  // that has nothing to do with the site. Same shape as
-  // harness/hostSide.ts's own retry, for the same measurement.
-  let pause = 1000;
-  for (let attempt = 2; !result.success && attempt <= BUILD_MAX_ATTEMPTS; attempt++) {
-    console.error(`bun run ${script} exited ${result.exitCode}, waiting ${pause}ms and retrying (${attempt}/${BUILD_MAX_ATTEMPTS}) - see this function's comment`);
-    Bun.sleepSync(pause);
-    pause = Math.min(pause * 3, 20_000);
-    result = Bun.spawnSync(["bun", "run", script, ...args], {
-      cwd: REPO_ROOT,
-      stdout: "inherit",
-      stderr: "inherit",
-      env: { ...process.env },
-    });
-  }
-  if (!result.success) {
-    throw new Error(`build failed: bun run ${script} ${args.join(" ")} (exit ${result.exitCode}) on all ${BUILD_MAX_ATTEMPTS} attempts`);
+  if (!result.ok) {
+    throw new Error(
+      result.stderr.trim().length > 0
+        ? `build failed: bun run ${script} ${args.join(" ")} (see diagnostics above)`
+        : `build failed: bun run ${script} ${args.join(" ")} (exit ${result.exitCode}) on all ${result.attempts} attempts with no diagnostic text`
+    );
   }
 }
 

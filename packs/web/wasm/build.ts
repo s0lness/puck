@@ -57,6 +57,7 @@ import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { iconPng, iconSvg } from "../host/icon";
+import { runZigCc, ZIG_EXE } from "../../../tools/zigSpawn";
 
 const WASM_DIR = import.meta.dir; // packs/web/wasm
 const PACK_ROOT = resolve(WASM_DIR, ".."); // packs/web
@@ -76,7 +77,6 @@ const ABI_DIR = join(REPO_ROOT, "wasm");
 // zig is a binary this script invokes, never a language anything here is
 // authored in. No machine-specific default: it comes off PATH unless
 // ZIG_EXE says otherwise, the same as both sibling packs.
-const ZIG = process.env.ZIG_EXE ?? "zig";
 
 // Every symbol wasm/emu_abi.h declares that this pack implements.
 // Exported explicitly rather than derived by parsing the header, so a
@@ -356,12 +356,12 @@ function compileModule(outPath: string): void {
     ...(ARGS.appPath ? [resolve(ARGS.appPath, "..")] : []),
   ];
 
-  if (ZIG.includes("/") || ZIG.includes("\\")) {
+  if (ZIG_EXE.includes("/") || ZIG_EXE.includes("\\")) {
     // An explicit path was given (ZIG_EXE): check it, so a typo fails here
     // rather than as an opaque spawn error. A bare "zig" is PATH-resolved
     // and cannot be checked this way.
-    if (!existsSync(ZIG)) {
-      console.error(`zig not found at ${ZIG} (set ZIG_EXE to override)`);
+    if (!existsSync(ZIG_EXE)) {
+      console.error(`zig not found at ${ZIG_EXE} (set ZIG_EXE to override)`);
       cleanupRoster();
       process.exit(1);
     }
@@ -406,7 +406,7 @@ function compileModule(outPath: string): void {
     outPath,
   ];
 
-  console.log(`${ZIG} ${args.join(" ")}`);
+  console.log(`${ZIG_EXE} ${args.join(" ")}`);
 
   // zig cc crashes inside its own linker roughly one run in three with
   // this many -Wl,--export= flags: exit code 5, no diagnostic, and the
@@ -426,22 +426,23 @@ function compileModule(outPath: string): void {
   // worse failure than a crash: a build that never returns looks like a
   // build that is working. Two minutes is many times the ~5s a real
   // compile of these five files takes, even under a saturated machine.
-  const MAX_ATTEMPTS = 8;
-  const RETRY_PAUSE_MS = 400;
-  const ATTEMPT_TIMEOUT_MS = 120_000;
-  const spawn = () => Bun.spawnSync([ZIG, ...args], { stdout: "inherit", stderr: "inherit", timeout: ATTEMPT_TIMEOUT_MS });
-  let result = spawn();
-  for (let attempt = 2; !result.success && attempt <= MAX_ATTEMPTS; attempt++) {
-    const how = result.signalCode ? `was killed (${result.signalCode}, most likely this build's own ${ATTEMPT_TIMEOUT_MS}ms timeout)` : `exited ${result.exitCode}`;
-    console.error(`zig cc ${how}, retrying (${attempt}/${MAX_ATTEMPTS}) - see this call's comment`);
-    Bun.sleepSync(RETRY_PAUSE_MS);
-    result = spawn();
-  }
+  // The retry/verdict mechanics live in tools/zigSpawn.ts now (one shared
+  // implementation across every pack and every test build script - see
+  // that file's header comment for the measurement this loop used to
+  // guess at blind: piped stdio means a genuine compile error is captured
+  // and reported immediately instead of retried, and the artifact at
+  // outPath is checked directly rather than trusted to zig's own exit
+  // code).
+  const result = runZigCc(args, outPath, { isWasm: true });
 
   cleanupRoster();
 
-  if (!result.success) {
-    console.error(`zig cc exited ${result.exitCode} on all ${MAX_ATTEMPTS} attempts, so this is a real build failure`);
+  if (!result.ok) {
+    console.error(
+      result.stderr.trim().length > 0
+        ? `zig cc failed (exit ${result.exitCode}), so this is a real build failure - see diagnostics above`
+        : `zig cc exited ${result.exitCode} on all ${result.attempts} attempts with no diagnostic text and wrote nothing, so this is a real build failure`
+    );
     process.exit(result.exitCode ?? 1);
   }
 }

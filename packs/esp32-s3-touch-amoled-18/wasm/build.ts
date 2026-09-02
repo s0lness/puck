@@ -29,6 +29,7 @@
 // applies.
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { runZigCc, ZIG_EXE } from "../../../tools/zigSpawn";
 
 const WASM_DIR = import.meta.dir; // packs/esp32-s3-touch-amoled-18/wasm
 const DEVICE_ROOT = resolve(WASM_DIR, ".."); // packs/esp32-s3-touch-amoled-18/
@@ -48,7 +49,6 @@ const ABI_DIR = join(REPO_ROOT, "wasm");
 
 // zig is a binary this script invokes, exactly like cmake or idf.py
 // (AGENTS.md). No machine-specific default: PATH unless ZIG_EXE overrides.
-const ZIG = process.env.ZIG_EXE ?? "zig";
 
 // Every symbol this pack's firmware implements. Deliberately NOT the full
 // emu_abi.h list: this pack declares no "apps" array and no sound, so
@@ -137,9 +137,9 @@ const INCLUDES = [
   ABI_DIR, // emu_abi.h, included bare from emu_shim.c
 ];
 
-if (ZIG.includes("/") || ZIG.includes("\\")) {
-  if (!existsSync(ZIG)) {
-    console.error(`zig not found at ${ZIG} (set ZIG_EXE to override)`);
+if (ZIG_EXE.includes("/") || ZIG_EXE.includes("\\")) {
+  if (!existsSync(ZIG_EXE)) {
+    console.error(`zig not found at ${ZIG_EXE} (set ZIG_EXE to override)`);
     process.exit(1);
   }
 }
@@ -167,7 +167,7 @@ const args = [
   "-o", OUT,
 ];
 
-console.log(`${ZIG} ${args.join(" ")}`);
+console.log(`${ZIG_EXE} ${args.join(" ")}`);
 
 // zig cc crashes inside its own linker roughly one run in three with this
 // many -Wl,--export= flags (verified against this exact toolchain by the
@@ -187,27 +187,27 @@ console.log(`${ZIG} ${args.join(" ")}`);
 // that never returns looks like a build that is working. Two minutes is
 // many times what a real compile of these four files takes, even under a
 // saturated machine.
-const MAX_ATTEMPTS = 8;
-const RETRY_PAUSE_MS = 400;
-const ATTEMPT_TIMEOUT_MS = 120_000;
-
-let result: ReturnType<typeof Bun.spawnSync>;
+// The retry/verdict mechanics live in tools/zigSpawn.ts now (one shared
+// implementation across every pack and every test build script - see that
+// file's header comment for the measurement this loop used to guess at
+// blind: piped stdio means a genuine compile error is captured and
+// reported immediately instead of retried, and the artifact at OUT is
+// checked directly rather than trusted to zig's own exit code).
+let result: ReturnType<typeof runZigCc>;
 try {
-  result = Bun.spawnSync([ZIG, ...args], { stdout: "inherit", stderr: "inherit", timeout: ATTEMPT_TIMEOUT_MS });
+  result = runZigCc(args, OUT, { isWasm: true });
 } catch (err) {
-  console.error(`could not run "${ZIG}": ${err instanceof Error ? err.message : String(err)}`);
+  console.error(`${err instanceof Error ? err.message : String(err)}`);
   console.error(`(zig not found? set ZIG_EXE to its path, or install it: https://ziglang.org/download/)`);
   process.exit(1);
 }
-for (let attempt = 2; !result.success && attempt <= MAX_ATTEMPTS; attempt++) {
-  const how = result.signalCode ? `was killed (${result.signalCode}, most likely this build's own ${ATTEMPT_TIMEOUT_MS}ms timeout)` : `exited ${result.exitCode}`;
-  console.error(`zig cc ${how}, retrying (${attempt}/${MAX_ATTEMPTS}) - see this file's header comment`);
-  Bun.sleepSync(RETRY_PAUSE_MS);
-  result = Bun.spawnSync([ZIG, ...args], { stdout: "inherit", stderr: "inherit", timeout: ATTEMPT_TIMEOUT_MS });
-}
 
-if (!result.success) {
-  console.error(`zig cc exited ${result.exitCode} on all ${MAX_ATTEMPTS} attempts, so this is a real build failure`);
+if (!result.ok) {
+  console.error(
+    result.stderr.trim().length > 0
+      ? `zig cc failed (exit ${result.exitCode}), so this is a real build failure - see diagnostics above`
+      : `zig cc exited ${result.exitCode} on all ${result.attempts} attempts with no diagnostic text and wrote nothing, so this is a real build failure`
+  );
   process.exit(result.exitCode ?? 1);
 }
 
