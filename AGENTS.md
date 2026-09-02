@@ -68,6 +68,17 @@ running either: a hardware run SWITCHES APPS, which zeroes the app arena,
 so it destroys whatever the owner had on screen (a drawing, a running
 timer). It never reflashes and never leaves the port held.
 
+`bun run test:devlink` proves the devlink protocol core
+(`harness/links/devlinkProtocol.ts`) and its browser transport
+(`harness/links/webSerialLink.ts`) against a scripted board, with no
+hardware: the reply shapes, the line framing across arbitrary byte chunks,
+the trace-event mapping, a whole replay matching its reference at tolerance
+zero, a different screen reading as a divergence rather than an error, and
+the three ways a board actually fails (going silent, answering `ERR`, and
+the port vanishing mid-`SHOT` body). Every failure case ends by asserting
+the port was released: a leaked serial port looks like "worked fine" until
+the next person tries to open the board.
+
 `bun run test:regression` proves the in-page, hardware-free regression
 check (`src/regression.ts`, the "baseline"/"check" buttons - see
 `docs/harness.md`) actually catches a firmware regression: it builds two
@@ -155,6 +166,29 @@ harness/        the differential test harness: replay a trace through the
                 diff.ts). fixtures/loopbackLink.ts is a FAKE link for
                 testing the harness itself, not real hardware - see
                 docs/harness.md.
+                links/ is the one place the "nothing names one device" rule
+                above leaves a seam for a device-specific adapter.
+                devlinkProtocol.ts is the wire protocol with no transport
+                under it (pure TypeScript: no node:*, no Bun.*, no DOM, no
+                pack import, because site/build.ts bundles it into a browser
+                page); devlinkLink.ts is that protocol over the pack's
+                PowerShell serial bridge; webSerialLink.ts is the same
+                protocol over navigator.serial, from a page. One protocol,
+                two transports - proven by test/devlink/.
+site/           the public gallery, site/dist/ committed and served by
+                Cloudflare Pages with no Pages-side build. flasher/ writes
+                firmware to a real board over WebUSB and Web Serial;
+                attest/ then makes that board replay the port's own trace
+                and diffs the frames against the bundle's recorded ones
+                (docs/decisions/0006); functions/ and d1/ are the Pages
+                Function and schema that count the results. Read
+                site/README.md before touching any of it, especially the
+                two one-time account steps /api/attest needs and where the
+                functions directory has to live.
+test/devlink/   a scripted devlink board and a fake Web Serial port,
+                proving both transports of that one protocol with no
+                hardware - including that every exit path gives the port
+                back.
 test/regression/ builds two tiny fixture firmwares (one draw call
                 different between them) and proves the hardware-free
                 regression check actually catches the difference - see
