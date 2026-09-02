@@ -110,7 +110,11 @@ use - so that link opts out of the repo-local cache entirely
 (`useAmbientCache: true`) and uses zig's own OS default instead. See
 `tools/zigSpawn.ts`'s header comment (the sixth failure mode) for the
 measured counts; `test:hostile` stayed red across every variant this
-bisect tried and remains unexplained. `bun run
+bisect tried and remains unexplained. Under heavy concurrent build load
+(several agents building at once) the eight-attempt default is not always
+enough for the sanitized native link: `PUCK_ZIG_MAX_ATTEMPTS` raises it
+for every zig spawn here, and only for SILENT failures, so a real compile
+error still comes back on the first attempt. `bun run
 pack:esp32:build` does the
 same for `packs/esp32-s3-touch-amoled-18/`, and `bun run pack:web:build`
 for `packs/web/`; `bun run pack:web:host` builds that pack's second mode

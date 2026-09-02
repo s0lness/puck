@@ -36,7 +36,7 @@ See [`docs/decisions/0012`](decisions/0012-the-gallery-is-built-from-a-ledger.md
 | mark | runs the firmware as | catches | never catches |
 | --- | --- | --- | --- |
 | **emulator** | wasm32-freestanding, in the browser or headless (`harness/emulatorSide.ts`) | application-logic bugs: wrong pixels, wrong state transitions, wrong layout | timing, bus load, real input-device defects, anything wasm's memory-safe-by-construction sandbox hides (see "host", below) |
-| **host** | a native executable on THIS machine, with `-fsanitize=undefined` (and `address` where it links) - `harness/hostSide.ts` | the COMPILER CLASS of defect wasm hides entirely: an out-of-bounds write, a signed overflow, an unaligned access - anything that corrupts memory on real hardware but is unreachable inside wasm's own sandboxed linear memory | timing, bus load, real input-device defects, floating-point rounding differences between this machine's own libm/FPU codegen and either wasm's or the real target's (a `DIVERGE` on a float-heavy app like `apps/fluidbox` may be exactly this, not a real bug - report the pixel counts honestly, per `bun run hostdiff`'s own output, rather than raising `--tolerance` to make it disappear), and - like the emulator mark - whether the wasm/host builds agree with the SHIPPED cross-compiled binary in every codegen and integer-width detail (`docs/decisions/0002-two-compilers-not-one.md`, extended by one more compiler) |
+| **host** | a native executable on THIS machine, with `-fsanitize=undefined` (and `address` where it links) - `harness/hostSide.ts` | the COMPILER CLASS of defect wasm hides entirely: an out-of-bounds write, a signed overflow, an unaligned access - anything that corrupts memory on real hardware but is unreachable inside wasm's own sandboxed linear memory | timing, bus load, real input-device defects, whatever numerical difference is left once the host build is made to compute the way wasm does (see "What the host mark can and cannot agree on" below: contraction is settled, this machine's own libm is not), and - like the emulator mark - whether the wasm/host builds agree with the SHIPPED cross-compiled binary in every codegen and integer-width detail (`docs/decisions/0002-two-compilers-not-one.md`, extended by one more compiler) |
 | **silicon** | the real board, over your own transport (`harness/hardwareSide.ts`, `harness/diff.ts`) | everything the other two cannot: real timing, real bus load, whatever the real input-device chip actually delivers, real codegen for the real target | this is the only mark with no "never catches" column - it IS the real thing, at the cost of needing real hardware, being unrepeatable byte-for-byte run to run (see "Against the real board" below), and never running on CI |
 
 **Why a third mark, when two already exist.** The emulator mark answers "does
@@ -138,9 +138,12 @@ written on what appears to be the same class of machine and under the same
 **`harness/hostSide.ts` ships with `MAX_ATTEMPTS = 8`**, matching every
 other build script in this repository rather than over-fitting to one
 session's extreme contention; a machine under similarly heavy concurrent
-load may need to set a higher local retry budget (there is no env var for
-this today - a real gap, not a design choice, left for whoever hits it
-next). Whatever the budget, exhausting it is reported as `BUILD_FAILED`
+load may need to set a higher local retry budget: `PUCK_ZIG_MAX_ATTEMPTS`
+(`tools/zigSpawn.ts`) raises it for every zig spawn in this repository, and
+40 is what it took to get `apps/gameos`'s esp32 host build through while
+this repository's other workers were building. It raises only how many
+times a SILENT failure is retried, so a diagnosed compile error still comes
+back on the first attempt. Whatever the budget, exhausting it is reported as `BUILD_FAILED`
 with the compiler's own error text, never a hang, never a false MATCH,
 never an unexplained crash - this is the behaviour that was actually
 exercised most, across many runs, while writing this.
@@ -171,20 +174,12 @@ higher one-off budget - see above):
 - `bun run hostdiff fluidbox rp2350-touch-amoled-18`: **FAIL, 0/3 points
   matched** - `t=4000ms` 7,696/164,864px (4.67%), `t=4016ms`
   8,345/164,864px (5.06%), `t=9024ms` 8,142/164,864px (4.94%), max channel
-  delta 255 at all three. Reported exactly, at tolerance 0, per this
-  task's own instruction not to loosen it silently: `apps/fluidbox`'s port
-  for this pack is a fluid simulation carrying float state across hundreds
-  of ticks (566 events replayed here), and a 255-delta max says this is
-  not sub-pixel rounding noise but a real divergence in the simulation's
-  own trajectory - plausible and, for a chaotic iterative system, close to
-  expected: wasm32's float32 codegen (V8/JSC) and this host's own (zig's
-  native float32 codegen) can each be individually IEEE-754-correct at
-  every single operation and still accumulate a different rounding choice
-  somewhere in 566 ticks' worth of multiply-accumulates, which a fluid sim
-  amplifies exactly the way chaotic systems do. This is precisely the
-  bounded, honestly-reported case `docs/harness.md`'s "host" mark row
-  above describes, not a bug in this harness - and not a case for raising
-  `--tolerance` until it disappears.
+  delta 255 at all three. Reported exactly, at tolerance 0, rather than
+  loosened silently. **That divergence is now closed, and the paragraph
+  that used to guess at it has been replaced by the measurement: see
+  "What the host mark can and cannot agree on" below.** It was
+  floating-point CONTRACTION, one flag, not a bug in anybody's C, and the
+  same three points now MATCH byte for byte.
 
 **One real, load-bearing bug found and fixed while producing the chrono
 proof above, worth keeping as its own gotcha**: `harness/host/driver.c`'s
@@ -218,6 +213,120 @@ here rather than only in a commit message because the next person adding
 a device-agnostic instrument file that shares a process with real
 firmware C will hit some version of this the moment that firmware logs
 anything.
+
+### What the host mark can and cannot agree on
+
+The three non-MATCH cells the ledger carried on 2026-09-02 were closed
+one at a time, and between them they say most of what there is to say
+about how far this mark reaches. None of the three was what it looked
+like from the mark alone, which is the point of writing them down.
+
+**A DIVERGE can be the compiler's licence, not the firmware's fault, and
+that one is fixable rather than tolerable.** `apps/fluidbox` was 4.7% of
+the panel apart from its own wasm build on all three of its packs. The
+cause was floating-point CONTRACTION: clang defaults to
+`-ffp-contract=on` and may fuse `a * b + c` into a single fused
+multiply-add, one rounding instead of two, while wasm32 has no FMA
+instruction at all and always rounds twice. Both builds are individually
+IEEE-754-correct; they simply round in different places. A chaotic SPH
+solver amplifies that the way chaotic systems do.
+
+The measurement, at a ladder of capture points rather than only the
+bundle's own three, is what turned that from a plausible story into a
+finding. With contraction ON the two builds are byte-identical at
+t=16/32/64/128/256/512ms, part company at t=1024ms by 84 of 164,864
+pixels, reach 2.69% at t=2048ms and saturate near 5%. With
+`-ffp-contract=off` the same two builds are byte-identical at every one
+of those eleven points. `harness/hostSide.ts` now passes that flag on
+every source of every app, because it is a property of the two TARGETS,
+not of any one firmware, and a host mark that could only agree with wasm
+on integer code would be a far weaker instrument. **No `hostTolerance`
+was added to the bundle convention, because after this there is no
+residue to tolerate**: every float-heavy cell is MATCH at tolerance 0.
+
+Not `-ffast-math`, in either direction: it goes the OTHER way, turning
+contraction on along with reassociation and finite-math assumptions,
+which is further from wasm's strict IEEE-754 semantics, not closer.
+
+What is NOT settled, and stays in the "never catches" column above: the
+nine math functions `wasm/emu_abi.h` declares as host imports
+(`sinf`, `cosf`, `atan2f`, `sqrtf`, `powf`, `expf`, ...) are
+JavaScript's own `Math.*` on the wasm side - double-precision results
+narrowed to float on the import boundary (`src/wasm.ts`) - and this
+machine's single-precision libm on the host side. Two correct
+implementations of `sinf` may still differ in the last bit. Nothing in
+this repository's current cells is diverging on that today (checked, for
+the one table it would have shown up in: `gfx.c`'s 256-entry
+`lrintf(sinf(...) * 16384)` sine table is identical computed both ways),
+but it is the next thing a float-heavy port will hit, and no flag makes
+it go away.
+
+**A DIVERGE can also be the harness losing an input.**
+`harness/host/driver.c` guards its calls to the optional `emu_abi.h`
+exports on `-DEMU_HAS_<NAME>=1`, and every pack's `wasm/host.ts` computes
+those defines - but `harness/hostSide.ts` compiled the driver with an
+EMPTY define list, so every one of those guards was false on every pack,
+on every run this mark has ever made. A `VECTOR` or `ACCEL` line was
+parsed, its arguments validated, and then dropped: no error, no warning,
+no protocol violation. `apps/gameos x rp2350-touch-amoled-18` is what
+that cost - one `vector` event in its trace, a turret slewing toward an
+aim point the host build never learned about, a reticle stuck in the
+centre, 376 of 164,864 pixels. The driver's INCLUDES are still the pack's
+business to stay out of (a pack's `shim/stdio.h` would shadow the real
+one the driver needs); its DEFINES exist for the driver, and that
+distinction is now written down in both files.
+
+The general lesson, worth more than the fix: **a differential mark whose
+two sides are fed by two different pieces of code has a third failure
+mode neither side can see** - one of them never received the input at
+all. Everything the driver drops silently is a divergence attributed to
+firmware. If you add an event kind to `harness/types.ts`, add it to
+`buildProtocol()` AND to `driver.c` AND check that the guard it lands
+behind is actually defined.
+
+**A CRASHED is never a verdict, and was hiding two real bugs.**
+`apps/gameos x esp32-s3-touch-amoled-18` was recorded CRASHED with the
+reason `EOF: end of file, write`, which says nothing about anybody's
+firmware. What happened: the sanitized child aborted partway through a
+6,184-event trace, so the pipe closed under a process still writing the
+protocol into it, and the exception escaped past the exit code and the
+stderr carrying the actual report. `replayHost()` now tolerates that
+write failing and decides the verdict the way it always did, from the
+child's own exit code and stderr, so a trap mid-replay reports SANITIZER.
+`tools/ledger.ts` pulls the report's first sentence and its first stack
+frame inside this repository into the cell's own reason, so a SANITIZER
+cell names a file and a line rather than shrugging.
+
+Underneath it were two findings, and both are exactly the class this
+mark exists for - real undefined behaviour that wasm32 hides completely:
+
+1. `apps/gameos/ports/esp32-s3-touch-amoled-18/esp_heap_caps.h` stood in
+   for `heap_caps_calloc()` with two `static uint8_t` arrays. A `uint8_t`
+   array promises alignment 1; the allocator it replaces promises
+   alignment suitable for any object, which `shell.c`'s `launch()` relies
+   on when it hands that pointer to a game as `ctx->state`. UBSan:
+   `member access within misaligned address 0x7ff7de46a64d for type
+   'gs_t', which requires 8 byte alignment`, at `gunship.c:1428`, an
+   address not even 2-aligned. Fixed in the port (`_Alignas(16)` on both
+   arenas). On wasm32 unaligned access is legal, so the emulator mark ran
+   the whole trace without a murmur; on the ESP32-S3 this port targets it
+   is an alignment exception or the wrong bytes.
+2. With that fixed, the replay reaches GOLF and traps again, in the
+   DONOR'S OWN vendored source: `apps/gameos/reference/esp32-gameos/
+   golf.c:118`, `signed integer overflow: 1499045572 + 668265263 cannot
+   be represented in type 'int'` - a hash function
+   (`(ix + 1) * 374761393 + (iy + 1) * 668265263`) written with signed
+   ints, which is UB the moment it wraps. **This cell's honest final
+   state is SANITIZER naming that line**, not MATCH: `reference/` is
+   vendored unmodified by contract (see that port's `NOTICE.md`), and
+   silencing the check for one translation unit would be exactly the
+   "loosen it until it passes" this mark refuses. It is a real finding
+   about real third-party code, made with no board attached.
+
+**Where the mark stands after all this**: ten of the eleven app x pack
+cells that have a host build MATCH byte for byte at tolerance 0, and the
+eleventh is a SANITIZER naming a line in vendored code. No DIVERGE, no
+CRASHED, no BUILD_FAILED, and no tolerance anywhere.
 
 ## Run it
 
