@@ -9,7 +9,7 @@
 <meta property="og:description" content="The same descriptor, ported to a second board with no persistent framebuffer. Pixel-identical to the reference, verified capture by capture." />
 <meta property="og:type" content="website" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2214%22%20fill%3D%22%232f6feb%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23fafafa%22%2F%3E%3C%2Fsvg%3E" />
-<link rel="stylesheet" href="../styles.css?v=681de05b49" />
+<link rel="stylesheet" href="../styles.css?v=f3a91b140c" />
 </head>
 <body>
 <div class="wrap">
@@ -54,14 +54,32 @@
       <p>Unplug USB. Hold BOOT while plugging the cable back in, then release it. The board comes up in the ROM download mode, its port appears, and this button works from there.</p>
     </details>
   </section>
+  <section class="attest-section" data-attest-plan="../attest/chrono-esp32.json">
+    <h2>Prove it runs</h2>
+    <p class="attest-note">The board can answer for itself. This replays this port&#39;s own recorded trace over the board&#39;s devlink port and compares every captured frame against the frames the verifier uses, pixel for pixel.</p>
+    <p class="attest-counter attest-counter-empty" data-attest-app="chrono" data-attest-pack="esp32-s3-touch-amoled-18">no board has confirmed this yet</p>
+    <div class="attest-actions">
+      <button type="button" class="attest-btn">Run the trace on this board</button>
+    </div>
+    <p class="attest-hint">Needs the board running this firmware, and Chrome or Edge on desktop. Nothing about you is sent: the result carries the app, the pack, the firmware&#39;s own sha256, the verdict and the pixel counts.</p>
+    <div class="attest-progress" hidden><p class="attest-status"></p></div>
+    <ol class="attest-points" hidden></ol>
+    <p class="attest-verdict" hidden></p>
+    <div class="attest-post" hidden>
+      <button type="button" class="attest-post-btn">Post this result</button>
+    </div>
+    <p class="attest-posted" hidden></p>
+    <p class="attest-error" hidden></p>
+  </section>
 <footer>
     <div class="wrap" style="padding:0">
       <a href="https://github.com/s0lness/puck/blob/master/README.md">s0lness/puck</a> on GitHub, MIT licensed.
-      &middot; <a href="../agents.html?v=4b8013611a">agents</a>
+      &middot; <a href="../agents.html?v=5f1e70f0fe">agents</a>
     </div>
   </footer>
 </div>
 <script type="module" src="../flash/esp32-flash.js?v=d182195752"></script>
+<script type="module" src="../flash/attest.js?v=f74f28e3f0"></script>
 <script>
 (function () {
   var NATIVE_W = 448, NATIVE_H = 618;

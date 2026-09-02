@@ -69,6 +69,16 @@ cable, and drag the file onto the drive that appears.
 [`packs/rp2350-touch-amoled-18/README.md`](packs/rp2350-touch-amoled-18/README.md) has the four manual steps in full,
 and what to do if the board ever stops responding.
 
+**Then make the board answer for itself.** Under the flash button, "Prove it
+runs" replays that port's own recorded trace on the board you just flashed,
+over the same devlink link the command-line harness uses, and compares every
+captured frame against the same recorded frames `bun run verify-bundle`
+compares against, pixel for pixel. It shows MATCH or DIVERGE per capture
+point, and you can post the result: the cards count confirmed runs instead
+of a date somebody typed. Nothing about you is sent, which is also why the
+count says "confirmations" and never "boards" (see
+[`docs/decisions/0011`](docs/decisions/0011-attestation-is-a-run-not-a-claim.md)).
+
 **Want to try it without buying anything?** `bun install && bun run
 pack:build && bun run dev` gives you the puck in a browser page. Same
 apps, same rasteriser, same app-switching logic, because it is the same C.

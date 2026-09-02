@@ -171,6 +171,17 @@ changes here.
 
 ### Proving a firmware regression, and the instrument's own hostile inputs
 
+`bun run test:devlink` proves the devlink protocol core
+(`harness/links/devlinkProtocol.ts`) and its browser transport
+(`harness/links/webSerialLink.ts`) against a scripted board, with no
+hardware: the reply shapes, the line framing across arbitrary byte chunks,
+the trace-event mapping, a whole replay matching its reference at tolerance
+zero, a different screen reading as a divergence rather than an error, and
+the three ways a board actually fails (going silent, answering `ERR`, and
+the port vanishing mid-`SHOT` body). Every failure case ends by asserting
+the port was released: a leaked serial port looks like "worked fine" until
+the next person tries to open the board.
+
 `bun run test:regression` proves the in-page, hardware-free regression
 check (`src/regression.ts`, the "baseline"/"check" buttons - see
 `docs/harness.md`) actually catches a firmware regression: it builds two
@@ -326,6 +337,19 @@ harness/        the differential test harness. diff.ts (replay one trace
                 pixel-exact - a faithful port's proof), and
                 invariantRun.ts (the device-agnostic replay-and-capture
                 runner behind an adaptation port's stated invariants).
+                links/ is the one place the "nothing names one device" rule
+                above leaves a seam for a device-specific adapter.
+                devlinkProtocol.ts is the wire protocol with no transport
+                under it (pure TypeScript: no node:*, no Bun.*, no DOM, no
+                pack import, because site/build.ts bundles it into a browser
+                page); devlinkLink.ts is that protocol over the pack's
+                PowerShell serial bridge; webSerialLink.ts is the same
+                protocol over navigator.serial, from a page. One protocol,
+                two transports - proven by test/devlink/.
+test/devlink/   a scripted devlink board and a fake Web Serial port,
+                proving both transports of that one protocol with no
+                hardware - including that every exit path gives the port
+                back.
 test/regression/ builds two tiny fixture firmwares (one draw call
                 different between them) and proves the hardware-free
                 regression check actually catches the difference - see
@@ -444,7 +468,13 @@ site/           the public gallery. build.ts writes dist/ (committed,
                 see NOTICE.md for the vendored esptool-js it ships),
                 demo-media/ (recorded, encoded demo loops every gallery
                 card links to), record-demos.ts (regenerates them),
-                styles.css.
+                styles.css. attest/ makes a freshly flashed board replay
+                the port's own trace and diffs the frames against the
+                bundle's recorded ones (docs/decisions/0011); functions/
+                is the Pages Function, over the ATTEST KV namespace, that
+                counts the results. Read site/README.md before touching
+                any of it, especially where the functions directory has
+                to live for Pages to deploy it at all.
 skills/         skills/puck-publish/SKILL.md: the step-by-step publishing
                 procedure for an agent porting or listing an app -
                 docs/convention/app-bundle.md and publishing.md are the
