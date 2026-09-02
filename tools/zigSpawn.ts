@@ -39,7 +39,29 @@
 // every pack's wasm/build.ts, every test/*/build.ts, and site/build.ts's
 // own build-orchestration loop (which does not invoke zig directly, but
 // exists only because a build one level down might hit exactly this).
+//
+// A THIRD failure mode, worse than either of the above two and found
+// AFTER this file's first version shipped: `bun run <script-name>` (the
+// package.json alias form every entry in this repo's package.json is) is
+// not the same environment as running the underlying file directly. It
+// prepends one nonexistent `node_modules/.bin` PER ANCESTOR DIRECTORY of
+// the repo root to PATH (nine of them on this development machine,
+// walking to the filesystem root) - see tools/env.ts's header comment for
+// the full finding. Under that alias-polluted PATH, a tight loop
+// compiling the same fixture wrote NOTHING AT ALL, 0/5 attempts, every
+// one exiting 5 with empty stderr; the same loop under a sanitized PATH
+// wrote a real artifact 3/5 times (the remaining 2/5 being the ordinary,
+// separate flake this file's OWN retry already handles). Bun.spawnSync
+// never threw in either case, so this is not Bun failing to LAUNCH zig at
+// all (ZIG_EXE is an absolute path, never PATH-searched for the top-level
+// process) - exit 5 is a real code zig's own process reports, from
+// somewhere inside its compile/link path that shells out to a further
+// unqualified command, resolved through whatever PATH it was handed.
+// Every spawn this file makes now goes through tools/env.ts's
+// sanitizedEnv(), which removes the dominant cause outright rather than
+// retrying around it.
 import { readFileSync, rmSync, statSync } from "node:fs";
+import { sanitizedEnv } from "./env";
 
 export interface SpawnRetryResult {
   ok: boolean;
@@ -106,7 +128,12 @@ export function spawnWithRetry(cmd: string[], opts: SpawnRetryOptions = {}): Spa
         stdout: "pipe",
         stderr: "pipe",
         cwd: opts.cwd,
-        env: opts.env ? { ...process.env, ...opts.env } : undefined,
+        // Always sanitized, not only when opts.env is given: the
+        // alias-PATH pollution this file's own header comment measures
+        // is there whenever this process itself was started via `bun run
+        // <script-name>`, whether or not a caller passes its own extra
+        // env vars on top.
+        env: sanitizedEnv(opts.env),
         timeout,
       });
     } catch (err) {

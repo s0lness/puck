@@ -80,7 +80,15 @@ succeeded immediately. Every build script in this repo now goes through
 depends on an ancestor's) and checks the artifact on disk rather than the
 exit code, retrying only a genuinely silent failure. It still needs to
 retry sometimes - that part was real - just not blindly, and not for a
-reason that turned out to be mostly this repo's own doing. `bun run
+reason that turned out to be mostly this repo's own doing. A second,
+worse cause found the same way: `bun run <script-name>` (the package.json
+alias every command above actually is) prepends one nonexistent
+`node_modules/.bin` per ancestor directory to `PATH`, and `zig cc` itself
+relies on `PATH` internally for its own compile/link path, so running any
+of these through its alias rather than the file directly used to make
+`zig cc` write NOTHING at all, deterministically, not just intermittently
+- fixed by `tools/env.ts`'s `sanitizedEnv()`, which every spawn in
+`tools/zigSpawn.ts` now uses. `bun run
 pack:esp32:build` does the
 same for `packs/esp32-s3-touch-amoled-18/`, and `bun run pack:web:build`
 for `packs/web/`; `bun run pack:web:host` builds that pack's second mode

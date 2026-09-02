@@ -28,6 +28,7 @@
 
 import { cpSync, existsSync, mkdtempSync, rmSync, statSync, mkdirSync, copyFileSync } from "node:fs";
 import { join, resolve, sep, dirname, isAbsolute } from "node:path";
+import { sanitizedEnv } from "./env";
 import { tmpdir } from "node:os";
 
 // The four fields a bundle port's "build" object carries
@@ -140,35 +141,13 @@ export interface ExternalBuildOutcome {
 
 const DEFAULT_TIMEOUT_MS = 600_000;
 
-// `bun run <script-name>` (the package.json alias form, e.g. `bun run
-// test:external`) prepends one `node_modules/.bin` entry PER ANCESTOR
-// DIRECTORY of the repo root to PATH, ahead of everything else - verified
-// directly (not assumed) by printing process.env.PATH from inside a script
-// invoked both ways: `bun run tools/externalBuild.ts`'s own process saw a
-// plain PATH, `bun run <alias-that-runs-the-same-file>` saw nine extra
-// `.../node_modules/.bin` segments in front of it, walking all the way up
-// to the filesystem root, NONE of which exist on disk on this machine.
-// Every one of those is a directory bash (and anything bash spawns) has to
-// stat() and find missing before it reaches the real Git/System32 entries
-// behind them - for EVERY unqualified command a build script runs (mkdir,
-// the compiler's own PATH-searched helpers, etc.), not just once. Under
-// concurrent filesystem load (this machine regularly runs several parallel
-// agents' own builds at once) that is extra, avoidable contention on the
-// exact path a silent, false-positive "succeeded" build command takes
-// (see buildExternalPort's own retry loop below, added for the same
-// symptom). A nonexistent directory can never resolve a real binary, so
-// dropping it from PATH before spawning bash or git can only remove noise,
-// never change which binary answers a real command.
-function sanitizedEnv(extra?: Record<string, string | undefined>): Record<string, string | undefined> {
-  const raw = process.env.PATH ?? "";
-  const pathSep = process.platform === "win32" ? ";" : ":";
-  const seen = new Set<string>();
-  const cleaned = raw
-    .split(pathSep)
-    .filter((p) => p.length > 0 && !seen.has(p) && seen.add(p) && existsSync(p))
-    .join(pathSep);
-  return { ...process.env, ...extra, PATH: cleaned };
-}
+// sanitizedEnv() now lives in tools/env.ts (one shared implementation:
+// tools/zigSpawn.ts applies it to every zig spawn too, for the same
+// alias-PATH-pollution symptom, found here first and confirmed there to
+// be worse than originally scoped - see that file's header comment for
+// the "does it write nothing, or does it merely lie about its exit code"
+// measurement this repository now has for both). See tools/env.ts's own
+// header comment for the full PATH-pollution finding this fixes.
 
 // timeoutMs applies here too, not just to the build command below: a git
 // clone/fetch/checkout against a host that stalls (a bad URL, a network
@@ -326,8 +305,8 @@ export async function buildExternalPort(build: ExternalBuild, options: ExternalB
     // machine, reliably lost specifically when invoked as `bun run
     // <script-name>` (the package.json alias form): that form pollutes
     // PATH with several nonexistent node_modules/.bin ancestor
-    // directories (sanitizedEnv() above, and its own comment, is the
-    // actual fix for that). sanitizedEnv() removes the dominant cause;
+    // directories (tools/env.ts's sanitizedEnv(), and its own header
+    // comment, is the actual fix for that). sanitizedEnv() removes the dominant cause;
     // this loop is defense in depth for whatever OS-level process-spawn
     // contention is left under concurrent load - observed directly as
     // either exit 127 with EMPTY stdout AND stderr (bash itself never got
