@@ -357,14 +357,16 @@ function sanitizerFinding(report: string | undefined): string | null {
   if (!report) return null;
   const lines = report.split("\n").map((l) => l.trim());
   const what = lines.find((l) => /panic:|runtime error:/.test(l))?.replace(/^.*?(panic|runtime error):\s*/, "") ?? null;
-  // zig's own report format: "<absolute path>:<line>: 0x... in <fn> (<obj>)".
-  // Repo-relative is what a reader wants, and it also keeps this string short
-  // enough for the gallery's own cell.
+  // zig's own report format: "<absolute path>:<line>[:<col>]: 0x... in <fn>
+  // (<obj>)". The column is dropped - it is 0 on every frame this has been
+  // seen on, and a file and a line is what somebody opens. Repo-relative is
+  // what a reader wants, and it keeps this string short enough for the
+  // gallery's own cell.
   const rootPrefix = `${REPO_ROOT}\\`;
   const rootPrefixPosix = `${REPO_ROOT}/`;
   let where: string | null = null;
   for (const l of lines) {
-    const m = /^(.+?:\d+): 0x[0-9a-f]+ in (\S+)/.exec(l);
+    const m = /^(.+?:\d+)(?::\d+)?: 0x[0-9a-f]+ in (\S+)/.exec(l);
     if (!m) continue;
     const file = m[1]!;
     if (!file.startsWith(rootPrefix) && !file.startsWith(rootPrefixPosix)) continue; // zig's own runtime, libc, the CRT
