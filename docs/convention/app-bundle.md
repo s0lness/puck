@@ -28,6 +28,52 @@ This is not a second `Demands` section and it must not become one. `Demands` is 
 
 No schema change: this is prose inside `Interactions`, which `bundle.json` never reads.
 
+### Demands are also machine-readable
+
+`Demands` is the platonic layer: what the app requires of a device at all, checkable against a `device.json` before any code exists. That was true in prose from the start, and prose is what a porter reads. What prose could not do is answer the question mechanically, for every app against every device, which is what an apps-by-devices matrix needs.
+
+So the section carries one fenced block, tagged ` ```json demands `, in ADDITION to its prose. The prose stays the authority for a human and for a porter's judgement; the block is the same requirements written so `bun run verdict <app> <target>` can check them (`tools/verdict.ts`). A block that says something the prose does not is a bug in the block.
+
+```
+{
+  "convention": "0.1",
+  "panel": {
+    "minW": 200, "minH": 200,
+    "scalesTo": { "minW": 128, "minH": 96 },
+    "orientation": "either",
+    "color": false
+  },
+  "buttons": [
+    { "role": "key", "why": "start and stop, and it must feel instant" },
+    { "role": "click", "why": "reset, on a different control so it cannot be hit by accident" }
+  ],
+  "touch": { "points": 0 },
+  "sensors": [],
+  "memory": { "baseBytes": 96 },
+  "tick": { "needsMs": 2, "refuseUnderMs": 0.5 }
+}
+```
+
+- **`panel`**: `minW`/`minH` is the size at which the app is itself. `scalesTo` is the smaller size it still works at once its layout is derived from the panel rather than from constants, and a target between the two is a `degraded`, never a `refuse`. `orientation: "either"` means the two dimensions may be compared against the panel's long and short sides rather than against w and h in order (a landscape app on a portrait panel is the normal case, not a mismatch). `color: true` refuses a monochrome panel outright, and only an app whose colour carries information should say so.
+- **`buttons`**: one entry per control the app needs, by ROLE (`click` or `key`, see [`device-pack.md`](device-pack.md)'s silhouette section), each with the `why` that its `Interactions` intent parenthetical already states. An exact role match is a fit; a substitution (a `key` demand met by a `click` button) is a `degraded` with the cost named, because the two deliver different signals to the app; too few usable buttons is a `refuse`.
+- **`sensors`**: `{ "kind": "vector" | "event" | "stream", "why": ..., "fallback": { "kind": ..., "cost": ... } }`. A missing sensor with a declared fallback the device does have is a `degraded` quoting the cost; a missing sensor with no fallback is a `refuse`.
+- **`memory`**: `baseBytes` plus, for an app whose state scales with a degrade below, `perUnitBytes` and `unit`. Checked against the target's `budget.ram.bytes`; a target that declares no budget is reported as unchecked rather than assumed generous.
+- **`tick`**: `needsMs` is what one frame costs on the reference device; a target whose `budget.tickBudgetMs` is under it is `degraded` (it will run slower), and one under `refuseUnderMs` is a `refuse` (it would no longer be this app).
+- **`degrades`** (optional): how the app shrinks to fit, one entry per quantity, so a verdict can print the NUMBER rather than the word "fewer".
+
+```
+"degrades": {
+  "particles": {
+    "what": "how many particles the fluid is made of",
+    "basis": "panel-area",
+    "pixelsPerUnit": 1268,
+    "reference": 130, "min": 16, "max": 130
+  }
+}
+```
+
+`basis: "panel-area"` means the count follows the panel's area at a fixed density: `clamp(floor(w * h / pixelsPerUnit), min, max)`, and it is additionally capped by what the target's RAM budget holds when `memory.perUnitBytes` is given. The verdict reports which of the two bound it. An app that declares a degrade MUST actually implement it from the device descriptor: `apps/fluidbox/ports/web/fluid.c`'s `FLUID_N` is that same expression in C, so the number a verdict prints is the number that runs, not a number about it.
+
 ## Bundle schema (0.2)
 
 `bundle.json` sits next to `descriptor.md`. Its `convention` field states the schema version it was written against. Version 0.2 replaces the earlier loose `provenPacks` field with a `ports` array, one entry per pack the app has been ported to and proven on:
