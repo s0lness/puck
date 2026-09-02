@@ -60,7 +60,56 @@
 // Every spawn this file makes now goes through tools/env.ts's
 // sanitizedEnv(), which removes the dominant cause outright rather than
 // retrying around it.
+//
+// A FOURTH failure mode, found after the alias-PATH fix above stopped
+// covering every remaining red run: zig's own GLOBAL CACHE
+// (content-addressed, under `zig env`'s `global_cache_dir` - the OS
+// default, shared across every project and every process on the machine
+// unless ZIG_GLOBAL_CACHE_DIR overrides it) can hold a POISONED entry - a
+// zero-byte manifest file under its `h/` directory, an empty directory
+// under its `o/` directory - left behind by an attempt that got killed
+// mid-write (this file's own DEFAULT_TIMEOUT_MS kill included) or lost
+// a race with a concurrent one. Confirmed directly on the default global
+// cache: hundreds of zero-byte manifests and several empty content
+// directories, spanning days of ordinary use, not one bad run. Windows
+// exit code 5 IS `ERROR_ACCESS_DENIED` - every future compilation whose
+// content hash lands on a poisoned entry dies the same silent way, for
+// the SAME fixture, every time: deterministic per fixture, which is
+// exactly what this repository spent a long time calling "flaky". Fixed
+// two ways below: every zig spawn gets its OWN cache, private to this
+// repository (so no other project or stray process can poison it again),
+// and a silent failure wipes that cache before the next attempt (so a
+// poisoned entry this repo's own killed attempt left behind cannot wedge
+// every future compile of the same fixture forever). Real, but NOT what
+// was still making test:hostile fail after that fix landed - see the
+// fifth failure mode below, found by actually bisecting that specific
+// remaining red run rather than assuming the fourth one covered it.
+//
+// A FIFTH failure mode, found by bisecting test:hostile's own
+// audio_bad_buffer case (the one with the most `-Wl,--export=` flags of
+// any fixture in this repo, 18) after wiping the cache clean did NOT fix
+// it: with a completely empty cache and no other zig process alive,
+// `zig cc` still exited 5 with empty stderr and wrote nothing, EVERY
+// time, on the FIRST attempt - not the flake the fourth failure mode
+// above describes. Bisected by varying which of -I/source/-o were
+// absolute vs relative to cwd, one at a time: any ONE of them absolute
+// was fine; ALL THREE absolute together (exactly what every caller here
+// constructs, via resolve()/join() from import.meta.dir) reproduced the
+// silent exit 5 on every single attempt, and ONLY for a fixture with this
+// many export flags - fewer flags with the same all-absolute paths built
+// clean. This reads as the same long-documented "many -Wl,--export= flags
+// makes zig cc's linker crash" flake, made DETERMINISTIC rather than
+// occasional by adding the length of three long, deeply-nested absolute
+// Windows paths (this checkout's own worktree path alone is 72
+// characters) to an already-long command line - not refuted by the
+// measurement above it, sharpened by it. Fixed by relativizeArgs() below:
+// every absolute path argument this file is about to hand to zig, that
+// resolves inside REPO_ROOT, is rewritten relative to it before the
+// spawn (with `cwd: REPO_ROOT` set to match), which cannot change what
+// file zig opens and measurably returns the flake rate to the ordinary,
+// already-handled range instead of a deterministic wall.
 import { readFileSync, rmSync, statSync } from "node:fs";
+import { resolve, join, isAbsolute, relative } from "node:path";
 import { sanitizedEnv } from "./env";
 
 export interface SpawnRetryResult {
@@ -92,6 +141,12 @@ export interface SpawnRetryOptions {
   // looking like a success, by way of attempt N-1's (or an entirely
   // earlier run's) leftover file still sitting at that same path.
   beforeAttempt?: () => void;
+  // Run once a SILENT failure is actually detected (not on a diagnosed
+  // one), before the pause-and-retry below. runZigCc below supplies one
+  // that wipes zig's own global cache directory: see this file's header
+  // comment for why a silent failure can mean a poisoned cache entry, not
+  // just ordinary contention.
+  onSilentFailure?: () => void;
 }
 
 export const DEFAULT_MAX_ATTEMPTS = 8;
@@ -158,6 +213,12 @@ export function spawnWithRetry(cmd: string[], opts: SpawnRetryOptions = {}): Spa
       console.error(stderr.trim());
       return { ok: false, stdout, stderr, exitCode: r.exitCode, signalCode: r.signalCode ?? null, attempts: attempt };
     }
+    // A genuinely silent failure: no diagnostics, no accepted artifact.
+    // Wipe whatever onSilentFailure protects (runZigCc: its own global
+    // cache) BEFORE deciding whether there is a next attempt left, so the
+    // cache is left clean either way - including on the attempt that
+    // exhausts the budget, for whichever script runs next.
+    opts.onSilentFailure?.();
     if (attempt >= maxAttempts) {
       return { ok: false, stdout, stderr, exitCode: r.exitCode, signalCode: r.signalCode ?? null, attempts: attempt };
     }
@@ -173,6 +234,30 @@ export function spawnWithRetry(cmd: string[], opts: SpawnRetryOptions = {}): Spa
 // No machine-specific default: zig comes off PATH unless ZIG_EXE says
 // otherwise (AGENTS.md's environment note).
 export const ZIG_EXE = process.env.ZIG_EXE ?? "zig";
+
+// tools/ -> repo root. Repo-local, not a temp directory: the whole point
+// is a cache that PERSISTS across runs (that is what makes it useful at
+// all) while staying private to this checkout, so a poisoned entry here
+// is this repo's own problem to wipe, never the machine-wide cache every
+// other project and every other agent on it shares.
+const REPO_ROOT = resolve(import.meta.dir, "..");
+export const DEFAULT_ZIG_GLOBAL_CACHE_DIR = join(REPO_ROOT, ".zig-cache", "global");
+
+// See this file's header comment (the fifth failure mode) for why this
+// exists: any argument that is an absolute path resolving inside baseDir
+// is rewritten relative to it - shorter, and resolves to the exact same
+// file once the spawn's own `cwd` is set to baseDir to match. An absolute
+// path OUTSIDE baseDir (zig's own install dir showing up in some flag
+// value, say) is left untouched: relative(baseDir, arg) would start with
+// ".." and that is deliberately the signal to leave it alone, not to
+// rewrite it into something longer.
+function relativizeArgs(args: string[], baseDir: string): string[] {
+  return args.map((arg) => {
+    if (!isAbsolute(arg)) return arg;
+    const rel = relative(baseDir, arg);
+    return rel.length > 0 && !rel.startsWith("..") ? rel : arg;
+  });
+}
 
 const WASM_MAGIC = [0x00, 0x61, 0x73, 0x6d]; // "\0asm"
 
@@ -217,9 +302,23 @@ export interface ZigCcOptions {
 // exact path, by this call's own previous attempt or an unrelated earlier
 // run, must never be mistaken for THIS attempt's output.
 export function runZigCc(args: string[], outPath: string, opts: ZigCcOptions = {}): SpawnRetryResult {
-  return spawnWithRetry([ZIG_EXE, ...args], {
-    cwd: opts.cwd,
-    env: opts.env,
+  // ZIG_GLOBAL_CACHE_DIR: repo-local by default (DEFAULT_ZIG_GLOBAL_CACHE_DIR
+  // above), UNLESS it is already set - by this call's own opts.env, or by
+  // the ambient process env this script itself was started with - in
+  // which case that choice is respected verbatim, wipe-on-failure
+  // included: a caller naming its own cache dir is taking responsibility
+  // for it being safe to wipe, the same way this file's own default is.
+  const globalCacheDir = opts.env?.ZIG_GLOBAL_CACHE_DIR ?? process.env.ZIG_GLOBAL_CACHE_DIR ?? DEFAULT_ZIG_GLOBAL_CACHE_DIR;
+  // See this file's header comment (the fifth failure mode) and
+  // relativizeArgs() above: every caller here builds args with absolute
+  // paths (resolve()/join() from its own import.meta.dir), which this
+  // shortens back down before they ever reach zig, cwd set to match so
+  // the relative forms still resolve to the exact same files.
+  const cwd = opts.cwd ?? REPO_ROOT;
+  const relativeArgs = relativizeArgs(args, cwd);
+  return spawnWithRetry([ZIG_EXE, ...relativeArgs], {
+    cwd,
+    env: { ...opts.env, ZIG_GLOBAL_CACHE_DIR: globalCacheDir },
     timeoutMs: opts.timeoutMs,
     maxAttempts: opts.maxAttempts,
     beforeAttempt: () => {
@@ -231,5 +330,22 @@ export function runZigCc(args: string[], outPath: string, opts: ZigCcOptions = {
       }
     },
     artifactOk: () => artifactWritten(outPath, opts.isWasm ?? false),
+    // A silent failure (no diagnostics, no accepted artifact) can mean a
+    // POISONED cache entry a killed or colliding attempt left behind -
+    // see this file's header comment for what was actually found there.
+    // Wiping the whole cache is coarse (every object this repo has ever
+    // compiled, gone, so the next attempt recompiles from nothing) but
+    // correct is what matters here, not fast: a retry loop whose retries
+    // can never succeed because the SAME poisoned entry answers every one
+    // of them is worse than a slow recovery.
+    onSilentFailure: () => {
+      console.warn(`zig cc: silent failure, wiping the zig global cache at ${globalCacheDir} before the next attempt (a killed or colliding attempt can leave a poisoned entry there - see this file's header comment)`);
+      try {
+        rmSync(globalCacheDir, { recursive: true, force: true });
+      } catch {
+        // best-effort: if this can't be removed, the next attempt's own
+        // failure will say so with a real diagnostic, not silence.
+      }
+    },
   });
 }

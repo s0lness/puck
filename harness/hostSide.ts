@@ -122,7 +122,16 @@ function compileOne(src: string, includes: string[], defines: string[], sanitize
 
 function linkAll(objs: string[], sanitizeFlags: string[], outExe: string): string | null {
   const args = ["cc", ...sanitizeFlags, ...objs, "-o", outExe];
-  const result = runZigCc(args, outExe);
+  // cwd: tmpdir(), not the default REPO_ROOT tools/zigSpawn.ts's runZigCc()
+  // would otherwise use - every one of `objs` and `outExe` lives under the
+  // OS temp directory (buildHostExe's own buildDir/exePath), never under
+  // this repo, so the default base would leave every one of them absolute.
+  // Every object file this link step combines (driver.o plus one per
+  // source) is exactly the "many long absolute path arguments" shape
+  // tools/zigSpawn.ts's header comment documents zig cc crashing on -
+  // reproduced here too, not just in the wasm builds that flag list was
+  // originally found in.
+  const result = runZigCc(args, outExe, { cwd: tmpdir() });
   if (result.ok) return null;
   return result.stderr.trim().length > 0
     ? `zig cc failed linking (see diagnostics above)`

@@ -88,7 +88,16 @@ relies on `PATH` internally for its own compile/link path, so running any
 of these through its alias rather than the file directly used to make
 `zig cc` write NOTHING at all, deterministically, not just intermittently
 - fixed by `tools/env.ts`'s `sanitizedEnv()`, which every spawn in
-`tools/zigSpawn.ts` now uses. `bun run
+`tools/zigSpawn.ts` now uses. A third, independent cause: zig's own
+GLOBAL CACHE (shared by default across every project and every process on
+the machine) can hold a POISONED entry - a zero-byte manifest file, an
+empty content-addressed directory - left behind by an attempt this
+repo's own `ATTEMPT_TIMEOUT_MS` killed or that lost a race with a
+concurrent one, and every later compile whose hash lands on it dies the
+same silent way, for the SAME fixture, every time - fixed by giving every
+zig spawn its own cache under `.zig-cache/` (private to this checkout, so
+no other project can poison it again) and wiping it on a silent failure,
+both in `tools/zigSpawn.ts`. `bun run
 pack:esp32:build` does the
 same for `packs/esp32-s3-touch-amoled-18/`, and `bun run pack:web:build`
 for `packs/web/`; `bun run pack:web:host` builds that pack's second mode
