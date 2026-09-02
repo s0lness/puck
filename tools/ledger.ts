@@ -339,9 +339,40 @@ async function runVerifyBundle(target: string): Promise<{ byPack: Map<string, Ve
 }
 
 interface HostDiffJson {
-  results: { trace: string; atMs: number; verdict: "match" | "diverge" | "sanitizer"; diffPixels?: number; totalPixels?: number }[];
+  results: { trace: string; atMs: number; verdict: "match" | "diverge" | "sanitizer"; diffPixels?: number; totalPixels?: number; report?: string }[];
   allMatch: boolean;
   sanitizers: string[];
+}
+
+/**
+ * The one line a sanitizer report is worth reading, pulled out of the whole
+ * stack trace: the report's own first sentence (what the trap was) and the
+ * FIRST frame under it that names a file in this repository (where it was).
+ * A SANITIZER cell whose reason is only "the host build trapped" is a cell
+ * nobody can act on; a SANITIZER cell that says which file and line is a bug
+ * report. See harness/hostSide.ts's -fno-sanitize-recover note for why there
+ * is always exactly one finding to name.
+ */
+function sanitizerFinding(report: string | undefined): string | null {
+  if (!report) return null;
+  const lines = report.split("\n").map((l) => l.trim());
+  const what = lines.find((l) => /panic:|runtime error:/.test(l))?.replace(/^.*?(panic|runtime error):\s*/, "") ?? null;
+  // zig's own report format: "<absolute path>:<line>: 0x... in <fn> (<obj>)".
+  // Repo-relative is what a reader wants, and it also keeps this string short
+  // enough for the gallery's own cell.
+  const rootPrefix = `${REPO_ROOT}\\`;
+  const rootPrefixPosix = `${REPO_ROOT}/`;
+  let where: string | null = null;
+  for (const l of lines) {
+    const m = /^(.+?:\d+): 0x[0-9a-f]+ in (\S+)/.exec(l);
+    if (!m) continue;
+    const file = m[1]!;
+    if (!file.startsWith(rootPrefix) && !file.startsWith(rootPrefixPosix)) continue; // zig's own runtime, libc, the CRT
+    where = `${file.slice(rootPrefix.length).replace(/\\/g, "/")} in ${m[2]}`;
+    break;
+  }
+  if (!what && !where) return null;
+  return [what, where].filter(Boolean).join(" at ");
 }
 
 /**
@@ -393,7 +424,13 @@ async function runHostDiffOnce(app: string, pack: string): Promise<{ mark: HostM
     return { mark: "CRASHED", reason: tail || `hostdiff exited ${r.exitCode} without reaching a comparison, and said nothing` };
   }
   const sanitized = parsed.results.find((x) => x.verdict === "sanitizer");
-  if (sanitized) return { mark: "SANITIZER", reason: `the sanitized host build trapped on ${sanitized.trace} (${parsed.sanitizers.join(", ")})` };
+  if (sanitized) {
+    const finding = sanitizerFinding(sanitized.report);
+    return {
+      mark: "SANITIZER",
+      reason: `the sanitized host build trapped on ${sanitized.trace} (${parsed.sanitizers.join(", ")})${finding ? `: ${finding}` : ""}`,
+    };
+  }
   if (parsed.allMatch) {
     return { mark: "MATCH", reason: `${parsed.results.length}/${parsed.results.length} capture point(s) identical to the wasm build, sanitizers ${parsed.sanitizers.join(", ")}` };
   }

@@ -383,9 +383,32 @@ export async function replayHost(exePath: string, events: TraceEvent[], captureP
   const stdoutPromise = new Response(proc.stdout).arrayBuffer();
   const stderrPromise = new Response(proc.stderr).arrayBuffer();
 
+  // WRITING STDIN CAN THROW, AND THAT IS AN EXPECTED OUTCOME HERE, NOT AN
+  // ERROR TO PROPAGATE. A sanitizer trap aborts the child WHERE IT HAPPENS,
+  // in the middle of the replay, with the rest of the protocol still
+  // unwritten - so the pipe this process is still writing into closes under
+  // it and Bun raises `EOF: end of file, write`. Letting that escape turns
+  // the single most valuable thing this mark can produce (a UBSan report
+  // naming a file and a line) into an unhandled exception, which
+  // tools/ledger.ts can only record as CRASHED: an executable was built,
+  // the replay did not finish, and nothing says why. Measured, not
+  // hypothesised - it is exactly what apps/gameos x
+  // esp32-s3-touch-amoled-18 did, on a 6,184-event trace, while the child
+  // had already printed a complete report on stderr that nobody ever read.
+  //
+  // So the write is attempted, its failure is swallowed, and the verdict is
+  // then decided the same way it always was: by the child's exit code and
+  // its stderr, both read below. A child that died for its own reasons ends
+  // up with verdict "sanitizer" and its real report; a child still healthy
+  // never throws here in the first place.
   const protocol = buildProtocol(events, capturePoints);
-  proc.stdin.write(new TextEncoder().encode(protocol));
-  await proc.stdin.end();
+  try {
+    proc.stdin.write(new TextEncoder().encode(protocol));
+    await proc.stdin.end();
+  } catch {
+    // The child closed its end first. Everything that matters about why is
+    // on its stderr and in its exit code.
+  }
 
   const [stdoutBuf, stderrBuf, exitCode] = await Promise.all([stdoutPromise, stderrPromise, proc.exited]);
   const stderrText = new TextDecoder().decode(stderrBuf);
