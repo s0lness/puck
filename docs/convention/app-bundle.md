@@ -84,7 +84,7 @@ So the section carries one fenced block, tagged ` ```json demands `, in ADDITION
   "name": "<app name>",
   "ports": [
     {
-      "pack": "<pack name, as it appears in registry.json>",
+      "pack": "<pack name: its directory name under packs/, which is also its registry.json name>",
       "mode": "faithful" | "adaptation" | "native",
       "verification":
           { "kind": "pixel-exact", "traces": ["<path to a .trace.json>", ...], "frames": "<path to the frames directory>" }
