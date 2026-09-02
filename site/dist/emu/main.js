@@ -1238,22 +1238,24 @@ async function replayFromBytes(bytes, events, capturePoints, options = {}) {
     maxPushPixelsPerTick,
     meanPushPixelsPerTick: pushTickCount > 0 ? sumPushPixelsPerTick / pushTickCount : 0
   } : undefined;
-  return { device, frames, log, pushStats };
+  const arena = typeof emu.emu_arena_used === "function" && typeof emu.emu_arena_capacity === "function" ? { usedBytes: emu.emu_arena_used(), capacityBytes: emu.emu_arena_capacity() } : undefined;
+  return { device, frames, log, pushStats, arena };
 }
 
 // src/compare.ts
 function compareFrames(a, b, tolerance) {
   if (a.width !== b.width || a.height !== b.height) {
-    return { match: false, diffPixels: -1, totalPixels: a.width * a.height, firstDiffAt: null, maxChannelDelta: 255, diffImage: null };
+    return { match: false, diffPixels: -1, totalPixels: a.width * a.height, firstDiffAt: null, diffBox: null, maxChannelDelta: 255, diffImage: null };
   }
   const expectedLength = a.width * a.height * 3;
   if (a.rgb.length !== expectedLength || b.rgb.length !== expectedLength) {
-    return { match: false, diffPixels: -1, totalPixels: a.width * a.height, firstDiffAt: null, maxChannelDelta: 255, diffImage: null };
+    return { match: false, diffPixels: -1, totalPixels: a.width * a.height, firstDiffAt: null, diffBox: null, maxChannelDelta: 255, diffImage: null };
   }
   const { width: w, height: h } = a;
   let diffPixels = 0;
   let firstDiffAt = null;
   let maxChannelDelta = 0;
+  let boxX0 = w, boxY0 = h, boxX1 = -1, boxY1 = -1;
   const diffRgb = new Uint8Array(w * h * 3);
   for (let i = 0, p = 0;i < w * h; i++, p += 3) {
     const dr = Math.abs(a.rgb[p] - b.rgb[p]);
@@ -1262,8 +1264,18 @@ function compareFrames(a, b, tolerance) {
     const maxD = Math.max(dr, dg, db);
     if (maxD > tolerance) {
       diffPixels++;
+      const x = i % w;
+      const y = Math.floor(i / w);
       if (!firstDiffAt)
-        firstDiffAt = { x: i % w, y: Math.floor(i / w) };
+        firstDiffAt = { x, y };
+      if (x < boxX0)
+        boxX0 = x;
+      if (x > boxX1)
+        boxX1 = x;
+      if (y < boxY0)
+        boxY0 = y;
+      if (y > boxY1)
+        boxY1 = y;
       if (maxD > maxChannelDelta)
         maxChannelDelta = maxD;
       diffRgb[p] = 255;
@@ -1275,7 +1287,8 @@ function compareFrames(a, b, tolerance) {
       diffRgb[p + 2] = a.rgb[p + 2];
     }
   }
-  return { match: diffPixels === 0, diffPixels, totalPixels: w * h, firstDiffAt, maxChannelDelta, diffImage: diffPixels > 0 ? diffRgb : null };
+  const diffBox = boxX1 >= 0 ? { x: boxX0, y: boxY0, w: boxX1 - boxX0 + 1, h: boxY1 - boxY0 + 1 } : null;
+  return { match: diffPixels === 0, diffPixels, totalPixels: w * h, firstDiffAt, diffBox, maxChannelDelta, diffImage: diffPixels > 0 ? diffRgb : null };
 }
 
 // src/regression.ts
