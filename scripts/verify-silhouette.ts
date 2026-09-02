@@ -209,7 +209,7 @@ try {
   // ---- 1: the module says which device it was compiled against ----------
   const declared = await page.evaluate(() => {
     const canvas = document.querySelector("canvas#panel") as HTMLCanvasElement | null;
-    const buttons = [...document.querySelectorAll("button[data-button-id]")].map((b) => (b as HTMLElement).dataset.buttonId);
+    const buttons = Array.from(document.querySelectorAll("button[data-button-id]")).map((b) => (b as HTMLElement).dataset.buttonId);
     return { canvasW: canvas?.width ?? 0, canvasH: canvas?.height ?? 0, buttons };
   });
 
@@ -264,7 +264,7 @@ try {
   // once a person asks it to, which on iOS is a permission gate and here is
   // the same button doing the same thing.
   const tiltOn = await page.evaluate(() => {
-    const chip = [...document.querySelectorAll("button.ghost")].find((b) => (b.textContent ?? "").startsWith("tilt")) as HTMLElement | undefined;
+    const chip = Array.from(document.querySelectorAll("button.ghost")).find((b) => (b.textContent ?? "").startsWith("tilt")) as HTMLElement | undefined;
     if (!chip) return false;
     chip.click();
     return true;
