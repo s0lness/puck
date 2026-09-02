@@ -14,6 +14,16 @@
       "path": "packs/web"
     }
   ],
+  "silhouettes": [
+    {
+      "name": "m5stickc-plus2",
+      "path": "packs/silhouettes/m5stickc-plus2"
+    },
+    {
+      "name": "feather-esp32s2-tft",
+      "path": "packs/silhouettes/feather-esp32s2-tft"
+    }
+  ],
   "apps": [
     {"name": "aliceisjustplaying/tinydraw", "url": "https://github.com/aliceisjustplaying/tinydraw.git"},
     {

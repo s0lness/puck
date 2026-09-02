@@ -11,13 +11,15 @@
       "id": "boot",
       "label": "BOOT",
       "edge": "right",
-      "at": 0.38
+      "at": 0.38,
+      "role": "click"
     },
     {
       "id": "pwr",
       "label": "PWR",
       "edge": "right",
       "at": 0.62,
+      "role": "key",
       "longPressMs": 1500
     }
   ],

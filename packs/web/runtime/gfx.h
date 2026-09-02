@@ -49,9 +49,21 @@
 // Literal here, where the sibling reads them from the vendor's
 // AMOLED_1in8.h (see this file's vendoring note). They must match
 // device.json's "panel" and emu_shim.c's emu_device() JSON: three copies,
-// one number, and gate/panel-size.ts is what checks they agree.
+// one number, and gate/device-agrees.ts is what checks they agree.
+//
+// GUARDED, so a --device build (wasm/build.ts) can compile this pack's
+// runtime and an app's own C against ANOTHER device's panel size, the way
+// a silhouette pack needs (docs/convention/device-pack.md). The numbers
+// below stay this device's own and stay checked against its device.json;
+// -D on the command line is the only thing that ever displaces them, and
+// it displaces them for every translation unit at once, which is what
+// keeps the framebuffer, the clip rectangles and the app agreeing.
+#ifndef PANEL_W
 #define PANEL_W 368
+#endif
+#ifndef PANEL_H
 #define PANEL_H 448
+#endif
 
 // Landscape canvas: the panel's dimensions swapped. Landscape apps work in
 // this space and gfx rotates for them, so the buttons end up along the top

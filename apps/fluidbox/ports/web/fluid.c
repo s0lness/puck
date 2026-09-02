@@ -57,8 +57,33 @@
  * plausible-particle-count budget (100-160) specifically so an O(n^2)
  * neighbour search - no grid, see below - stays cheap enough to be honest
  * about: see the README's per-tick op-count estimate for the arithmetic.
+ *
+ * THE COUNT FOLLOWS THE PANEL, and this is the app's own declared degrade
+ * (descriptor.md's `json demands` block, docs/convention/app-bundle.md).
+ * Every constant below is in PIXELS - REST_SPACING, SMOOTH_RADIUS,
+ * BOX_CORNER_R - so a fluid is a DENSITY, not a count: 130 particles at
+ * rest spacing occupy a fixed share of a 368x448 box, and pouring those
+ * same 130 into a 135x240 one would not be the same app made small, it
+ * would be a box with no room to slosh in. So the count is the panel's
+ * area over the area one particle got on the reference panel
+ * (164864 / 130 = 1268 px each), clamped at both ends: never more than the
+ * 130 the O(n^2) solver was budgeted for, never so few that a "fluid"
+ * stops reading as one.
+ *
+ * On this pack's own 368x448 panel that arithmetic is 164864 / 1268 = 130,
+ * the sibling port's own number, unchanged. On the M5StickC PLUS2
+ * silhouette's 135x240 it is 25, which is the number `bun run verdict
+ * fluidbox m5stickc-plus2` prints, because the verdict evaluates this same
+ * expression from the descriptor rather than a claim about it.
  * ======================================================================= */
-#define FLUID_N 130
+#define FLUID_PX_PER_PARTICLE 1268
+#define FLUID_N_MAX           130
+#define FLUID_N_MIN           16
+#define FLUID_N_FIT           ((PANEL_W * PANEL_H) / FLUID_PX_PER_PARTICLE)
+#define FLUID_N                                                            \
+    (FLUID_N_FIT > FLUID_N_MAX ? FLUID_N_MAX                               \
+                               : (FLUID_N_FIT < FLUID_N_MIN ? FLUID_N_MIN  \
+                                                            : FLUID_N_FIT))
 
 /* ===========================================================================
  * Neighbour search: O(n^2), not a grid.

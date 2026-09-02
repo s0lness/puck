@@ -62,3 +62,52 @@ Prefers:
   need its own recalibration.
 - IMU-driven gravity, read continuously every step, not reconstructed from a one-shot event: a
   continuous vector is what makes tilting responsive rather than just occasionally agitating.
+
+The same requirements, in the form `bun run verdict` checks (see
+[`docs/convention/app-bundle.md`](../../docs/convention/app-bundle.md)'s "Demands are also
+machine-readable"). The `degrades` block is the honest part: every constant in this solver is in
+PIXELS (`REST_SPACING`, `SMOOTH_RADIUS`, the box corner radius), so a fluid is a DENSITY and never
+a count. One particle got 1268 px of panel on the 368x448 reference at this bundle's own
+`FLUID_N` of 130, and that ratio is what a smaller panel is held to, floored at 16 because below
+that a "fluid" stops reading as one and capped at 130 because that is what the port's O(n^2)
+neighbour search was budgeted for. `apps/fluidbox/ports/web/fluid.c` computes `FLUID_N` from
+exactly this expression, so the number a verdict prints is the number that runs.
+
+```json demands
+{
+  "convention": "0.1",
+  "panel": {
+    "minW": 96,
+    "minH": 96,
+    "scalesTo": { "minW": 64, "minH": 64 },
+    "orientation": "either",
+    "color": true
+  },
+  "buttons": [
+    { "role": "key", "why": "reset the fluid to a settled block, one tap, no explanation" }
+  ],
+  "touch": { "points": 0 },
+  "sensors": [
+    {
+      "kind": "vector",
+      "why": "gravity direction, read every step, so tilting the device pours the liquid",
+      "fallback": {
+        "kind": "event",
+        "cost": "a discrete shake only: the fluid agitates but never pours, so holding the device stops being the control"
+      }
+    }
+  ],
+  "memory": { "baseBytes": 96, "perUnitBytes": 48, "unit": "particles" },
+  "tick": { "needsMs": 16, "refuseUnderMs": 4 },
+  "degrades": {
+    "particles": {
+      "what": "how many particles the fluid is made of",
+      "basis": "panel-area",
+      "pixelsPerUnit": 1268,
+      "reference": 130,
+      "min": 16,
+      "max": 130
+    }
+  }
+}
+```

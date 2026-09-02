@@ -961,8 +961,8 @@ int emu_device(void) {
     p = json_append(p, "{\"name\":\"RP2350-Touch-AMOLED-1.8\",");
     p = json_append(p, "\"panel\":{\"w\":368,\"h\":448,\"format\":\"rgb565be\"},");
     p = json_append(p, "\"buttons\":[");
-    p = json_append(p, "{\"id\":\"boot\",\"label\":\"BOOT\",\"edge\":\"right\",\"at\":0.38},");
-    p = json_append(p, "{\"id\":\"pwr\",\"label\":\"PWR\",\"edge\":\"right\",\"at\":0.62,\"longPressMs\":1500}");
+    p = json_append(p, "{\"id\":\"boot\",\"label\":\"BOOT\",\"edge\":\"right\",\"at\":0.38,\"role\":\"click\"},");
+    p = json_append(p, "{\"id\":\"pwr\",\"label\":\"PWR\",\"edge\":\"right\",\"at\":0.62,\"role\":\"key\",\"longPressMs\":1500}");
     p = json_append(p, "],");
     p = json_append(p, "\"touch\":{\"points\":1},");
     // Two sensors, and the ORDER IS THE ABI: emu_sensor_event() and

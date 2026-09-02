@@ -121,6 +121,23 @@ on `packs/rp2350-touch-amoled-18` today for the timeout gap specifically
 
 ### The differential harness
 
+`bun run verdict <app> <pack-or-silhouette>` answers, mechanically, whether
+an app fits a device: `go`, `degraded` or `refuse`, with a reason per
+dimension, from the app descriptor's `json demands` block against the
+target's `device.json` (`tools/verdict.ts`, and
+`docs/convention/app-bundle.md`). It reads two documents and never touches
+a compiler, so it is a comparison, never a prediction that the port runs.
+`bun run test:verdict` is its proof, against the real descriptors.
+
+`bun run pack:web:silhouette <name> --app <port.c>` compiles an app against
+a **silhouette pack**, a device folder with no firmware in it at all
+(`packs/silhouettes/`, see `docs/convention/device-pack.md`). The web pack's
+host builds the page from whatever `device.json` says, so the app really
+runs at that board's panel size with that board's buttons.
+`bun run verify-silhouette` drives the first such cell headlessly (fluidbox
+on the M5StickC PLUS2) and writes
+`packs/silhouettes/m5stickc-plus2/proof/fluidbox.png`.
+
 `bun run harness:selftest` proves the differential test harness's own
 mechanism works, with no real hardware required (see `harness/fixtures/loopbackLink.ts`'s
 header comment for exactly what that does and does not prove).
@@ -330,15 +347,24 @@ test/fixtures/  material that stands in for something outside this
                 (an external repo), external-bundle/ is the bundle that
                 points at it by local path. Never listed in
                 registry.json: a fixture is test material, not something
-                a gallery advertises.
+                a gallery advertises. test/external/run.ts drives them.
+packs/silhouettes/ device folders with NO firmware: a device.json and an
+                AGENTS.md, nothing else, so an app can be compiled and run
+                against a board nobody has written firmware for yet. See
+                docs/convention/device-pack.md's "Silhouette packs".
+test/verdict/   proves tools/verdict.ts against the real descriptors and
+                the real device.json files, never fixtures: the claim worth
+                protecting is that chrono is refused on a one-button board.
 tools/          verify-bundle.ts (the listing verifier and actual
-                publishing gate), externalBuild.ts (clone a repo at a
-                pinned commit, run its own build command, take the
-                artifact - used by the verifier and by test/external/),
-                ci-verify-registry.ts, and pack-lint.ts (bun run
-                pack:lint: every local pack in registry.json checked
-                against docs/convention/device-pack.md's required
-                contents, mechanically).
+                publishing gate), verdict.ts (go/degraded/refuse from a
+                descriptor's demands against a device.json),
+                externalBuild.ts (clone a repo at a pinned commit, run
+                its own build command, take the artifact - used by the
+                verifier and by test/external/), ci-verify-registry.ts,
+                and pack-lint.ts (bun run pack:lint: every local pack in
+                registry.json checked against
+                docs/convention/device-pack.md's required contents,
+                mechanically).
 docs/           abi.md (the ABI as a page), requirements.md, agent-loop.md
                 (the optional freeze/annotate layer, plus the failed-
                 regression-check export), harness.md (also covers the

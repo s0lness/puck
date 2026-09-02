@@ -9,9 +9,12 @@ buttons and an accelerometer, and this folder is that device's pack.
 If that reads as a metaphor, the test is mechanical and already run:
 `apps/chrono/ports/web/chrono.c` diffs **pixel-exact at tolerance 0**
 against the RP2350 module on both of chrono's recorded traces, and
-`apps/fluidbox/ports/web/fluid.c` is a **byte-for-byte copy** of the RP2350
-port's source that compiles here unedited. Neither of those is possible
-against a metaphor.
+`apps/fluidbox/ports/web/fluid.c` **compiles here unedited** against the
+RP2350 port's own source (it landed as a byte-for-byte copy of it, and
+still differs from it only in the one block that derives the particle
+count from `gfx.h`'s `PANEL_W`/`PANEL_H`, which evaluates to that file's
+own 130 on either pack: see that port's README). Neither of those is
+possible against a metaphor.
 
 ```
 device.json         the emu_device() descriptor plus convention/memory metadata
@@ -62,8 +65,8 @@ read through `firmware/runtime/tilt.c`'s filter, this pack's is a phone's
 `src/motion.ts` before `wasm/emu_shim.c`'s `sensors_tilt()` ever sees it -
 but both populate the exact same field, in the exact same units and axis
 convention, which is what lets `apps/fluidbox/ports/web/fluid.c` compile
-against this pack unedited, byte-for-byte identical to the rp2350 sibling's
-own port file.
+against this pack unedited, the rp2350 sibling's own port file save for one
+panel-derived particle count that means the same thing on both.
 
 ## What is different here, stated plainly
 
