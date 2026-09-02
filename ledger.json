@@ -2540,7 +2540,7 @@
       },
       "inputs": {
         "bundleSha": "5b8112c06c7f3adc",
-        "packSha": "71997abbc23eae96",
+        "packSha": "e93be7327da732c5",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -2765,8 +2765,8 @@
       },
       "silhouette": {
         "mark": "runs",
-        "reason": "320x240, 59.9% of the panel painted, ghost buttons pwr, a, b, c",
-        "proof": "packs/silhouettes/m5stack-cores3/proof/gameos.png",
+        "reason": "the module's own emu_device() declares M5Stack CoreS3: 320x240, buttons pwr, a, b, c; the painted canvas is 320x240 device pixels, one per panel pixel; a synthetic tap changed the panel: 59.44% of pixels differ from before it, over the 0.5% floor",
+        "proof": "packs/silhouettes/m5stack-cores3/proof/gameos-stroke.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
         "buildArgs": [],
@@ -3018,7 +3018,7 @@
       },
       "inputs": {
         "bundleSha": "5b8112c06c7f3adc",
-        "packSha": "5f7b37d2127fbf77",
+        "packSha": "9010b30ac68f51de",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -3204,8 +3204,8 @@
       },
       "silhouette": {
         "mark": "runs",
-        "reason": "240x320, 55.6% of the panel painted, ghost buttons boot, pwr",
-        "proof": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/proof/gameos.png",
+        "reason": "the module's own emu_device() declares Waveshare ESP32-S3-Touch-LCD-2.8: 240x320, buttons boot, pwr; the painted canvas is 240x320 device pixels, one per panel pixel; a synthetic tap changed the panel: 88.04% of pixels differ from before it, over the 0.5% floor",
+        "proof": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/proof/gameos-stroke.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
         "buildArgs": [],
