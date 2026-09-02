@@ -74,6 +74,66 @@ So the section carries one fenced block, tagged ` ```json demands `, in ADDITION
 
 `basis: "panel-area"` means the count follows the panel's area at a fixed density: `clamp(floor(w * h / pixelsPerUnit), min, max)`, and it is additionally capped by what the target's RAM budget holds when `memory.perUnitBytes` is given. The verdict reports which of the two bound it. An app that declares a degrade MUST actually implement it from the device descriptor: `apps/fluidbox/ports/web/fluid.c`'s `FLUID_N` is that same expression in C, so the number a verdict prints is the number that runs, not a number about it.
 
+### Drafting a descriptor from a session
+
+Two of the three sections above are claims about observable behaviour, so
+they can be measured before they are written. `bun run describe`
+(`tools/describe.ts`) replays a recorded session against a module and drafts
+them:
+
+```
+bun run describe <app-port.c | module.wasm> --pack <pack> --trace <t.json> [--trace ...]
+```
+
+It writes `descriptor.draft.md` next to the trace, plus a
+`descriptor.draft.json` holding every measurement behind every line so a
+reader can check where a sentence came from. **It never writes
+`descriptor.md`.** A draft is evidence a person or a model edits into a
+descriptor, not a descriptor. `apps/chrono/traces/` and
+`apps/fluidbox/traces/` carry the two worked drafts.
+
+A `.wasm` is described as given (an already-built module, e.g. one under
+`site/dist/modules/`, needs no toolchain at all); a `.c` is built first
+through the named pack's own `wasm/build.ts --app`, the same way
+`verify-bundle` builds a port, with `--build-arg` for anything a port needs
+on top (`--build-arg --shake`).
+
+**A result is attributed to an input by removing the input.** "The panel
+changed after the press" is not a measurement: a stopwatch's panel changes
+every tick regardless. So each affordance is diffed against its own
+counterfactual, the same trace with that one press or stroke or sensor event
+taken out, replayed against the same module and compared frame by frame at
+the same tick timestamps. What is left is what the input caused. Every
+Interactions line then states the affordance, the box it redrew, how many
+ticks later it appeared, and whether the change stayed, with an unfilled
+`(intent: ...)` because no replay can see what an affordance is FOR. See
+[`../decisions/0013-a-descriptor-is-measured-before-it-is-written.md`](../decisions/0013-a-descriptor-is-measured-before-it-is-written.md).
+
+Four things a draft cannot know, printed inside the draft rather than left
+to a reader to remember:
+
+- **Whatever the session did not do.** Every declared input the session never
+  used is listed by name. A drafted `"touch": {"points": 0}` is only as good
+  as the trace behind it, and fluidbox's own draft is the worked example of
+  that limit: its one session shakes and never tilts, so the draft asks for
+  an `event` sensor where the descriptor asks for a `vector` with an `event`
+  fallback, and the two disagree on one pack. The human is right; the fix is
+  a trace that tilts.
+- **`panel.minW`/`minH`.** The draft states the extent the app ACTUALLY
+  PAINTED, which is an observation. The convention's `minW`/`minH` is the
+  size at which the app is still itself, which is a judgement, and the two do
+  not nest. There is no drafted `scalesTo`: one session at one size cannot
+  find one.
+- **`tick.needsMs`.** Measured as emulator time per tick on the drafting
+  machine, not a frame's cost on the board. Replace it before publishing.
+- **Every `why` and every `intent`.** Left as TODO, never guessed.
+
+`bun run test:describe` is the proof: chrono's drafted `panel.color`,
+`panel.orientation`, button roles and touch points equal its committed ones,
+`bun run verdict` reaches the same verdict and the same per-dimension status
+from the draft as from the descriptor on all three packs, and two negative
+controls corrupt the trace and watch the assertions go red.
+
 ## Bundle schema (0.2)
 
 `bundle.json` sits next to `descriptor.md`. Its `convention` field states the schema version it was written against. Version 0.2 replaces the earlier loose `provenPacks` field with a `ports` array, one entry per pack the app has been ported to and proven on:
@@ -130,6 +190,10 @@ Four rules the verifier enforces, each for one reason:
 - **Nothing about verification changes.** A port that cannot produce the recorded frames fails, wherever its module came from.
 
 **Listing a bundle with a `build` command means running that repository's build on your own machine.** That is a deliberate choice, not an oversight; the reasoning, and what the pinned commit does and does not buy, is in [`../decisions/0005-external-ports-are-reproduced.md`](../decisions/0005-external-ports-are-reproduced.md).
+
+### Host toolchain hints
+
+A `build.command` can need a toolchain this host does not have on PATH: a WASI clang++ at a specific path, a `cmake`/`ninja` install under some SDK's own tools directory. That is not something to fix by editing the bundle: `build.command` is the author's own repository, committed and shared, and where a toolchain happens to sit is a fact about ONE machine, not a portable one. `toolchains.local.json`, at this repository's root and gitignored, is where a host says that instead: an `"env"` object of variable name to path (filled in only when the build's own environment does not already set that variable, so it is a fallback, never an override) and a `"path"` array of directories prepended to PATH before the build command runs. `toolchains.example.json`, committed, documents the shape without naming a real path. Both apply to every external build this process performs, not to one bundle; `tools/externalBuild.ts`'s own header comment carries the implementation detail.
 
 This schema fixes a specific bug in 0.1: the exact pixel-exact capture points and the invariants capture-at times used to live only in a port's own `README.md`, prose a verifier cannot read. `bundle.json` now carries everything `verify-bundle` needs on its own.
 

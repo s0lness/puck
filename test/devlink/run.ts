@@ -37,6 +37,12 @@
 //      port comes back.
 //   9. A reset seen on the shared port (the profiler's cumulative counter
 //      going backwards) voids the run instead of reporting a divergence.
+//  10. PUSHSTATS, red before green: a scripted board that answers it makes
+//      apps/fluidbox/invariants.ts's panel-push invariant EVALUABLE (pass
+//      or fail, never "unevaluable"); one that answers ERR (the default -
+//      what an older firmware, or the esp32-s3 pack's own devlink, both
+//      do) keeps it unevaluable, exactly as it already is today with no
+//      pushStats at all.
 //
 // Points 6, 7 and 8 all end with the same assertion, which is the one this
 // file exists for: `port.closedCleanly`. A leaked serial port is invisible
@@ -58,6 +64,7 @@ import { WebSerialLink } from "../../harness/links/webSerialLink";
 import { decodeRLE as packDecodeRLE, isBase64Line as packIsBase64Line } from "../../packs/rp2350-touch-amoled-18/tools/dev";
 import { compareFrames } from "../../src/compare";
 import type { CapturedFrame, HardwareLink, TraceEvent } from "../../harness/types";
+import { check as fluidboxCheck } from "../../apps/fluidbox/invariants";
 import { ScriptedBoard, encodeBase64, encodeRLE, testScreen } from "./board";
 import { FakeSerialPort, fakeSerial } from "./fakeSerial";
 
@@ -177,6 +184,9 @@ class DirectBoardLink implements HardwareLink {
   }
   async screenshot(): Promise<CapturedFrame> {
     return this.session.screenshot();
+  }
+  async pushStats(): Promise<{ pushes: number; pixels: number } | null> {
+    return this.session.pushStats();
   }
 }
 
@@ -431,6 +441,72 @@ async function main(): Promise<void> {
       err instanceof Error ? err.message : String(err)
     );
     await link.disconnect();
+  }
+
+  // 10. PUSHSTATS, red before green -----------------------------------------
+  console.log("\n10. PUSHSTATS makes fluidbox's panel-push invariant evaluable, and ERR keeps it unevaluable");
+  {
+    // Enough to satisfy apps/fluidbox/invariants.ts's device-name gate for
+    // the "push" check (meta.device.name === "RP2350-Touch-AMOLED-1.8");
+    // the other four invariants in that file read pixels, not this, and
+    // are free to pass or fail on this fixture's screen - only "push"'s
+    // status is what this section asserts.
+    const device = { name: "RP2350-Touch-AMOLED-1.8", panel: { w: W, h: H, format: "rgb565be" } };
+    const trace: TraceEvent[] = [
+      { t: 0, k: "tick" },
+      { t: 10, k: "tick" },
+      { t: 20, k: "tick" },
+      { t: 30, k: "tick" },
+    ];
+    const capturePoints = [10, 20, 30];
+
+    // RED: the default board never wires PUSHSTATS - the same "ERR unknown
+    // PUSHSTATS" an older firmware, or the esp32-s3 pack's own devlink
+    // (which never declares this command at all), also answers.
+    {
+      const board = new ScriptedBoard({ width: W, height: H, screen: SCREEN_A });
+      const link = new DirectBoardLink(board);
+      const replay = await replayHardware(link, trace, capturePoints);
+      check(
+        replay.pushStats === undefined,
+        "a board with no PUSHSTATS support yields no pushStats aggregate",
+        `got ${JSON.stringify(replay.pushStats)}`
+      );
+      const frames = replay.frames.map((f) => ({ atMs: f.atMs, frame: f.frame }));
+      const result = fluidboxCheck(frames, { device, pushStats: replay.pushStats });
+      const push = result.invariants?.find((o) => o.id === "push");
+      check(
+        push?.status === "unevaluable",
+        "RED: with no PUSHSTATS support, the panel-push invariant stays unevaluable",
+        `got ${push?.status} (${push?.message})`
+      );
+    }
+
+    // GREEN: a board that answers PUSHSTATS turns the same invariant
+    // evaluable. It may still pass or fail on its own numbers - the claim
+    // this proves is that it is no longer a hole in the run, not that it
+    // holds.
+    {
+      const board = new ScriptedBoard({ width: W, height: H, screen: SCREEN_A, pushStats: { pushes: 2, pixels: 12000 } });
+      const link = new DirectBoardLink(board);
+      const replay = await replayHardware(link, trace, capturePoints);
+      check(
+        replay.pushStats !== undefined &&
+          replay.pushStats.tickCount === capturePoints.length &&
+          replay.pushStats.maxPushesPerTick === 2 &&
+          replay.pushStats.maxPushPixelsPerTick === 12000,
+        "a board that answers PUSHSTATS yields an aggregate reflecting what it answered, one window per capture point",
+        `got ${JSON.stringify(replay.pushStats)}`
+      );
+      const frames = replay.frames.map((f) => ({ atMs: f.atMs, frame: f.frame }));
+      const result = fluidboxCheck(frames, { device, pushStats: replay.pushStats });
+      const push = result.invariants?.find((o) => o.id === "push");
+      check(
+        push?.status === "pass" || push?.status === "fail",
+        "GREEN: with PUSHSTATS support, the panel-push invariant is evaluable",
+        `got ${push?.status}`
+      );
+    }
   }
 
   console.log("");

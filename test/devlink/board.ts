@@ -39,6 +39,15 @@ export interface ScriptedBoardOptions {
   fault?: BoardFault;
   /** Emitted before the reply to every Nth command, as the real profiler line does. Set 0 to silence it. */
   profilerEvery?: number;
+  /**
+   * What PUSHSTATS answers, when set: `{pushes, pixels}`. Left undefined by
+   * default, which falls through to the same `ERR unknown PUSHSTATS` any
+   * unrecognised command gets - exactly what a build that never wires
+   * devlink_hooks_t.push_stats_get answers (tools/README-devlink.md), and
+   * what the esp32-s3 pack's own devlink.c answers too, since it never
+   * declares this command at all.
+   */
+  pushStats?: { pushes: number; pixels: number };
 }
 
 // (value, count) pairs, count in 1..255, row-major. The exact encoder
@@ -85,6 +94,8 @@ export class ScriptedBoard {
   screen: Uint8Array;
   app: { index: number; name: string };
   fault: BoardFault;
+  /** Settable mid-run, same as `screen`: a test can flip support on or off between commands. */
+  pushStats?: { pushes: number; pixels: number };
   private profilerEvery: number;
 
   /** Every command line the host sent, in order. The trace-event mapping's own proof. */
@@ -102,6 +113,7 @@ export class ScriptedBoard {
     this.screen = opts.screen;
     this.app = opts.app ?? { index: 0, name: "chrono" };
     this.fault = opts.fault ?? { kind: "none" };
+    this.pushStats = opts.pushStats;
     this.profilerEvery = opts.profilerEvery ?? 3;
   }
 
@@ -152,6 +164,13 @@ export class ScriptedBoard {
       }
       case "SHOT":
         return this.shot(out);
+      case "PUSHSTATS":
+        if (this.pushStats) {
+          out.push(`PUSHSTATS ${this.pushStats.pushes} ${this.pushStats.pixels}`);
+        } else {
+          out.push(`ERR unknown ${word}`);
+        }
+        return { lines: out, closeAfter: false };
       case "DOWN":
       case "MOVE":
       case "UP":

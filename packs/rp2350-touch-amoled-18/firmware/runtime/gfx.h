@@ -164,4 +164,24 @@ void gfx_fill_rect_land(int lx, int ly, int w, int h, uint16_t colorPx);
 // that an inclusive form invites at every call site.
 void gfx_push_land(int lx, int ly, int w, int h);
 
+/* ---- push-load telemetry ------------------------------------------------
+ *
+ * How many gfx_push()/gfx_push_all() calls have actually reached the panel,
+ * and how many pixels they touched, since the counters were last reset.
+ * This is the on-device answer to the same question
+ * harness/invariantTypes.ts's PushLoadStats asks of the emulator (via
+ * emu_push_count()/emu_push_w()/emu_push_h(), replayed from a trace):
+ * apps/fluidbox/invariants.ts's panel-push invariant bounds the worst tick's
+ * push load, and a board has no trace to replay it against, only its own
+ * running counters.
+ *
+ * Wired to devlink's PUSHSTATS command (see ../devlink.h's push_stats_get/
+ * push_stats_reset hooks and tools/README-devlink.md): devlink_send_shot()
+ * resets these at the start of every SHOT, so a PUSHSTATS reply answers
+ * "since the last screenshot" - the window a harness can bracket by asking
+ * for stats right before it asks for the next frame.
+ */
+void gfx_push_stats_reset(void);
+void gfx_push_stats_get(uint32_t *pushes, uint32_t *pixels);
+
 #endif // GFX_H

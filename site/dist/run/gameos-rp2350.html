@@ -9,7 +9,7 @@
 <meta property="og:description" content="The cross-chip port: a from-scratch reimplementation of the same gos.h contract, most of the two games&#39; own code still vendored byte for byte, one 150MHz core doing the game logic, software rasterization AND the 2x upscale the donor&#39;s own second core and DMA hardware share." />
 <meta property="og:type" content="website" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2214%22%20fill%3D%22%232f6feb%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23fafafa%22%2F%3E%3C%2Fsvg%3E" />
-<link rel="stylesheet" href="../styles.css?v=f73eecf311" />
+<link rel="stylesheet" href="../styles.css?v=b9e70567d7" />
 </head>
 <body>
 <div class="wrap">
@@ -27,21 +27,59 @@
 
   <div class="emu-stage" id="stage">
     <div class="emu-frame" id="frame" style="width:448px;height:618px">
-      <iframe id="emu" allowtransparency="true" src="../emu/index.html?embed=1&module=%2Fmodules%2Fgameos-rp2350.wasm&v=b247ff5a65" width="448" height="618" title="gameos on RP2350-Touch-AMOLED-1.8 running live" allow="autoplay"></iframe>
+      <iframe id="emu" allowtransparency="true" src="../emu/index.html?embed=1&module=%2Fmodules%2Fgameos-rp2350.wasm&v=44abe3129c" width="448" height="618" title="gameos on RP2350-Touch-AMOLED-1.8 running live" allow="autoplay"></iframe>
     </div>
   </div>
   <p class="embed-hint">touch the screen &middot; tilt with your phone</p>
 
   <div class="run-footer"></div>
 
-
+  <section class="flash-section" data-uf2="../flash/gameos-rp2350.uf2">
+    <h2>Flash to the real device</h2>
+    
+    <div class="flash-actions">
+      <button type="button" class="flash-btn btn-flash">Flash over USB</button>
+      <a class="flash-btn-alt" href="../flash/gameos-rp2350.uf2" download>Download .uf2</a>
+    </div>
+    <p class="flash-hint">No install needed: copy the downloaded file onto the RP2350 BOOTSEL drive once it appears.</p>
+    <div class="flash-progress" hidden>
+      <div class="flash-progress-track"><div class="flash-progress-bar"></div></div>
+      <p class="flash-status"></p>
+    </div>
+    <p class="flash-done" hidden></p>
+    <p class="flash-error" hidden></p>
+    <details class="flash-ritual">
+      <summary>BOOTSEL entry ritual</summary>
+      <p class="flash-ritual-intro">Only needed for a bricked board, or for firmware older than the USB reset interface. Otherwise the flasher reboots the board into BOOTSEL itself.</p>
+      <p>Unplug USB. Hold PWR for at least 12 seconds, until the screen goes black (replugging alone does not reset the board: the PMIC keeps the rails up). Then hold BOOT while plugging the USB cable back in.</p>
+    </details>
+  </section>
+  <section class="attest-section" data-attest-plan="../attest/gameos-rp2350.json">
+    <h2>Prove it runs</h2>
+    <p class="attest-note">The board can answer for itself. This port is verified by behaviour rather than by pixel identity, so this replays its own trace over the board&#39;s devlink port and puts the frames it captures through this bundle&#39;s own invariants - the same checks, the same thresholds, the same file the verifier runs.</p>
+    <p class="attest-counter attest-counter-empty" data-attest-app="gameos" data-attest-pack="rp2350-touch-amoled-18">no board has confirmed this yet</p>
+    <div class="attest-actions">
+      <button type="button" class="attest-btn">Run the trace on this board</button>
+    </div>
+    <p class="attest-hint">Needs the board running this firmware, and Chrome or Edge on desktop. Nothing about you is sent: the result carries the app, the pack, the firmware&#39;s own sha256, the kind of check, the verdict and what each check measured.</p>
+    <div class="attest-progress" hidden><p class="attest-status"></p></div>
+    <ol class="attest-points" hidden></ol>
+    <p class="attest-verdict" hidden></p>
+    <div class="attest-post" hidden>
+      <button type="button" class="attest-post-btn">Post this result</button>
+    </div>
+    <p class="attest-posted" hidden></p>
+    <p class="attest-error" hidden></p>
+  </section>
 <footer>
     <div class="wrap" style="padding:0">
       <a href="https://github.com/s0lness/puck/blob/master/README.md">s0lness/puck</a> on GitHub, MIT licensed.
-      &middot; <a href="../agents.html?v=4ba7b70147">agents</a>
+      &middot; <a href="../agents.html?v=3b72e3dcc8">agents</a>
     </div>
   </footer>
 </div>
+<script type="module" src="../flash/flash.js?v=a46c272e07"></script>
+<script type="module" src="../flash/attest.js?v=ed5f83130a"></script>
 <script>
 (function () {
   var NATIVE_W = 448, NATIVE_H = 618;

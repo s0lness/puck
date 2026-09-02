@@ -263,6 +263,13 @@ class DevlinkSession {
     this.shots.push(shot);
     return shot;
   }
+  async pushStats() {
+    const reply = await this.expect(/^(PUSHSTATS \d+ \d+|ERR .*)$/, 3000, "PUSHSTATS reply", "PUSHSTATS");
+    const m = /^PUSHSTATS (\d+) (\d+)$/.exec(reply);
+    if (!m)
+      return null;
+    return { pushes: Number(m[1]), pixels: Number(m[2]) };
+  }
   async readApp() {
     const reply = await this.expect(/^(APP -?\d+ \S+|ERR .*)$/, 3000, "APP reply", "APP");
     const m = /^APP (-?\d+) (\S+)$/.exec(reply);
@@ -476,6 +483,9 @@ class WebSerialLink {
   }
   async readApp() {
     return this.requireSession().readApp();
+  }
+  async pushStats() {
+    return this.requireSession().pushStats();
   }
   async release() {
     if (this.released)
@@ -692,10 +702,22 @@ async function replayHardware(link, events, capturePoints) {
       await link.reset();
     const sortedPoints = [...capturePoints].sort((a, b) => a - b);
     const frames = [];
+    let pushStatsSupported = typeof link.pushStats === "function";
+    const pushWindows = [];
+    async function captureFrame(atMs) {
+      if (pushStatsSupported) {
+        const stats = await link.pushStats();
+        if (stats)
+          pushWindows.push(stats);
+        else
+          pushStatsSupported = false;
+      }
+      frames.push({ atMs, frame: await link.screenshot() });
+    }
     if (events.length === 0) {
       for (const p of sortedPoints)
-        frames.push({ atMs: p, frame: await link.screenshot() });
-      return { frames };
+        await captureFrame(p);
+      return { frames, pushStats: summarisePushWindows(pushStatsSupported, pushWindows) };
     }
     const wallStart = Date.now();
     const traceStart = events[0].t;
@@ -706,35 +728,56 @@ async function replayHardware(link, events, capturePoints) {
       if (ev.k !== "tick")
         await link.send(ev);
       while (capIdx < sortedPoints.length && sortedPoints[capIdx] <= ev.t) {
-        frames.push({ atMs: sortedPoints[capIdx], frame: await link.screenshot() });
+        await captureFrame(sortedPoints[capIdx]);
         capIdx++;
       }
     }
     while (capIdx < sortedPoints.length) {
       const targetWall = wallStart + (sortedPoints[capIdx] - traceStart);
       await sleep2(targetWall - Date.now());
-      frames.push({ atMs: sortedPoints[capIdx], frame: await link.screenshot() });
+      await captureFrame(sortedPoints[capIdx]);
       capIdx++;
     }
-    return { frames };
+    return { frames, pushStats: summarisePushWindows(pushStatsSupported, pushWindows) };
   } finally {
     await link.disconnect();
   }
+}
+function summarisePushWindows(supported, windows) {
+  if (!supported || windows.length === 0)
+    return;
+  let maxPushesPerTick = 0;
+  let maxPushPixelsPerTick = 0;
+  let sumPushPixelsPerTick = 0;
+  for (const w of windows) {
+    if (w.pushes > maxPushesPerTick)
+      maxPushesPerTick = w.pushes;
+    if (w.pixels > maxPushPixelsPerTick)
+      maxPushPixelsPerTick = w.pixels;
+    sumPushPixelsPerTick += w.pixels;
+  }
+  return {
+    tickCount: windows.length,
+    maxPushesPerTick,
+    maxPushPixelsPerTick,
+    meanPushPixelsPerTick: sumPushPixelsPerTick / windows.length
+  };
 }
 
 // src/compare.ts
 function compareFrames(a, b, tolerance) {
   if (a.width !== b.width || a.height !== b.height) {
-    return { match: false, diffPixels: -1, totalPixels: a.width * a.height, firstDiffAt: null, maxChannelDelta: 255, diffImage: null };
+    return { match: false, diffPixels: -1, totalPixels: a.width * a.height, firstDiffAt: null, diffBox: null, maxChannelDelta: 255, diffImage: null };
   }
   const expectedLength = a.width * a.height * 3;
   if (a.rgb.length !== expectedLength || b.rgb.length !== expectedLength) {
-    return { match: false, diffPixels: -1, totalPixels: a.width * a.height, firstDiffAt: null, maxChannelDelta: 255, diffImage: null };
+    return { match: false, diffPixels: -1, totalPixels: a.width * a.height, firstDiffAt: null, diffBox: null, maxChannelDelta: 255, diffImage: null };
   }
   const { width: w, height: h } = a;
   let diffPixels = 0;
   let firstDiffAt = null;
   let maxChannelDelta = 0;
+  let boxX0 = w, boxY0 = h, boxX1 = -1, boxY1 = -1;
   const diffRgb = new Uint8Array(w * h * 3);
   for (let i = 0, p = 0;i < w * h; i++, p += 3) {
     const dr = Math.abs(a.rgb[p] - b.rgb[p]);
@@ -743,8 +786,18 @@ function compareFrames(a, b, tolerance) {
     const maxD = Math.max(dr, dg, db);
     if (maxD > tolerance) {
       diffPixels++;
+      const x = i % w;
+      const y = Math.floor(i / w);
       if (!firstDiffAt)
-        firstDiffAt = { x: i % w, y: Math.floor(i / w) };
+        firstDiffAt = { x, y };
+      if (x < boxX0)
+        boxX0 = x;
+      if (x > boxX1)
+        boxX1 = x;
+      if (y < boxY0)
+        boxY0 = y;
+      if (y > boxY1)
+        boxY1 = y;
       if (maxD > maxChannelDelta)
         maxChannelDelta = maxD;
       diffRgb[p] = 255;
@@ -756,7 +809,8 @@ function compareFrames(a, b, tolerance) {
       diffRgb[p + 2] = a.rgb[p + 2];
     }
   }
-  return { match: diffPixels === 0, diffPixels, totalPixels: w * h, firstDiffAt, maxChannelDelta, diffImage: diffPixels > 0 ? diffRgb : null };
+  const diffBox = boxX1 >= 0 ? { x: boxX0, y: boxY0, w: boxX1 - boxX0 + 1, h: boxY1 - boxY0 + 1 } : null;
+  return { match: diffPixels === 0, diffPixels, totalPixels: w * h, firstDiffAt, diffBox, maxChannelDelta, diffImage: diffPixels > 0 ? diffRgb : null };
 }
 
 // harness/invariantTypes.ts
@@ -1452,6 +1506,7 @@ async function runInvariantsAttestation(opts) {
   }
   const frames = [];
   let donePoints = 0;
+  let pushStats;
   report({ phase: "connecting", percent: 0, message: "Opening the board's devlink port…" });
   await link.connect();
   try {
@@ -1462,6 +1517,7 @@ async function runInvariantsAttestation(opts) {
         message: `Replaying ${trace.name} on the board (${trace.events.length} events)…`
       });
       const replay = await replayHardware(persistentLink(link), trace.events, trace.captureAt);
+      pushStats = replay.pushStats;
       for (const atMs of trace.captureAt) {
         const captured = replay.frames.find((f) => f.atMs === atMs);
         if (!captured) {
@@ -1481,7 +1537,7 @@ async function runInvariantsAttestation(opts) {
   }
   report({ phase: "checking", percent: 100, message: `Running ${plan.app}'s own invariants on ${frames.length} captured frame(s)…` });
   await new Promise((resolve) => setTimeout(resolve, 0));
-  const result = check4(frames, { device: plan.device });
+  const result = check4(frames, { device: plan.device, pushStats });
   const outcomes = result.invariants ?? [];
   if (outcomes.length === 0) {
     throw new Error(`${plan.checker} reported no per-invariant outcomes, so this page cannot say which invariant held and which did not. ` + `A checker must return them (harness/invariantTypes.ts's summariseInvariants).`);

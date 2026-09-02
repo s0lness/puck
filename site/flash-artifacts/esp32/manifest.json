@@ -79,6 +79,31 @@
           "bytes": 306064
         }
       ]
+    },
+    "tinydraw-esp32": {
+      "file": "tinydraw-esp32.bin",
+      "offset": 0,
+      "bytes": 366352,
+      "md5": "ea7850619b1bb3d3523bfa8436730fa1",
+      "app": "apps/tinydraw/ports/esp32-s3-touch-amoled-18/tinydraw.c",
+      "builtAt": "2026-09-02",
+      "parts": [
+        {
+          "offset": 0,
+          "file": "bootloader/bootloader.bin",
+          "bytes": 22528
+        },
+        {
+          "offset": 32768,
+          "file": "partition_table/partition-table.bin",
+          "bytes": 3072
+        },
+        {
+          "offset": 65536,
+          "file": "esp32-s3-touch-amoled-18.bin",
+          "bytes": 300816
+        }
+      ]
     }
   }
 }

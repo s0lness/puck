@@ -404,6 +404,11 @@ int main(void) {
         .tune_define_name = tune_registry_define_name,
         .tune_get = tune_registry_get,
         .tune_set = tune_registry_set,
+        // Wired straight to gfx.c's own counters: signatures already match
+        // devlink_hooks_t's push_stats_get/push_stats_reset exactly, the
+        // same reason the tune_* hooks above need no adapter either.
+        .push_stats_get = gfx_push_stats_get,
+        .push_stats_reset = gfx_push_stats_reset,
     };
     devlink_init(&devlinkHooks);
 

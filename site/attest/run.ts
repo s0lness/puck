@@ -30,6 +30,7 @@ import { replayHardware } from "../../harness/hardwareSide";
 import { compareFrames } from "../../src/compare";
 import type { HardwareLink, TraceEvent } from "../../harness/types";
 import type { InvariantOutcome, TimedFrame } from "../../harness/invariantTypes";
+import type { PushLoadStats } from "../../src/replayCore";
 import { checkerFor } from "./checkers";
 import { fetchFramePNG } from "./pngFrame";
 import type {
@@ -181,6 +182,12 @@ async function runInvariantsAttestation(opts: RunAttestationOptions & { plan: At
 
   const frames: TimedFrame[] = [];
   let donePoints = 0;
+  // Kept from the LAST trace replayed: today every invariants bundle names
+  // exactly one trace (buildInvariantsPlan's own AttestPlanInvariantTrace[]
+  // is always length 1), so there is no aggregation question yet. A future
+  // multi-trace bundle would need to decide how to fold several replays'
+  // worth of windows together; this does not attempt to guess that.
+  let pushStats: PushLoadStats | undefined;
 
   report({ phase: "connecting", percent: 0, message: "Opening the board's devlink port…" });
   await link.connect();
@@ -192,6 +199,7 @@ async function runInvariantsAttestation(opts: RunAttestationOptions & { plan: At
         message: `Replaying ${trace.name} on the board (${trace.events.length} events)…`,
       });
       const replay = await replayHardware(persistentLink(link), trace.events, trace.captureAt);
+      pushStats = replay.pushStats;
       for (const atMs of trace.captureAt) {
         const captured = replay.frames.find((f) => f.atMs === atMs);
         if (!captured) {
@@ -226,10 +234,14 @@ async function runInvariantsAttestation(opts: RunAttestationOptions & { plan: At
   // the same frame, which is the difference between a page that says what
   // it is doing and one that appears to hang.
   await new Promise((resolve) => setTimeout(resolve, 0));
-  // pushStats is deliberately absent: a board answers SHOT with its
-  // framebuffer and reports nothing about what it pushed to the panel. A
-  // checker that needs it says "unevaluable" and this run is not postable.
-  const result = check(frames, { device: plan.device });
+  // pushStats is present only when the board answered every PUSHSTATS
+  // query this replay made (harness/hardwareSide.ts's own summary) - the
+  // rp2350 pack's devlink, and nothing else, wires that command
+  // (tools/README-devlink.md). Any other board, or firmware too old to
+  // carry it, leaves this undefined, and a checker that needs it says
+  // "unevaluable" rather than passing silently: this run is then not
+  // postable, and the page says which invariant is why.
+  const result = check(frames, { device: plan.device, pushStats });
   const outcomes: InvariantOutcome[] = result.invariants ?? [];
   if (outcomes.length === 0) {
     throw new Error(

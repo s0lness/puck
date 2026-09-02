@@ -137,6 +137,7 @@ giving up the shared console's usefulness to a human.
 | `CHORD` | `OK` |
 | `APP` | `APP <index> <name>` |
 | `SWITCH <index>` | `OK`, `ERR args` (index does not parse), or `ERR range` |
+| `PUSHSTATS` | `PUSHSTATS <pushes> <pixels>`, or `ERR unknown PUSHSTATS` on a build that never wires it |
 | `TUNE` | one `TUNE <name> <value> <min> <max> <default>` line per declared tunable, then `END` |
 | `TUNE GET <name>` | `TUNE <name> <value>`, or `ERR unknown <name>` |
 | `TUNE SET <name> <value>` | `TUNE <name> <applied>` (applied = value clamped to `[min, max]`), or `ERR args` / `ERR unknown <name>` |
@@ -226,6 +227,29 @@ percent in the emulator against 3.5 percent on real hardware (see
 feels right in the browser is a hypothesis about the real controller, not a
 result. Only `TUNE` against the real device, under a real finger, can
 promote it to one.
+
+### PUSHSTATS
+
+Reports panel-push load since the last `SHOT`: how many `gfx_push()`/
+`gfx_push_all()` calls actually reached the panel, and how many pixels they
+touched, since that screenshot was taken (`devlink_send_shot()` resets both
+counters before it does anything else - see `firmware/runtime/gfx.h`'s
+`gfx_push_stats_reset()`/`gfx_push_stats_get()`). A build that never wires
+`devlink_hooks_t.push_stats_get` answers `ERR unknown PUSHSTATS`, the same
+policy an unwired `TUNE` build answers `ERR no tunables`.
+
+This exists for one consumer: `apps/fluidbox/invariants.ts`'s panel-push
+invariant bounds the worst tick's push load, and the emulator can answer
+that from a replayed trace (`emu_push_count()`/`emu_push_w()`/`emu_push_h()`
+in `wasm/emu_abi.h`) where a board has no trace to replay against, only its
+own running counters. A harness asks `PUSHSTATS` right before it asks for
+the next `SHOT`, so the reply describes exactly the window between the two
+screenshots; see `harness/hardwareSide.ts`'s `replayHardware()` for how
+those windows are folded into the same `{tickCount, maxPushesPerTick,
+maxPushPixelsPerTick, meanPushPixelsPerTick}` shape the emulator side
+already reports, and `harness/invariantTypes.ts`'s `InvariantMeta.pushStats`
+for why a checker that needs this and does not get it must report
+"unevaluable" rather than pass silently.
 
 ### SHOT
 

@@ -255,6 +255,10 @@ export class DevlinkLink implements HardwareLink {
     return this.requireSession().readApp();
   }
 
+  async pushStats(): Promise<{ pushes: number; pixels: number } | null> {
+    return this.requireSession().pushStats();
+  }
+
   private requireSession(): DevlinkSession {
     if (!this.session) throw new Error("devlink link used before connect()");
     return this.session;

@@ -56,6 +56,24 @@ void gfx_fill_rect(int x, int y, int w, int h, uint16_t colorPx) {
 #define PUSH_GRAN_W 8
 #define PUSH_MIN_W  8
 
+// Push-load telemetry (gfx.h's own header comment says what these answer
+// and why). Plain globals, not atomics: both are only ever touched from
+// core0 (gfx_push/gfx_push_all are core0-only, same as every other drawing
+// call in this file, and devlink_send_shot()'s reset call runs on core0
+// too - core1 never touches gfx at all, see sensors.h's ownership rule).
+static uint32_t g_pushCount = 0;
+static uint32_t g_pushPixels = 0;
+
+void gfx_push_stats_reset(void) {
+    g_pushCount = 0;
+    g_pushPixels = 0;
+}
+
+void gfx_push_stats_get(uint32_t *pushes, uint32_t *pixels) {
+    if (pushes) *pushes = g_pushCount;
+    if (pixels) *pixels = g_pushPixels;
+}
+
 // Pushes the accumulated dirty rect. AMOLED_1IN8_DisplayWindows takes an
 // exclusive end and the panel wants even alignment, so round start down
 // and exclusive end up to even, then clamp to the panel.
@@ -103,12 +121,17 @@ void gfx_push(int minX, int minY, int maxX, int maxY) {
     if (y1 > PANEL_H) y1 = PANEL_H;
     if (y1 <= y0) y1 = y0 + 2;
 
+    g_pushCount++;
+    g_pushPixels += (uint32_t)(x1 - x0) * (uint32_t)(y1 - y0);
+
     AMOLED_1IN8_DisplayWindows(x0, y0, x1, y1, gfx_fb);
 }
 
 // Pushes the whole panel. Used on app switch and on the full-refresh
 // gesture. Costs about 12ms, so it is not a per-frame operation.
 void gfx_push_all(void) {
+    g_pushCount++;
+    g_pushPixels += (uint32_t)PANEL_W * (uint32_t)PANEL_H;
     AMOLED_1IN8_Display(gfx_fb);
 }
 
