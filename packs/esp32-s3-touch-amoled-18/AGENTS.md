@@ -57,10 +57,15 @@ otherwise. `wasm/build.ts`'s header explains why this pack needs no
 include nothing beyond `app.h`, `gfx_band.h`, `runtime_core.h` and
 `emu_abi.h` - no vendor display headers, no libc.
 
-The wasm link segfaults intermittently for the same reason the sibling
-pack's does (`zig cc`'s own linker bug under many `-Wl,--export=` flags,
-verified by actually building rather than assumed from docs) - `build.ts`
-retries automatically; this is not your change.
+`zig cc` intermittently exits non-zero (exit 5, no diagnostic text) for
+the same reason the sibling pack's does - not, per the measurement behind
+`tools/zigSpawn.ts` (see AGENTS.md's own toolchain note and its header
+comment), a linker bug under many `-Wl,--export=` flags, but this
+project's own build scripts spawning it with inherited stdio while a
+parent process's stdout was itself a drained pipe: the artifact on disk
+is often complete and correct even when the exit code says otherwise.
+`build.ts` retries through that shared helper automatically; this is not
+your change.
 
 ## `main/` has been built, flashed and run
 

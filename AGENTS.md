@@ -63,8 +63,25 @@ bun run dev             # http://127.0.0.1:5340
 
 `bun run pack:build` swaps the example for the RP2350 reference pack's
 real firmware, writing the same `wasm/dist/emu.wasm`. It needs `zig`, and
-its wasm link segfaults on roughly one run in three; that is a known zig
-bug, not your change, so run it again. `bun run pack:esp32:build` does the
+on this Windows-on-ARM development machine `zig cc` intermittently exits
+non-zero (exit 5, no diagnostic text on stderr) - sometimes after writing
+a complete, correct module, sometimes writing nothing at all, and worse
+under concurrent build load (several builds running at once, on this
+machine or a shared one). Measured while chasing what used to be
+documented here as "wasm link segfaults roughly one run in three, a known
+zig bug": that framing was folklore, not a finding, and mostly not even
+zig's own bug - a build script that spawned zig with inherited stdio,
+while its own parent process's stdout was itself a drained pipe (piped
+through `bun run`, a test harness capturing output, a second build script
+one level up...), could see its child die at exit 5 having written
+NOTHING, every attempt, while the exact same command typed by hand
+succeeded immediately. Every build script in this repo now goes through
+`tools/zigSpawn.ts`, which pipes the child's own stdio (so it no longer
+depends on an ancestor's) and checks the artifact on disk rather than the
+exit code, retrying only a genuinely silent failure. It still needs to
+retry sometimes - that part was real - just not blindly, and not for a
+reason that turned out to be mostly this repo's own doing. `bun run
+pack:esp32:build` does the
 same for `packs/esp32-s3-touch-amoled-18/`, and `bun run pack:web:build`
 for `packs/web/`; `bun run pack:web:host` builds that pack's second mode
 instead, a standalone installable page per app rather than the shared
@@ -115,9 +132,14 @@ carries every field `emu_device()` requires, a non-empty `gotchas.md`, a
 `wasm/build.ts` that exists and bounds every zig attempt with a
 per-attempt timeout, and either a real `gate/` or an `AGENTS.md` section
 literally named `## Gate` stating the pack's own equivalent explicitly.
-One violation per line on stderr, exit 1; a clean tree exits 0. It is red
-on `packs/rp2350-touch-amoled-18` today for the timeout gap specifically
-(tracked, not fixed here - see `docs/decisions/0008-the-pack-is-canonical-tiny-computers-consumes-it.md`).
+One violation per line on stderr, exit 1; a clean tree exits 0. Green on
+all three packs today: every `wasm/build.ts` imports `tools/zigSpawn.ts`
+(whose `runZigCc()` always bounds each attempt with a timeout), which is
+what `checkBuildTimeout()` accepts in place of finding the
+`timeout:`-bearing `Bun.spawnSync` call it used to look for directly - see
+`docs/decisions/0008-the-pack-is-canonical-tiny-computers-consumes-it.md`
+for the RP2350 pack's own timeout gap this check was originally written
+to catch, since closed.
 
 ### The differential harness
 

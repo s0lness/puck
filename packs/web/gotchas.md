@@ -115,12 +115,19 @@ are both in the page: an installed copy on a notched phone otherwise paints
 its bottom control row exactly where the system's home-indicator swipe
 lives.
 
-## zig's wasm linker does not only crash, it also hangs
+## zig cc does not only exit 5 for no reason, it also hangs
 
-Both sibling packs document the crash: `zig cc` fails inside its own linker
-roughly one run in three under this many `-Wl,--export=` flags, exit code 5,
-no diagnostic, and the identical command succeeds on the next attempt. Their
-build scripts retry on a non-zero exit, which is the right fix for that.
+Both sibling packs document the exit-5 flake: `zig cc` fails with no
+diagnostic text under this many `-Wl,--export=` flags, worse under
+concurrent build load, and the identical command succeeds on the next
+attempt. Measured (`tools/zigSpawn.ts`'s header comment): mostly this
+repository's own build scripts previously spawning it with inherited
+stdio while a parent process's stdout was itself a drained pipe, not a
+zig linker crash - the artifact on disk is often complete and correct
+even when the exit code says otherwise. Every build script now goes
+through that shared helper, which pipes the child's stdio and checks the
+artifact rather than the exit code, retrying only a genuinely silent
+failure.
 
 Observed twice on **2026-08-19** while building this pack's own site output:
 the same bug can also HANG. A `zig` process sat at 0.02 seconds of CPU for
