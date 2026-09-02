@@ -1589,8 +1589,8 @@
         "reason": "all invariants held over 3 frame(s)"
       },
       "host": {
-        "mark": "MATCH",
-        "reason": "3/3 capture point(s) identical to the wasm build, sanitizers address, undefined"
+        "mark": "DIVERGE",
+        "reason": "3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)"
       },
       "silicon": {
         "key": "fluidbox:esp32-s3-touch-amoled-18"
@@ -2125,8 +2125,8 @@
         "reason": "all invariants held over 3 frame(s)"
       },
       "host": {
-        "mark": "MATCH",
-        "reason": "3/3 capture point(s) identical to the wasm build, sanitizers address, undefined"
+        "mark": "DIVERGE",
+        "reason": "3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)"
       },
       "silicon": {
         "key": "fluidbox:rp2350-touch-amoled-18"
@@ -2434,8 +2434,8 @@
         "reason": "all invariants held over 3 frame(s)"
       },
       "host": {
-        "mark": "MATCH",
-        "reason": "3/3 capture point(s) identical to the wasm build, sanitizers address, undefined"
+        "mark": "DIVERGE",
+        "reason": "3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)"
       },
       "silicon": {
         "key": "fluidbox:web"
@@ -2517,8 +2517,8 @@
         "reason": "all invariants held over 21 frame(s)"
       },
       "host": {
-        "mark": "SANITIZER",
-        "reason": "the sanitized host build trapped on gameos-demo-esp32 (address, undefined): signed integer overflow: 1499045572 + 668265263 cannot be represented in type 'int' at apps/gameos/reference/esp32-gameos/golf.c:118 in noise2d"
+        "mark": "CRASHED",
+        "reason": "harness/hostdiff.ts: unexpected error: EOF: end of file, write Error: EOF: end of file, write     at async replayHost (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a8c3679ce402d6b36\\harness\\hostSide.ts:330:20)     at async main (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a8c3679ce402d6b36\\harness\\hostdiff.ts:280:30)"
       },
       "silicon": {
         "key": "gameos:esp32-s3-touch-amoled-18"
@@ -2539,8 +2539,8 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "ab2620371cfc6073",
-        "packSha": "71997abbc23eae96",
+        "bundleSha": "5b8112c06c7f3adc",
+        "packSha": "e93be7327da732c5",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -2765,8 +2765,8 @@
       },
       "silhouette": {
         "mark": "runs",
-        "reason": "320x240, 59.9% of the panel painted, ghost buttons pwr, a, b, c",
-        "proof": "packs/silhouettes/m5stack-cores3/proof/gameos.png",
+        "reason": "the module's own emu_device() declares M5Stack CoreS3: 320x240, buttons pwr, a, b, c; the painted canvas is 320x240 device pixels, one per panel pixel; a synthetic tap changed the panel: 59.44% of pixels differ from before it, over the 0.5% floor",
+        "proof": "packs/silhouettes/m5stack-cores3/proof/gameos-stroke.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
         "buildArgs": [],
@@ -2995,8 +2995,8 @@
         "reason": "all invariants held over 12 frame(s)"
       },
       "host": {
-        "mark": "MATCH",
-        "reason": "12/12 capture point(s) identical to the wasm build, sanitizers address, undefined"
+        "mark": "DIVERGE",
+        "reason": "3/12 capture point(s) differ from the wasm build, first gameos-demo t=304ms at 376/164864px (0.23%)"
       },
       "silicon": {
         "key": "gameos:rp2350-touch-amoled-18"
@@ -3017,8 +3017,8 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "ab2620371cfc6073",
-        "packSha": "5f7b37d2127fbf77",
+        "bundleSha": "5b8112c06c7f3adc",
+        "packSha": "9010b30ac68f51de",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -3204,8 +3204,8 @@
       },
       "silhouette": {
         "mark": "runs",
-        "reason": "240x320, 55.6% of the panel painted, ghost buttons boot, pwr",
-        "proof": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/proof/gameos.png",
+        "reason": "the module's own emu_device() declares Waveshare ESP32-S3-Touch-LCD-2.8: 240x320, buttons boot, pwr; the painted canvas is 240x320 device pixels, one per panel pixel; a synthetic tap changed the panel: 88.04% of pixels differ from before it, over the 0.5% floor",
+        "proof": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/proof/gameos-stroke.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
         "buildArgs": [],
@@ -3375,7 +3375,7 @@
       },
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
-        "packSha": "71997abbc23eae96",
+        "packSha": "e93be7327da732c5",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -3442,7 +3442,7 @@
       },
       "silhouette": {
         "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 240x135 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "reason": "feather-esp32s2-tft declares no digitizer (touch.points 0), and tinydraw demands 1 touch point(s), so there is nothing here that could ever answer a touch. the app compiled, instantiated and painted this 240x135 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
         "proof": "packs/silhouettes/feather-esp32s2-tft/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
@@ -3521,7 +3521,7 @@
       },
       "silhouette": {
         "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 170x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "reason": "lilygo-t-display-s3 declares no digitizer (touch.points 0), and tinydraw demands 1 touch point(s), so there is nothing here that could ever answer a touch. the app compiled, instantiated and painted this 170x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
         "proof": "packs/silhouettes/lilygo-t-display-s3/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
@@ -3599,9 +3599,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 320x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
-        "proof": "packs/silhouettes/m5stack-cores3/proof/tinydraw.png",
+        "mark": "runs",
+        "reason": "the module's own emu_device() declares M5Stack CoreS3: 320x240, buttons pwr, a, b, c; the painted canvas is 320x240 device pixels, one per panel pixel; a dragged stroke changed the panel: 4.77% of pixels differ from before the drag, over the 0.5% floor",
+        "proof": "packs/silhouettes/m5stack-cores3/proof/tinydraw-stroke.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
         "buildArgs": [],
@@ -3679,7 +3679,7 @@
       },
       "silhouette": {
         "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 135x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "reason": "m5stickc-plus2 declares no digitizer (touch.points 0), and tinydraw demands 1 touch point(s), so there is nothing here that could ever answer a touch. the app compiled, instantiated and painted this 135x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
         "proof": "packs/silhouettes/m5stickc-plus2/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
@@ -3758,7 +3758,7 @@
       },
       "silhouette": {
         "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 320x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "reason": "pico-display-pack-2 declares no digitizer (touch.points 0), and tinydraw demands 1 touch point(s), so there is nothing here that could ever answer a touch. the app compiled, instantiated and painted this 320x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
         "proof": "packs/silhouettes/pico-display-pack-2/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
@@ -3853,7 +3853,7 @@
       },
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
-        "packSha": "5f7b37d2127fbf77",
+        "packSha": "9010b30ac68f51de",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -3960,7 +3960,7 @@
       },
       "silhouette": {
         "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 200x200 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "reason": "watchy declares no digitizer (touch.points 0), and tinydraw demands 1 touch point(s), so there is nothing here that could ever answer a touch. the app compiled, instantiated and painted this 200x200 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
         "proof": "packs/silhouettes/watchy/proof/tinydraw.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
@@ -4038,9 +4038,9 @@
         "model": null
       },
       "silhouette": {
-        "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 240x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
-        "proof": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/proof/tinydraw.png",
+        "mark": "runs",
+        "reason": "the module's own emu_device() declares Waveshare ESP32-S3-Touch-LCD-2.8: 240x320, buttons boot, pwr; the painted canvas is 240x320 device pixels, one per panel pixel; a dragged stroke changed the panel: 4.62% of pixels differ from before the drag, over the 0.5% floor",
+        "proof": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/proof/tinydraw-stroke.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
         "buildArgs": [],
