@@ -76,7 +76,36 @@ function u32beAt(buf: Uint8Array, offset: number): number {
 
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 
-export function decodeRGBPNG(bytes: Uint8Array): DecodedRGBPNG {
+// Split into two halves, and it is worth saying why: the browser needs this
+// decoder too. site/attest/ replays a bundle's trace against a real board
+// from the gallery's own flash page and diffs the captured frames against
+// that bundle's recorded PNGs, in a page, where Bun.inflateSync does not
+// exist and the only inflate available is DecompressionStream, which is
+// async. Everything EXCEPT the inflate call is identical between the two,
+// so everything except the inflate call lives here once (parseRGBPNG,
+// unfilterRGBScanlines) and each caller supplies its own decompressor.
+// site/attest/pngFrame.ts is the browser half; it imports both of these.
+//
+// Decoding a frame through the browser's own image pipeline (an <img> into
+// a canvas, getImageData) was the obvious alternative and is the wrong one:
+// canvas readback goes through colour management, so a reference frame
+// could come back a value or two off and turn a tolerance-zero comparison
+// into a mystery divergence in the DIFF rather than one in the FIRMWARE.
+// This path touches no colour space at all.
+export interface ParsedRGBPNG {
+  width: number;
+  height: number;
+  /**
+   * The zlib stream from the IDAT chunk(s), header and Adler-32 trailer
+   * already stripped: raw DEFLATE. Typed with an explicit ArrayBuffer
+   * because Bun.inflateSync refuses a Uint8Array over an ArrayBufferLike
+   * (which is what a subarray of the caller's own bytes would be); it is
+   * copied into a fresh, non-shared buffer below for exactly that reason.
+   */
+  deflated: Uint8Array<ArrayBuffer>;
+}
+
+export function parseRGBPNG(bytes: Uint8Array): ParsedRGBPNG {
   for (let i = 0; i < PNG_SIGNATURE.length; i++) {
     if (bytes[i] !== PNG_SIGNATURE[i]) throw new Error("decodeRGBPNG: not a PNG file (bad signature)");
   }
@@ -114,14 +143,15 @@ export function decodeRGBPNG(bytes: Uint8Array): DecodedRGBPNG {
 
   const zlibStream = idatParts.length === 1 ? idatParts[0]! : concat(idatParts);
   // Strip the 2-byte zlib header and 4-byte Adler-32 trailer encodeRGBPNG
-  // wrote by hand around Bun.deflateSync's raw DEFLATE output, then invert
-  // that same call with Bun.inflateSync.
+  // wrote by hand around Bun.deflateSync's raw DEFLATE output.
   // Copied into a fresh, non-shared ArrayBuffer: Bun.inflateSync's types
   // want a Uint8Array<ArrayBuffer>, and a subarray view keeps whatever
   // buffer type the caller's original bytes happened to have.
-  const deflated = new Uint8Array(zlibStream.subarray(2, zlibStream.length - 4));
-  const raw = Bun.inflateSync(deflated);
+  return { width, height, deflated: new Uint8Array(zlibStream.subarray(2, zlibStream.length - 4)) };
+}
 
+/** Inflated scanlines (one filter byte each, all of them type 0) -> flat RGB. */
+export function unfilterRGBScanlines(raw: Uint8Array, width: number, height: number): Uint8Array {
   const stride = width * 3;
   const expectedRawLength = (stride + 1) * height;
   if (raw.length !== expectedRawLength) {
@@ -136,8 +166,12 @@ export function decodeRGBPNG(bytes: Uint8Array): DecodedRGBPNG {
     }
     rgb.set(raw.subarray(y * (stride + 1) + 1, y * (stride + 1) + 1 + stride), y * stride);
   }
+  return rgb;
+}
 
-  return { width, height, rgb };
+export function decodeRGBPNG(bytes: Uint8Array): DecodedRGBPNG {
+  const { width, height, deflated } = parseRGBPNG(bytes);
+  return { width, height, rgb: unfilterRGBScanlines(Bun.inflateSync(deflated), width, height) };
 }
 
 // rgb: width * height * 3 bytes, row-major, top-left origin.

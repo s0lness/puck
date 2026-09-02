@@ -31,6 +31,12 @@
 import { existsSync, mkdirSync, rmSync, copyFileSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
+// The generator and the page agree on one sentence for "nobody has
+// confirmed this yet", by importing it rather than by both spelling it out:
+// the HTML ships with the empty state already in place (so a deployment
+// with no /api/attest behind it never flashes a placeholder), and the
+// client rewrites the same node once the counts arrive.
+import { ATTEST_EMPTY_STATE } from "./attest-client";
 
 const SITE_DIR = import.meta.dir;
 const REPO_ROOT = resolve(SITE_DIR, "..");
@@ -79,7 +85,12 @@ interface Registry {
 interface BundlePort {
   pack: string;
   mode: string;
-  verification: { kind: string };
+  // Read down to the "kind" discriminator plus, for a pixel-exact port
+  // only, the two fields the attestation step needs to emit a plan (the
+  // traces it replays and the directory its recorded frames live in). Both
+  // are optional here because an invariants port carries neither, and this
+  // generator has to read both shapes without knowing which it has.
+  verification: { kind: string; traces?: string[]; frames?: string };
   source: string;
   // Optional, beyond the bundle schema's minimal shape (documented in
   // app-bundle.md alongside "buildArgs"): the porting flow's own
@@ -104,6 +115,12 @@ interface ProvenEntry {
   verification: string;
   degraded: boolean;
   silicon: { attestedAt: string; how: string } | null;
+  // Only a pixel-exact port has these, and only a pixel-exact port can be
+  // attested on a board: the attestation replays the bundle's own traces
+  // and diffs against the bundle's own recorded frames, which is exactly
+  // what an invariants port does not have.
+  traces: string[] | null;
+  framesDir: string | null;
 }
 
 function readJson<T>(path: string): T {
@@ -280,6 +297,8 @@ const apps: AppEntry[] = registry.apps.filter((a): a is { name: string; path: st
     verification: entry.verification.kind,
     degraded: entry.verdict === "degraded",
     silicon: entry.silicon ?? null,
+    traces: entry.verification.kind === "pixel-exact" && Array.isArray(entry.verification.traces) ? entry.verification.traces : null,
+    framesDir: entry.verification.kind === "pixel-exact" && entry.verification.frames ? entry.verification.frames : null,
   }));
   return { name: a.name, path: a.path, bundle, proven };
 });
@@ -619,6 +638,125 @@ function readEsp32Manifest(): Esp32ManifestShape | null {
 
 const ESP32_MANIFEST = readEsp32Manifest();
 
+// ---- 1.55. attestation plans: what a flash page needs to prove itself ----
+// After a flash page writes firmware to a real board, it can run that app's
+// own recorded trace ON that board and diff the frames against the same
+// recorded frames `bun run verify-bundle` compares against
+// (site/attest/run.ts). This step emits everything that needs, next to the
+// flash page: one plan per attestable combo, plus a copy of that port's
+// recorded frames.
+//
+// A COMBO IS ATTESTABLE WHEN TWO THINGS ARE TRUE, and no others:
+//   1. This page can flash it (an .uf2 in FLASH_ARTIFACTS, or an image in
+//      the ESP32 artifact index). A verdict about firmware the visitor
+//      could not have put on the board is not evidence about anything.
+//   2. Its bundle port is verified pixel-exact, so it HAS recorded frames.
+//      An invariants port has a checker, not frames; asking a board to
+//      confirm it would mean inventing a second, weaker check here and
+//      calling the two by one name.
+// Everything else gets no plan and no button, rather than a button that
+// would have to lie about what it proved.
+//
+// The capture points come from the frames directory's own
+// <trace-stem>.t<ms>.png filenames, which is the SAME rule
+// harness/portdiff.ts's verifyPortFrames() applies. Restating a capture
+// point list here would be a second source of truth for which moments a
+// port is checked at.
+const ATTEST_DIR_NAME = "attest";
+
+// Which browser flashing path a pack's board uses, and therefore how its
+// devlink port must be opened. The RP2350's USB CDC stack does not answer
+// unless DTR is asserted; the ESP32-S3's USB Serial/JTAG peripheral wires
+// DTR to the chip's own boot strap and is rebooted by it. Keyed by pack
+// rather than hardcoded in the page, so a third board is a line here.
+const PACK_BOARD_FAMILY: Record<string, { family: "rp2350" | "esp32"; dataTerminalReady: boolean }> = {
+  "rp2350-touch-amoled-18": { family: "rp2350", dataTerminalReady: true },
+  "esp32-s3-touch-amoled-18": { family: "esp32", dataTerminalReady: false },
+};
+
+interface AttestPlanTrace {
+  name: string;
+  events: unknown[];
+  points: { atMs: number; frame: string }[];
+}
+
+/** Combo ids that got a plan, read back by writeRunPage to decide whether to render the section. */
+const attestPlans = new Set<string>();
+
+function attestArtifactHref(combo: Combo): string | null {
+  const uf2 = FLASH_ARTIFACTS[combo.id];
+  if (uf2) return `../flash/${uf2.file}`;
+  const imageId = esp32ImageIdFor(combo.id);
+  if (imageId && ESP32_MANIFEST) return `../flash/esp32/${ESP32_MANIFEST.images[imageId]!.file}`;
+  return null;
+}
+
+function buildAttestPlans(): void {
+  const outDir = join(DIST, ATTEST_DIR_NAME);
+  mkdirSync(outDir, { recursive: true });
+
+  for (const combo of combos) {
+    const entry = combo.proven;
+    if (!entry.traces || !entry.framesDir) continue;
+    const artifact = attestArtifactHref(combo);
+    if (!artifact) continue;
+    const board = PACK_BOARD_FAMILY[combo.pack];
+    if (!board) continue;
+
+    const framesSrc = join(REPO_ROOT, entry.framesDir);
+    if (!existsSync(framesSrc)) continue;
+    const framesOut = join(outDir, combo.id);
+    mkdirSync(framesOut, { recursive: true });
+
+    const traces: AttestPlanTrace[] = [];
+    for (const tracePath of entry.traces) {
+      const abs = join(REPO_ROOT, tracePath);
+      if (!existsSync(abs)) {
+        throw new Error(`${combo.appPath}/bundle.json names the trace ${tracePath}, which does not exist`);
+      }
+      const stem = tracePath.split(/[\\/]/).pop()!.replace(/\.trace\.json$|\.json$/, "");
+      const escaped = stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const frameRe = new RegExp(`^${escaped}\\.t(\\d+)\\.png$`);
+      const points: { atMs: number; frame: string }[] = [];
+      for (const name of readdirSync(framesSrc)) {
+        const m = frameRe.exec(name);
+        if (!m) continue;
+        copyFileSync(join(framesSrc, name), join(framesOut, name));
+        points.push({ atMs: Number(m[1]), frame: name });
+      }
+      if (points.length === 0) continue;
+      points.sort((a, b) => a.atMs - b.atMs);
+      const trace = readJson<{ events: unknown[] }>(abs);
+      traces.push({ name: stem, events: trace.events, points });
+    }
+    if (traces.length === 0) continue;
+
+    const plan = {
+      combo: combo.id,
+      app: combo.app,
+      pack: combo.pack,
+      boardFamily: board.family,
+      // Zero, and it stays zero: a pixel-exact port's whole claim is that
+      // the frames are identical, and a tolerance here would quietly turn
+      // that into "close enough" on the one surface where a stranger is
+      // reading the result.
+      tolerance: 0,
+      artifact,
+      framesBase: `${combo.id}/`,
+      // The emulator side of every recorded frame started from emu_init(),
+      // which enters app 0, so this is the only value that makes the two
+      // sides start alike.
+      appIndex: 0,
+      dataTerminalReady: board.dataTerminalReady,
+      traces,
+    };
+    writeFileSync(join(outDir, `${combo.id}.json`), JSON.stringify(plan, null, 2) + "\n");
+    attestPlans.add(combo.id);
+    const frameCount = traces.reduce((n, t) => n + t.points.length, 0);
+    console.log(`wrote -> site/dist/${ATTEST_DIR_NAME}/${combo.id}.json (${traces.length} trace(s), ${frameCount} recorded frame(s))`);
+  }
+}
+
 // ---- 1.6. landing demo loops: recorded, tracked source, copied out -------
 // Same pattern as flash-artifacts above: site/demo-media/ is the tracked
 // source (written by site/record-demos.ts, committed like any other
@@ -658,11 +796,21 @@ function copyDemoMedia(ids: string[]): void {
 // (flash-ui-common.ts) is small and is simply in both.
 let FLASH_JS_VERSION = "";
 let ESP32_FLASH_JS_VERSION = "";
+// A THIRD bundle, and for the same reason there are already two: the attest
+// step's imports have nothing to do with either flasher's. It pulls in the
+// devlink protocol, the browser Web Serial transport, the shared replay and
+// the shared pixel comparison; neither flasher needs any of that, and a
+// page with no attestable port should not download it. It also loads on
+// BOTH families' pages, which neither flash bundle does.
+let ATTEST_JS_VERSION = "";
+// A FOURTH, and the smallest: the landing page reads four integers and must
+// not download a serial protocol stack to do it (site/attest/counters.ts).
+let ATTEST_COUNTERS_JS_VERSION = "";
 
-async function bundleFlashEntry(entry: string, outName: string): Promise<string> {
+async function bundleBrowserEntry(entry: string, outDir: string, outName: string): Promise<string> {
   const result = await Bun.build({
-    entrypoints: [join(SITE_DIR, "flasher", entry)],
-    outdir: join(DIST, "flash"),
+    entrypoints: [join(SITE_DIR, entry)],
+    outdir: outDir,
     naming: outName,
     target: "browser",
     format: "esm",
@@ -670,15 +818,19 @@ async function bundleFlashEntry(entry: string, outName: string): Promise<string>
   });
   if (!result.success) {
     for (const log of result.logs) console.error(log);
-    throw new Error(`site/build.ts: failed to bundle site/flasher/${entry}`);
+    throw new Error(`site/build.ts: failed to bundle site/${entry}`);
   }
-  console.log(`built -> site/dist/flash/${outName}`);
-  return contentHashOf(join(DIST, "flash", outName));
+  const rel = outDir.slice(DIST.length + 1).replace(/\\/g, "/");
+  console.log(`built -> site/dist/${rel ? `${rel}/` : ""}${outName}`);
+  return contentHashOf(join(outDir, outName));
 }
 
 async function buildFlashUi(): Promise<void> {
-  FLASH_JS_VERSION = await bundleFlashEntry("flash-ui.ts", "flash.js");
-  ESP32_FLASH_JS_VERSION = await bundleFlashEntry("esp32-ui.ts", "esp32-flash.js");
+  const flashDir = join(DIST, "flash");
+  FLASH_JS_VERSION = await bundleBrowserEntry("flasher/flash-ui.ts", flashDir, "flash.js");
+  ESP32_FLASH_JS_VERSION = await bundleBrowserEntry("flasher/esp32-ui.ts", flashDir, "esp32-flash.js");
+  ATTEST_JS_VERSION = await bundleBrowserEntry("attest/attest-ui.ts", flashDir, "attest.js");
+  ATTEST_COUNTERS_JS_VERSION = await bundleBrowserEntry("attest/counters.ts", DIST, "attest-counters.js");
 }
 
 // ---- 2. the shared emulator bundle, built once via the repo's own build.ts ----
@@ -929,12 +1081,30 @@ function buildIndexHtml(): void {
         })
         .map((p) => `<span class="badge${p.degraded ? "" : " accent"}">${escapeHtml(modeLabel(p.mode))} · ${escapeHtml(p.verification)}</span>`)
         .join("");
+      // One line per pack this app is proven on, saying how many real
+      // boards have run this port's own trace and confirmed the frames.
+      // The empty state ships in the HTML and the counts are fetched
+      // client-side (site/attest-client.ts): the endpoint is a Pages
+      // Function, and site/dist/ is a static build that also gets served
+      // with nothing behind it (this repo's own headless checks, a local
+      // preview, anyone's clone), so a missing endpoint has to read as "no
+      // board has confirmed this yet" rather than as an error.
+      const counters = app.proven
+        .filter((p) => p.pack !== WEB_PACK) // the browser is not a board somebody can confirm on
+        .map(
+          (p) =>
+            `<li><span class="attest-pack">${escapeHtml(packLabel.get(p.pack) || p.pack)}</span> ` +
+            `<span class="attest-counter attest-counter-empty" data-attest-app="${escapeHtml(app.name)}" data-attest-pack="${escapeHtml(p.pack)}">${escapeHtml(ATTEST_EMPTY_STATE)}</span></li>`
+        )
+        .join("");
+      const counterBlock = counters ? `<ul class="attest-counters">${counters}</ul>` : "";
       return `<div class="card">
   ${demoThumb(primary.id, `${app.name} demo`, `run/${primary.id}.html`, primary.pack, primary.app === "chrono")}
   <div class="body">
     <h3>${escapeHtml(app.name)}</h3>
     <p>${escapeHtml(APP_BLURB[app.name] || "")}</p>
     <div class="badges">${badges}</div>
+    ${counterBlock}
     <div class="links">
       ${provenLinks}
       <a href="${gh(`${app.path}/descriptor.md`)}">descriptor</a>
@@ -1059,7 +1229,8 @@ ${refCardsHtml}
   </section>
 
   ${siteFooter("")}
-</div>`;
+</div>
+<script type="module" src="${withVersion("attest-counters.js", ATTEST_COUNTERS_JS_VERSION)}"></script>`;
 
   writeFileSync(
     join(DIST, "index.html"),
@@ -1206,6 +1377,45 @@ function renderFlashSection(comboId: string, pack: string): string {
   return "";
 }
 
+// ---- attest section: the board answers for itself -----------------------
+// Rendered under the flash section, on every combo that got a plan
+// (buildAttestPlans above). The framing matters: this is not "did the flash
+// work", it is "does this port draw what the bundle says it draws, on YOUR
+// board", answered by replaying that port's own recorded trace over devlink
+// and diffing the frames against the same recorded PNGs the command-line
+// verifier compares against.
+//
+// The counter under it is the same counter the gallery cards carry, filled
+// from the same endpoint by the same helper (site/attest-client.ts), with
+// its empty state already in the HTML so a page served with no function
+// behind it never flashes a placeholder.
+const ATTEST_INTRO =
+  "The board can answer for itself. This replays this port's own recorded trace over the board's devlink port and compares every captured frame against the frames the verifier uses, pixel for pixel.";
+const ATTEST_HINT =
+  "Needs the board running this firmware, and Chrome or Edge on desktop. Nothing about you is sent: the result carries the app, the pack, the firmware's own sha256, the verdict and the pixel counts.";
+
+function renderAttestSection(comboId: string, app: string, pack: string): string {
+  if (!attestPlans.has(comboId)) return "";
+  const planHref = `../${ATTEST_DIR_NAME}/${comboId}.json`;
+  return `  <section class="attest-section" data-attest-plan="${planHref}">
+    <h2>Prove it runs</h2>
+    <p class="attest-note">${escapeHtml(ATTEST_INTRO)}</p>
+    <p class="attest-counter attest-counter-empty" data-attest-app="${escapeHtml(app)}" data-attest-pack="${escapeHtml(pack)}">${escapeHtml(ATTEST_EMPTY_STATE)}</p>
+    <div class="attest-actions">
+      <button type="button" class="attest-btn">Run the trace on this board</button>
+    </div>
+    <p class="attest-hint">${escapeHtml(ATTEST_HINT)}</p>
+    <div class="attest-progress" hidden><p class="attest-status"></p></div>
+    <ol class="attest-points" hidden></ol>
+    <p class="attest-verdict" hidden></p>
+    <div class="attest-post" hidden>
+      <button type="button" class="attest-post-btn">Post this result</button>
+    </div>
+    <p class="attest-posted" hidden></p>
+    <p class="attest-error" hidden></p>
+  </section>`;
+}
+
 // Native size for the run page's iframe: since site/build.ts's iframe now
 // points at the emulator's `?embed=1` view (device + minimal control strip
 // only, no topbar/sidebar/console - see src/main.ts's EMBED and
@@ -1246,6 +1456,10 @@ function buildRunDir(): void {
     blurb: string;
     docLinks: { label: string; href: string }[];
     autoRotate: boolean;
+    // Present only for a combo that is a real app+pack port (a reference
+    // app or the instrument's own example has no bundle, so nothing to
+    // attest and nothing to count).
+    attest?: { app: string; pack: string };
   }) {
     // Root-absolute module URL, same reasoning and same helper as the
     // index page's live card embeds (moduleUrlAbs's own header comment);
@@ -1264,6 +1478,15 @@ function buildRunDir(): void {
       : esp32ImageIdFor(opts.id)
         ? `\n<script type="module" src="${withVersion("../flash/esp32-flash.js", ESP32_FLASH_JS_VERSION)}"></script>`
         : "";
+    // Prefixed with its own newline rather than joined with one in the
+    // template below, so a page with nothing to attest is byte-identical to
+    // what it was before this section existed instead of gaining a stray
+    // blank line (site/dist/ is committed, so cosmetic churn is real churn).
+    const attestSectionRaw = opts.attest ? renderAttestSection(opts.id, opts.attest.app, opts.attest.pack) : "";
+    const attestSection = attestSectionRaw ? `${attestSectionRaw}\n` : "";
+    const attestScript = attestSectionRaw
+      ? `\n<script type="module" src="${withVersion("../flash/attest.js", ATTEST_JS_VERSION)}"></script>`
+      : "";
     const phoneTiltHint = packHasVectorSensor.get(opts.pack) ? " &middot; tilt with your phone" : "";
     const body = `<div class="wrap">
   <div class="run-header">
@@ -1287,8 +1510,8 @@ function buildRunDir(): void {
   <div class="run-footer"></div>
 
 ${flashSection}
-${siteFooter("../")}
-</div>${flashScript}
+${attestSection}${siteFooter("../")}
+</div>${flashScript}${attestScript}
 <script>
 (function () {
   var NATIVE_W = ${nativeW}, NATIVE_H = ${nativeH};
@@ -1343,6 +1566,7 @@ ${siteFooter("../")}
         { label: c.build.args.length === 0 ? "reference source" : "port notes", href: gh(c.build.portDoc) },
       ],
       autoRotate: c.app === "chrono",
+      attest: { app: c.app, pack: c.pack },
     });
   }
 
@@ -1514,6 +1738,9 @@ const DEMO_IDS = [
   INSTRUMENT_EXAMPLE.id,
 ];
 copyDemoMedia(DEMO_IDS);
+// After copyFlashArtifacts (it reads which combos actually have a flashable
+// artifact) and before buildRunDir (it reads which combos got a plan).
+buildAttestPlans();
 await buildFlashUi();
 buildAgentSurfaces();
 buildRunDir();
