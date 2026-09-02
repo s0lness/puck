@@ -221,11 +221,15 @@ table.matrix td.cell { min-width: 152px; background: var(--surface); }
 td.cell-empty, td.cell-void { background: var(--bg); }
 .cell .thumb-video { margin-bottom: 8px; }
 .cell-open { display: block; font-size: 0.88rem; font-weight: 600; }
-.cell-mode { margin: 4px 0 0; color: var(--text-soft); font-size: 0.78rem; }
-.cell-why { margin: 6px 0 0; color: var(--text-soft); font-size: 0.78rem; line-height: 1.45; }
-.cell-note { color: var(--text-soft); }
+/* The only two lines of prose a cell is allowed. `cell-prov` is the
+   external row's "reproduced from ...@sha on date", which is a fact about
+   the row and not a reason behind a mark; `cell-line` is a column that is
+   simply not this app's target. Everything else a cell has to say lives
+   behind a mark (below) and is not in the visible flow until somebody asks
+   for it. */
 .cell-prov { margin: 6px 0 0; color: var(--text-soft); font-size: 0.74rem; }
-.cell-publish { display: inline-block; margin-top: 8px; font-size: 0.78rem; }
+.cell-line { margin: 0; color: var(--text-soft); font-size: 0.78rem; }
+.cell-publish { display: inline-block; font-size: 0.78rem; }
 
 /* The silhouette proof: the canvas the headless run actually painted, at
    its own size, never scaled up past it (a 135x240 stick blown up to fill
@@ -247,11 +251,40 @@ td.cell-empty, td.cell-void { background: var(--bg); }
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35);
 }
 
-/* One mark, one chip. The reason behind every mark is in its title
-   attribute, so the grid stays scannable and nothing is hidden: the cells
-   that are not a clean pass ALSO print their first sentence underneath,
-   because a tooltip is not a way of saying something plainly. */
-.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+/* ---- one mark, one chip, and the sentence folded behind it ----
+   Forty-five cells each printing their own reason paragraph made a row
+   three times taller than its own thumbnail and repeated the same
+   paragraph across nine columns, so the grid stopped being scannable and
+   the intro's promise (hover a mark for the sentence behind it) was not
+   what the page did. A mark is now a <details>: the <summary> IS the chip,
+   and the reason sits in a <p> that is in the DOM, addressable, and out of
+   the visible flow until somebody opens it. No script, so it works on a
+   static clone; a real disclosure, so it opens by keyboard and by thumb
+   where a title attribute reaches neither.
+
+   It flows below the chip rather than floating over it, deliberately:
+   .matrix-scroll clips its overflow, so a popover would be cut off at the
+   column edge on exactly the narrow screen it exists to serve. Opening one
+   grows one cell. */
+.marks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.mark { display: inline-block; }
+/* Explicit, because the UA does not do it here: a <details> whose own
+   display is overridden (inline-block, so several marks sit on one line)
+   stops hiding its closed contents in Chromium, and 89 reasons rendered
+   straight back into the row. Stated in this stylesheet, the closed state
+   is the closed state whatever the engine decides about the default. */
+.mark:not([open]) > .mark-why { display: none; }
+.mark > summary { list-style: none; }
+.mark > summary::-webkit-details-marker { display: none; }
+.mark-why {
+  margin: 6px 0 2px;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  /* Out of the row's own width so a long sentence does not stretch the
+     column it opened in: the cell is 152px, the sentence is not. */
+  max-width: 34ch;
+}
 .chip {
   display: inline-block;
   font-size: 0.7rem;
@@ -264,6 +297,12 @@ td.cell-empty, td.cell-void { background: var(--bg); }
   color: var(--text-soft);
   cursor: default;
 }
+/* A chip that is a summary is a control: it says so on hover, and it takes
+   a focus ring like every other control on this page. */
+.mark > summary.chip { cursor: pointer; }
+.mark > summary.chip::after { content: " ·"; opacity: .55; }
+.mark[open] > summary.chip::after { content: " ×"; opacity: .8; }
+.mark > summary.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .chip-ok { border-color: var(--success); color: var(--success); }
 /* A divergence is a RESULT, not an error (docs/decisions/0011 makes the
    same argument about an attestation): it gets the accent, never a red. */

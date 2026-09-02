@@ -1326,8 +1326,29 @@ function copyProofs(): void {
 
 type ChipTone = "ok" | "warn" | "bad" | "mute";
 
-function chip(tone: ChipTone, label: string, title: string): string {
-  return `<span class="chip chip-${tone}"${title ? ` title="${escapeHtml(title)}"` : ""}>${escapeHtml(label)}</span>`;
+/**
+ * ONE MARK, ONE CHIP, AND THE SENTENCE FOLDED BEHIND IT.
+ *
+ * A cell shows a picture and a row of chips and nothing else. Every reason
+ * this page has - the verdict's own paragraph, the pixel counts behind a
+ * DIVERGE, why a silhouette came out blank, what a blind port was given -
+ * lives in the `title` for a pointer AND in a real `<details>` disclosure
+ * for a keyboard and a thumb, which is what a title attribute reaches
+ * neither of. Nothing is lost and nothing is in the way: forty-five cells
+ * printing their own paragraph made the same sentence appear nine times
+ * across a row and buried the thumbnails the grid exists to show.
+ *
+ * `<details>` rather than script, because site/dist/ is a static build that
+ * gets served from a plain file server and off disk; and the reason stays
+ * in the DOM when closed, which is what scripts/verify-matrix.ts asserts
+ * against (present, and out of the visible flow).
+ */
+function mark(tone: ChipTone, label: string, reason: string): string {
+  if (!reason) return `<span class="chip chip-${tone}">${escapeHtml(label)}</span>`;
+  return (
+    `<details class="mark"><summary class="chip chip-${tone}" title="${escapeHtml(reason)}">${escapeHtml(label)}</summary>` +
+    `<p class="mark-why">${escapeHtml(reason)}</p></details>`
+  );
 }
 
 const EMULATOR_TONE: Record<string, ChipTone> = { PASS: "ok", FAIL: "bad", ERROR: "bad" };
@@ -1335,16 +1356,26 @@ const HOST_TONE: Record<string, ChipTone> = { MATCH: "ok", DIVERGE: "warn", SANI
 const SILHOUETTE_TONE: Record<string, ChipTone> = { runs: "ok", blank: "warn", "wrong-panel": "bad", "page-error": "bad", "build-failed": "bad" };
 const VERDICT_TONE: Record<string, ChipTone> = { go: "ok", degraded: "warn", refuse: "bad" };
 
-/** The mechanical verdict, always shown, always with its own sentence behind it. */
-function verdictChip(cell: LedgerCell): string {
-  if (!cell.verdict) return chip("mute", "no verdict", cell.verdictUnavailable ?? "");
-  const v = cell.verdict.verdict;
-  const degrades = cell.verdict.degrades.filter((d) => d.value !== d.reference);
-  const label = v === "degraded" && degrades.length > 0 ? `degraded: ${degrades[0]!.value} ${degrades[0]!.name}` : v;
-  return chip(VERDICT_TONE[v]!, label, cell.verdict.human);
+/**
+ * The mechanical verdict: the word alone on the chip, the whole paragraph
+ * behind it. The degrade's own number ("25 particles against a reference of
+ * 130") is in that paragraph rather than in the label, because a chip that
+ * grows with its content stops being a chip.
+ */
+function verdictMark(cell: LedgerCell): string {
+  if (!cell.verdict) return mark("mute", "no verdict", cell.verdictUnavailable ?? "");
+  const shrunk = cell.verdict.degrades.filter((d) => d.value !== d.reference);
+  const extra = shrunk.map((d) => `It runs at ${d.value} ${d.name} against the reference ${d.reference} (${d.what}), bound by ${d.boundBy}.`).join(" ");
+  return mark(VERDICT_TONE[cell.verdict.verdict]!, cell.verdict.verdict, [cell.verdict.human, extra].filter(Boolean).join(" "));
 }
 
-/** The silicon counter: the empty state ships in the HTML, the number arrives from GET /api/attest. */
+/**
+ * The silicon counter. Deliberately NOT a disclosure: there is no sentence
+ * folded behind it, the chip's own text IS the answer, and
+ * site/attest-client.ts rewrites that text in place once GET /api/attest
+ * answers - so the element carrying data-attest-app/-pack has to be the one
+ * whose textContent gets replaced.
+ */
 function siliconChip(app: string, pack: string): string {
   return (
     `<span class="chip chip-mute attest-counter attest-counter-empty" data-attest-app="${escapeHtml(app)}" data-attest-pack="${escapeHtml(pack)}">` +
@@ -1352,16 +1383,16 @@ function siliconChip(app: string, pack: string): string {
   );
 }
 
-/** The first sentence of a reason, for a cell that has to say what is missing without becoming a paragraph. */
-function firstSentence(text: string, limit = 220): string {
-  const line = text.split("\n")[0]!.trim();
-  if (line.length <= limit) return line;
-  // Cut at the last word boundary before the limit, not mid-word: a cell
-  // that ends "quarter tu…" reads as a rendering bug rather than as a
-  // deliberate trim.
-  const cut = line.slice(0, limit - 1);
-  const space = cut.lastIndexOf(" ");
-  return `${(space > limit * 0.6 ? cut.slice(0, space) : cut).replace(/[,;:]$/, "")}…`;
+/** The blind-port mark: the roadmap's workstream 4, read out of blind-ports.json by the ledger. */
+function blindMark(cell: LedgerCell): string {
+  // Tolerant of a ledger written before this field existed: an older
+  // ledger.json is a reason to render one fewer chip, not to fail a whole
+  // site build. `bun run ledger` fills it on every run, cached cells
+  // included, so it comes back on the next one.
+  const blind = cell.blind;
+  if (!blind || blind.mark === "not attempted") return "";
+  const label = blind.mark === "PASS" ? `ported blind ${blind.date ?? ""}`.trim() : `blind port failed ${blind.date ?? ""}`.trim();
+  return mark(blind.mark === "PASS" ? "ok" : "bad", label, blind.reason);
 }
 
 /**
@@ -1382,17 +1413,16 @@ function cellOpen(state: "runs" | "verdict" | "empty" | "void", target: string, 
 function matrixCell(app: AppEntry, target: LedgerTarget, groupStart: boolean): string {
   const cell = cellFor(app.name, target.name);
   if (!cell) {
-    return `${cellOpen("void", target.name, "cell-void", groupStart)}<p class="cell-why">not in the ledger</p></td>`;
+    return `${cellOpen("void", target.name, "cell-void", groupStart)}<p class="cell-line">not in the ledger</p></td>`;
   }
 
   // ---- a target this repository does not carry, named by somebody else's
   // bundle. Only the app that declares a port there has anything to say.
   if (target.kind === "external-pack") {
-    if (!cell.port) return `${cellOpen("void", target.name, "cell-void", groupStart)}<p class="cell-why">not this app's target</p></td>`;
+    if (!cell.port) return `${cellOpen("void", target.name, "cell-void", groupStart)}<p class="cell-line">not this app's target</p></td>`;
     const tone = EMULATOR_TONE[cell.emulator.mark] ?? "mute";
     return `${cellOpen("verdict", target.name, "cell-external", groupStart)}
-        <div class="chips">${chip(tone, `emulator ${cell.emulator.mark}`, cell.emulator.reason)}</div>
-        <p class="cell-why">${escapeHtml(firstSentence(cell.emulator.reason, 320))}</p>
+        <div class="marks">${mark(tone, `emulator ${cell.emulator.mark}`, cell.emulator.reason)}</div>
         ${cell.port.provenance ? `<p class="cell-prov">${escapeHtml(cell.port.provenance)}</p>` : ""}
       </td>`;
   }
@@ -1403,13 +1433,14 @@ function matrixCell(app: AppEntry, target: LedgerTarget, groupStart: boolean): s
     const s = cell.silhouette;
     const tone = SILHOUETTE_TONE[s.mark] ?? "mute";
     const runnable = silhouettePages.has(`${app.name}:${target.name}`);
-    // It ran, and this site still cannot show it running: said here rather
-    // than swallowed, because "runs here" with no link would be the one
-    // thing this whole page exists not to do.
+    // It ran, and this site still cannot show it running: folded behind the
+    // mark like every other sentence, but never dropped, because "runs
+    // here" with no link would be the one thing this page exists not to do.
     const unpresentable =
       s.mark === "runs" && !runnable
-        ? `. It ran, and there is no page for it here: this board declares a ${escapeHtml(target.panel?.format ?? "an unnamed")} panel and the shared emulator only reads the 16-bit formats the real packs declare, so presenting it would mean pretending packs/web&#39;s own RGB565 framebuffer is this board&#39;s glass`
+        ? ` It ran, and there is no page for it here: this board declares a ${target.panel?.format ?? "an unnamed"} panel and the shared emulator only reads the 16-bit formats the real packs declare, so presenting it would mean pretending packs/web's own RGB565 framebuffer is this board's glass.`
         : "";
+    const borrowed = s.via && s.via !== WEB_PACK ? ` Compiled from its ${packLabel.get(s.via) || s.via} port's own file: this app has no web-pack port of its own.` : "";
     const id = `${app.name}-${target.name}`;
     const picture = s.proof
       ? `<img src="${proofHref(target.name, app.name)}" alt="${escapeHtml(`${app.name} running on the ${target.label} silhouette`)}" class="proof-img" loading="lazy" />`
@@ -1419,11 +1450,10 @@ function matrixCell(app: AppEntry, target: LedgerTarget, groupStart: boolean): s
       : picture
         ? `<span class="thumb-proof thumb-proof-still">${picture}</span>`
         : "";
-    const borrowed = s.via && s.via !== WEB_PACK ? ` <span class="cell-note">via its ${escapeHtml(packLabel.get(s.via) || s.via)} port's own file</span>` : "";
+    const label = s.mark === "runs" ? (runnable ? "runs here" : "runs, no page here") : s.mark;
     return `${cellOpen(runnable ? "runs" : "verdict", target.name, "cell-silhouette", groupStart)}
         ${thumb}
-        <div class="chips">${verdictChip(cell)}${chip(tone, s.mark === "runs" ? (runnable ? "runs here" : "runs, no page here") : s.mark, s.reason)}</div>
-        <p class="cell-why">${escapeHtml(firstSentence(s.reason, runnable ? 220 : 320))}${borrowed}${unpresentable}</p>
+        <div class="marks">${verdictMark(cell)}${mark(tone, label, `${s.reason}.${borrowed}${unpresentable}`)}</div>
       </td>`;
   }
 
@@ -1434,43 +1464,33 @@ function matrixCell(app: AppEntry, target: LedgerTarget, groupStart: boolean): s
     const href = comboHref(combo, "");
     const media = hasDemoMedia(combo.id);
     const thumb = media ? demoThumb(combo.id, `${app.name} on ${target.label}`, href, target.name, app.name === "chrono") : "";
-    const chips = [
-      chip(EMULATOR_TONE[cell.emulator.mark] ?? "mute", `emulator ${cell.emulator.mark}`, cell.emulator.reason),
-      cell.host.mark === "not run" ? chip("mute", "host not run", cell.host.reason) : chip(HOST_TONE[cell.host.mark] ?? "mute", `host ${cell.host.mark}`, cell.host.reason),
+    const portReason =
+      `${modeLabel(cell.port.mode)}, verified by ${cell.port.verification === "pixel-exact" ? "pixel-exact frame diffs" : "stated behavioral invariants"}` +
+      (cell.port.declaredVerdict ? `, and its own port notes call it ${cell.port.declaredVerdict}` : "") +
+      (cell.port.source ? `. Source: ${cell.port.source}` : "") +
+      ".";
+    const marks = [
+      mark("mute", modeLabel(cell.port.mode), portReason),
+      mark(EMULATOR_TONE[cell.emulator.mark] ?? "mute", `emulator ${cell.emulator.mark}`, cell.emulator.reason),
+      cell.host.mark === "not run" ? mark("mute", "host not run", cell.host.reason) : mark(HOST_TONE[cell.host.mark] ?? "mute", `host ${cell.host.mark}`, cell.host.reason),
+      blindMark(cell),
       target.name === WEB_PACK ? "" : siliconChip(app.name, target.name),
     ]
       .filter(Boolean)
       .join("");
-    const label = `${modeLabel(cell.port.mode)}, ${cell.port.verification}${cell.port.declaredVerdict === "degraded" ? " (degraded)" : ""}`;
-    const trouble = cell.emulator.mark !== "PASS" || cell.host.mark === "DIVERGE" || cell.host.mark === "SANITIZER";
     return `${cellOpen("runs", target.name, "cell-port", groupStart)}
         ${thumb}
         <a class="cell-open" href="${href}">${escapeHtml(target.name === WEB_PACK ? "run it on your phone" : "run it")}</a>
-        <p class="cell-mode">${escapeHtml(label)}</p>
-        <div class="chips">${chips}</div>
-        ${trouble ? `<p class="cell-why">${escapeHtml(firstSentence(cell.emulator.mark !== "PASS" ? cell.emulator.reason : cell.host.reason, 320))}</p>` : ""}
+        <div class="marks">${marks}</div>
       </td>`;
   }
 
-  // ---- a real pack with no port: the empty state, which has to say what
-  // is missing rather than leave a hole in the grid.
+  // ---- a real pack with no port: the verdict word, and where the
+  // procedure is. The reason it came out that way is behind the word.
   return `${cellOpen("empty", target.name, "cell-empty", groupStart)}
-        <div class="chips">${verdictChip(cell)}</div>
-        <p class="cell-why">no port yet.${cell.verdict ? ` ${escapeHtml(firstSentence(reasonFor(cell), 260))}` : ` ${escapeHtml(firstSentence(cell.verdictUnavailable ?? "", 260))}`}</p>
-        <a class="cell-publish" href="puck-publish/">how to port it</a>
+        <div class="marks">${verdictMark(cell)}${blindMark(cell)}</div>
+        <a class="cell-publish" href="puck-publish/">no port yet: how to port it</a>
       </td>`;
-}
-
-/** The sentence a no-port cell shows: the refusal if there is one, else the cost, else that everything fits. */
-function reasonFor(cell: LedgerCell): string {
-  if (!cell.verdict) return cell.verdictUnavailable ?? "";
-  const refused = cell.verdict.checks.find((c) => c.status === "refuse");
-  if (refused) return `${refused.dimension}: ${refused.reason}`;
-  const cost = cell.verdict.checks.find((c) => c.status === "degraded");
-  if (cost) return `${cost.dimension}: ${cost.reason}`;
-  const shrunk = cell.verdict.degrades.find((d) => d.value !== d.reference);
-  if (shrunk) return `${shrunk.value} ${shrunk.name} against the reference ${shrunk.reference}, bound by ${shrunk.boundBy}`;
-  return "every dimension this app states is met by what the device declares";
 }
 
 // The column groups, in the order a reader should meet them: devices this
@@ -1571,7 +1591,7 @@ function buildIndexHtml(): void {
 <section id="matrix">
   <div class="wrap">
       <h2>the matrix</h2>
-      <p class="lede">A cell with a picture is a build that ran: <strong>emulator</strong> is the module rebuilt from the port's own source and its traces replayed, <strong>host</strong> is the same C compiled natively under address and undefined-behaviour sanitizers and diffed against it frame by frame, and <strong>silicon</strong> is how many real boards have run that port's trace and confirmed the frames. A cell with no port carries the mechanical verdict instead, with the reason it came out that way. Hover or focus any mark for the sentence behind it.</p>
+      <p class="lede">A cell with a picture is a build that ran: <strong>emulator</strong> is the module rebuilt from the port's own source and its traces replayed, <strong>host</strong> is the same C compiled natively under address and undefined-behaviour sanitizers and diffed against it frame by frame, and <strong>silicon</strong> is how many real boards have run that port's trace and confirmed the frames. <strong>blind</strong> is whether an agent with no session context ported it from the pack folder alone. A cell with no port carries the mechanical verdict instead. Every mark folds a sentence: hover it, or open it, for the whole reason it says what it says.</p>
   </div>
   <div class="wrap wrap-wide">
       <div class="matrix-scroll">

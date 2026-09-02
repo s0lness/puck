@@ -46,13 +46,28 @@ the device packs this repository carries, then any pack an app's own bundle
 names that this repository does not carry, then the silhouettes. Each cell
 declares what it is on itself as `data-cell`:
 
-- `runs`: a link that opens something that runs, plus a chip per mark
-  (emulator, host, silicon, or the silhouette mark), each with its own
-  sentence in a `title`.
-- `verdict`: a mark and the reason behind it, printed on the page rather
-  than only in a tooltip.
-- `empty`: what is missing and a link to `/puck-publish/`, which serves
+- `runs`: a link that opens something that runs, plus one line of marks
+  (the port's mode, emulator, host, blind, silicon, or the silhouette
+  mark).
+- `verdict`: the mechanical verdict and the marks it earned, and no link
+  claiming it runs.
+- `empty`: the verdict word and a link to `/puck-publish/`, which serves
   `skills/puck-publish/SKILL.md` whole.
+
+**A cell shows a picture and a row of chips and nothing else.** Every
+sentence this page has folds behind its own mark: a `<details>` whose
+`<summary>` IS the chip, with the reason in a `<p>` that stays in the DOM
+and out of the visible flow until somebody opens it, plus the same sentence
+in a `title` for a pointer. A disclosure rather than a tooltip alone
+because a tooltip reaches neither a keyboard nor a thumb; a disclosure
+rather than script because `site/dist/` gets served from a plain file
+server and off disk. It flows below the chip rather than floating over it,
+since `.matrix-scroll` clips its own overflow and a popover would be cut
+off at the column edge on exactly the narrow screen it exists to serve.
+`site:verify-matrix` asserts all of that: the reasons are present, none is
+laid out until a mark is opened, a mark takes keyboard focus, opening it
+really shows the sentence, and no row stands more than twice as tall as its
+own thumbnail.
 
 A silhouette cell that runs gets its own run page under `run/<app>-<silhouette>.html`,
 written by the same generator every other run page goes through, around a

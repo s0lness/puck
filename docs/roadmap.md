@@ -142,14 +142,32 @@ A second finding this same grid exposed, **`packs/web` wiring exactly one
 `packs/web/AGENTS.md`'s "Buttons" section and
 `packs/silhouettes/watchy/AGENTS.md`'s "The seam this board used to expose".
 
-### 4. The blind port (one day to wire, then it runs on its own)
+### 4. The blind port (STARTED, 2026-09-02: one run, recorded by hand)
 
 The real test of "an LLM targets a pack from the folder alone". A fresh
 agent, no session context, receives one pack folder and one app bundle and
-is told to port. `verify-bundle` judges. The result goes to the ledger
-keyed by (pack docs sha, app sha, model), so it reruns when the docs
-change, which is exactly what it measures. First pair: chrono to
-packs/web. Codex runs it; its plan is already paid for.
+is told to port. `verify-bundle` judges.
+
+**The first entry exists.** `tinydraw` onto `packs/esp32-s3-touch-amoled-18`,
+2026-09-02, `claude-sonnet`, given the pack folder, the app bundle and
+`docs/convention/` and nothing else: `bun run verify-bundle` went green on
+the first run with no correction from a person, about fifty minutes. It is
+the `blind` column in the matrix, and the sentence behind that chip is the
+list above, because "ported blind" means nothing without saying what the
+agent was handed.
+
+**It is a file somebody typed, and that is on purpose for now.**
+`blind-ports.json` at the repository root is hand-maintained;
+`tools/ledger.ts` reads it into each cell's `blind` mark and refills it on
+every run rather than caching it, since it is a lookup and not a build. The
+file says the same thing in its own note. Nothing here pretends the record
+was computed.
+
+What is still ahead is the part that makes it a measurement rather than an
+anecdote: keying a run by (pack docs sha, app sha, model) so it reruns when
+the docs change, which is exactly what it is measuring, and having a job
+write that file instead of a person. Codex runs it; its plan is already
+paid for.
 
 ### 5. The robustness ladder (three days plus a one-week spike)
 

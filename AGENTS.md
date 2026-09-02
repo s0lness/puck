@@ -294,8 +294,9 @@ the same pinned fetch `verify-bundle` uses) against every target in it
 that this repository does not carry) and writes `ledger.json` at the
 repository root: per pair, the mechanical verdict, the emulator mark
 (`verify-bundle`), the host mark (`hostdiff`), the key `/api/attest`
-counts silicon runs on, the silhouette mark and its proof PNG, the shas of
-its own inputs and the day it was computed. It is incremental by those
+counts silicon runs on, the blind mark (read out of `blind-ports.json`),
+the silhouette mark and its proof PNG, the shas of its own inputs and the
+day it was computed. It is incremental by those
 shas (`--force` recomputes; `--app` and `--target` narrow a run), it
 prints a table, and it never reimplements a build or a comparison: it
 calls `computeVerdict()` in process and runs the two CLIs. See
@@ -597,6 +598,13 @@ ledger.json     computed, committed, and what the gallery renders: one
                 row per app per target, written by bun run ledger. Never
                 edited by hand - a value typed into it is exactly the
                 hand-written claim docs/decisions/0012 exists to remove.
+blind-ports.json the one thing in this pair that IS typed by hand, and
+                says so in its own note: one entry per blind port somebody
+                actually ran (an agent with no session context, given a
+                pack folder and an app bundle and told to port), which
+                tools/ledger.ts reads into each cell's blind mark and
+                refills on every run rather than caching, because it is a
+                lookup and not a build. Roadmap workstream 4.
 ```
 
 ## Gotchas that bite

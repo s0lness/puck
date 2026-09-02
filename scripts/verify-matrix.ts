@@ -13,6 +13,12 @@
 //   1. THE GRID IS COMPLETE. One row per app in the ledger, one column per
 //      target in it, and rows x columns cells - counted against the ledger,
 //      not against a number written here.
+//   2b. EVERY SENTENCE IS BEHIND A MARK. The reasons are in the DOM and
+//      none of them is laid out until a disclosure is opened, a mark takes
+//      keyboard focus and opening it really does show its sentence, and no
+//      row stands more than twice as tall as its own thumbnail. Cells that
+//      printed their reason inline turned one paragraph into nine copies
+//      across a row and buried the pictures the grid exists to show.
 //   2. EVERY CELL IS EXACTLY ONE OF THREE THINGS, declared on the cell
 //      itself as data-cell and cross-checked against what it actually
 //      contains: `runs` (a link to something that opens and runs, and the
@@ -98,7 +104,10 @@ interface ScrapedCell {
   runLinks: string[];
   publishLinks: string[];
   chips: string[];
-  why: string;
+  /** Every reason folded behind a mark in this cell, and whether it is laid out. */
+  reasons: { text: string; visible: boolean }[];
+  /** Any prose the cell puts in the visible flow: the external row's provenance, a void cell's one line. */
+  prose: string[];
   hasLinkedThumb: boolean;
 }
 
@@ -131,7 +140,15 @@ try {
             runLinks: links.filter((h) => !h.startsWith("puck-publish")),
             publishLinks: links.filter((h) => h.startsWith("puck-publish")),
             chips: Array.from(el.querySelectorAll(".chip")).map((c) => (c.textContent ?? "").trim()),
-            why: (el.querySelector(".cell-why")?.textContent ?? "").trim(),
+            // getClientRects() rather than a style read: a <details> that is
+            // closed lays its own content out nowhere at all, which is
+            // exactly the property being asserted, and it stays true however
+            // the disclosure is implemented later.
+            reasons: Array.from(el.querySelectorAll(".mark-why")).map((w) => ({
+              text: (w.textContent ?? "").trim(),
+              visible: (w as HTMLElement).getClientRects().length > 0,
+            })),
+            prose: Array.from(el.querySelectorAll("p")).filter((n) => !n.classList.contains("mark-why")).map((n) => (n.textContent ?? "").trim()),
             hasLinkedThumb: el.querySelector("a.thumb-video, a.thumb-proof") !== null,
           };
         }),
@@ -188,7 +205,12 @@ try {
       }
     } else {
       if (c.hasLinkedThumb) fail(`${where}: declares itself "${c.state}" and still carries a clickable thumbnail`);
-      if (c.why.length === 0) fail(`${where}: declares itself "${c.state}" and says nothing about why`);
+      // A cell that does not run has to say why. "Why" is now a reason
+      // folded behind a mark, or - for the two cells that carry a fact
+      // rather than a reason - one short line of prose: the external row's
+      // provenance, and a column that is not this app's target.
+      const saysWhy = c.reasons.some((r) => r.text.length > 0) || c.prose.some((t) => t.length > 0);
+      if (!saysWhy) fail(`${where}: declares itself "${c.state}" and says nothing about why, behind a mark or otherwise`);
     }
     if (c.state === "empty") {
       if (c.publishLinks.length === 0) fail(`${where}: an empty cell must link to the porting procedure`);
@@ -208,6 +230,67 @@ try {
     }
   }
   if (failures === 0) pass("every cell is exactly one of: runs (with a link that resolves), a verdict with its reason, or an empty state pointing at the procedure");
+
+  // ---- 2b: every sentence is behind a mark, not in the row ---------------
+  // THE REGRESSION THIS EXISTS FOR: every cell used to print its own reason
+  // paragraph inline, so the same sentence appeared across nine columns, a
+  // row stood three times taller than the thumbnail it was built around, and
+  // the intro's promise (hover a mark for the sentence behind it) was not
+  // what the page did. The sentences have to still BE there - nothing may be
+  // lost to make the grid tidy - and they have to be out of the visible flow
+  // until somebody asks.
+  const allReasons = cells.flatMap((c) => c.reasons.map((r) => ({ ...r, where: `${c.app} x ${c.target}` })));
+  if (allReasons.length === 0) {
+    fail("not one mark on the page folds a reason behind it: either the reasons are gone, or they are still in the row");
+  } else {
+    const laidOut = allReasons.filter((r) => r.visible);
+    if (laidOut.length > 0) {
+      fail(`${laidOut.length} of ${allReasons.length} folded reasons are in the visible flow with nothing opened (first: ${laidOut[0]!.where})`);
+    } else {
+      pass(`${allReasons.length} reasons are in the DOM and none of them is laid out until a mark is opened`);
+    }
+    const empty = allReasons.filter((r) => r.text.length === 0);
+    if (empty.length > 0) fail(`${empty.length} folded reason(s) are empty, so a mark exists with nothing behind it (first: ${empty[0]!.where})`);
+  }
+
+  // And they must be reachable: a disclosure that only a pointer can open is
+  // a title attribute with extra steps. Opening one by keyboard is the test.
+  const opened = await page.evaluate(() => {
+    const details = document.querySelector("table.matrix .mark") as HTMLDetailsElement | null;
+    if (!details) return null;
+    const summary = details.querySelector("summary") as HTMLElement | null;
+    if (!summary) return null;
+    summary.focus();
+    const focused = document.activeElement === summary;
+    details.open = true;
+    const why = details.querySelector(".mark-why") as HTMLElement | null;
+    const shown = why ? why.getClientRects().length > 0 : false;
+    details.open = false;
+    return { focused, shown };
+  });
+  if (!opened) fail("there is no .mark disclosure in the table at all");
+  else if (!opened.focused) fail("a mark's own summary does not take focus, so its sentence is unreachable by keyboard");
+  else if (!opened.shown) fail("opening a mark does not lay its sentence out, so the disclosure hides it for good");
+  else pass("a mark takes keyboard focus and opening it lays its sentence out");
+
+  // The whole point of compacting: a row should be about as tall as the
+  // thumbnail it is built around, not three times that.
+  const tallest = await page.evaluate(() => {
+    let worst = { app: "", ratio: 0, row: 0, thumb: 0 };
+    for (const tr of Array.from(document.querySelectorAll("table.matrix tbody tr"))) {
+      const app = (tr.querySelector("th.app-row") as HTMLElement | null)?.dataset.app ?? "";
+      const rowH = (tr as HTMLElement).getBoundingClientRect().height;
+      const thumbs = Array.from(tr.querySelectorAll("video, img.proof-img")).map((n) => n.getBoundingClientRect().height);
+      const thumbH = thumbs.length ? Math.max(...thumbs) : 0;
+      if (thumbH > 0 && rowH / thumbH > worst.ratio) worst = { app, ratio: rowH / thumbH, row: rowH, thumb: thumbH };
+    }
+    return worst;
+  });
+  if (tallest.ratio > 2) {
+    fail(`row "${tallest.app}" is ${tallest.row.toFixed(0)}px tall around a ${tallest.thumb.toFixed(0)}px thumbnail (${tallest.ratio.toFixed(1)}x): the cells are still printing their reasons`);
+  } else {
+    pass(`the tallest row is ${tallest.ratio.toFixed(1)}x its own thumbnail ("${tallest.app}", ${tallest.row.toFixed(0)}px around ${tallest.thumb.toFixed(0)}px)`);
+  }
 
   // ---- 4: the external row, with its provenance -------------------------
   for (const app of ledger.apps.filter((a) => a.kind !== "local")) {
@@ -229,10 +312,11 @@ try {
     for (const cell of declared) {
       const scrapedCell = cells.find((c) => c.app === app.name && c.target === cell.target);
       if (!scrapedCell) continue;
-      if (cell.emulator.mark !== "PASS" && scrapedCell.why.length === 0) {
-        fail(`"${app.name}" x ${cell.target}: the ledger says ${cell.emulator.mark} and the cell prints no reason`);
+      const carriesReason = scrapedCell.reasons.some((r) => r.text.length > 0);
+      if (cell.emulator.mark !== "PASS" && !carriesReason) {
+        fail(`"${app.name}" x ${cell.target}: the ledger says ${cell.emulator.mark} and the cell folds no reason behind its mark`);
       } else {
-        pass(`"${app.name}" x ${cell.target}: ${cell.emulator.mark}, with its reason on the page`);
+        pass(`"${app.name}" x ${cell.target}: ${cell.emulator.mark}, with its reason behind the mark on the page`);
       }
     }
   }
