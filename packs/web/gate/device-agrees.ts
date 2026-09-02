@@ -28,8 +28,10 @@
 
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { computeButtonWiring } from "../wasm/buttonWiring";
 
 const PACK_ROOT = resolve(import.meta.dir, "..");
+const REPO_ROOT = resolve(PACK_ROOT, "..", "..");
 
 interface DeviceJson {
   name: string;
@@ -122,9 +124,38 @@ if (deviceJsonFromShim) {
   );
 }
 
+// ---- every declared button is wired, not just the first click and key ---
+// docs/roadmap.md workstream 3's second finding: packs/web used to wire
+// exactly one click and one key, so a board declaring four clicks and no
+// key (packs/silhouettes/watchy) silently lost the other three, while
+// tools/verdict.ts's buttonCheck reported the friendlier "a click stands in
+// for it" - the two disagreed, and this is the check that keeps them from
+// disagreeing again. wasm/buttonWiring.ts is the SAME function
+// wasm/build.ts's generateDeviceHeader() calls to emit BTN_CLICK[]/
+// BTN_KEY[], so this is not a second implementation to drift from the
+// first: it is the one implementation, exercised here against a real
+// four-button device.json with no zig build at all (this gate stays fast
+// and hardware-free, docs/convention/device-pack.md).
+const watchyPath = join(REPO_ROOT, "packs", "silhouettes", "watchy", "device.json");
+const watchy = JSON.parse(readFileSync(watchyPath, "utf8")) as DeviceJson;
+const watchyUsable = watchy.buttons.filter((b) => (b as { role?: string }).role === "click" || (b as { role?: string }).role === "key");
+const watchyWiring = computeButtonWiring(watchy.buttons as { role?: string }[]);
+check(
+  watchy.buttons.length === 4,
+  `packs/silhouettes/watchy/device.json declares ${watchy.buttons.length} buttons, expected 4 - this check's own fixture assumption is stale`
+);
+check(
+  watchyWiring.wiredIndices.length === watchyUsable.length,
+  `wasm/buttonWiring.ts wires ${watchyWiring.wiredIndices.length} of watchy's ${watchyUsable.length} usable buttons (clickIndices=${JSON.stringify(watchyWiring.clickIndices)}, keyIndices=${JSON.stringify(watchyWiring.keyIndices)}) - every declared click/key button must be wired, not only the primary click and key`
+);
+check(
+  watchyWiring.primaryKey !== -1,
+  `watchy declares no key-role button, and wasm/buttonWiring.ts found no spare click-role button to substitute for it either - BTN_PWR would stay -1, so a key demand met by a click would still receive nothing`
+);
+
 if (failures.length > 0) {
   console.error("packs/web gate: device declarations disagree");
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log("packs/web gate: device.json, runtime/gfx.h and wasm/emu_shim.c agree");
+console.log("packs/web gate: device.json, runtime/gfx.h and wasm/emu_shim.c agree, and every declared button is wired");

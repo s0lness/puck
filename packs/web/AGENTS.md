@@ -19,13 +19,15 @@ possible against a metaphor.
 ```
 device.json         the emu_device() descriptor plus convention/memory metadata
 gate/               device-agrees.ts: the three places this pack states its
-                    own shape, checked against each other
+                    own shape, checked against each other, plus every
+                    declared button being wired (see "Buttons" below)
 runtime/            the app-facing contract: app.h and gfx.h VENDORED from
                     the RP2350 pack, gfx.c reimplemented for wasm,
                     runtime_core.c (the frame loop), sensors.h, digits.c/.h
 apps/demo.c         this pack's own reference app: a bouncing square
 wasm/
   build.ts          two modes, module and host - see "Building" below
+  buttonWiring.ts   which declared button feeds which signal - see "Buttons"
   emu_shim.c        the emu_* ABI over the contract, plus the sensors.h
                     implementation and the libc pieces a freestanding wasm
                     build does not get
@@ -35,6 +37,35 @@ host/               this pack's own browser host: canvas panel, ghost
 gotchas.md          the web platform's earned traps
 NOTICE.md           what is vendored, from where, and what is not
 ```
+
+## Buttons: every declared one is wired, not only the primary pair
+
+`app.h`'s `app_frame_t` (vendored byte-for-byte from the RP2350 sibling)
+carries exactly one merged click signal (`bootClicked`) and one merged key
+signal (`key`), and that does not change here - every existing port still
+compiles and behaves exactly as before. What changed is which physical
+button feeds those two signals, and what happens to the REST of a device's
+buttons.
+
+`wasm/buttonWiring.ts`'s `computeButtonWiring()` reads a `device.json`'s
+`buttons` array once and decides, by role: `BTN_BOOT` is the first declared
+`click`; `BTN_PWR` is the first declared `key`, or, when a device declares
+none at all, a SPARE `click`-role button standing in for it (the same
+substitution `tools/verdict.ts`'s `buttonCheck` already reasons about in
+prose - this is what makes the module actually deliver it). Every OTHER
+declared click/key button - a Watchy's third and fourth click, say - is
+still named (`BTN_CLICK[]`/`BTN_KEY[]`, generated into the `--device`
+header `wasm/build.ts` emits) and tracked individually in
+`wasm/emu_shim.c`, readable through `sensors_extra_click_take()`/
+`sensors_extra_key_take()` (`runtime/sensors.h`) by a port that needs more
+than the primary pair - none does yet, but none is silently dropped either.
+`host/host.ts` needed no change: it already draws one ghost button per
+declared control and already calls `emu_button()` at that control's own
+true index; the gap was only ever on the module side, which listened past
+the first of each role. `bun run pack:web:gate` asserts every usable button
+on `packs/silhouettes/watchy/device.json` (four clicks, no key) is wired,
+against the same `computeButtonWiring()` the build uses, with no zig
+compile involved.
 
 ## The adopted contract
 

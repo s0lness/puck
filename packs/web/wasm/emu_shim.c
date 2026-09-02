@@ -292,6 +292,84 @@ void sensors_set_finger_down(bool down) {
 #define BTN_PWR  1
 #endif
 
+// Every declared click/key button, not only the primary pair above. A
+// --device build (wasm/build.ts's generateDeviceHeader(), via
+// wasm/buttonWiring.ts) always defines these together with BTN_BOOT/
+// BTN_PWR; the fallback here matches this pack's own native two-button
+// device.json (BOOT click at 0, PWR key at 1), the same default that
+// wasm/build.ts falls back to.
+//
+// THIS IS THE FIX FOR "packs/web wires one click and one key and no more"
+// (docs/roadmap.md workstream 3): a board declaring four clicks and no key
+// (Watchy) used to have three of those four buttons do nothing at all -
+// host/host.ts already drew a ghost button for each one and already called
+// emu_button() at its own true index, this file just never listened past
+// the first. Now every declared click/key index is tracked (below), even
+// though app.h's app_frame_t (vendored byte-for-byte, unchanged here) still
+// only ever carries ONE merged click (bootClicked) and ONE merged key
+// (key): a bystander button's state is real, read through
+// sensors_extra_click_take()/sensors_extra_key_take() (../runtime/
+// sensors.h), for a port that needs more than the two every existing port
+// already gets.
+#ifndef BTN_CLICK_COUNT
+#define BTN_CLICK_COUNT 1
+static const int BTN_CLICK[] = { BTN_BOOT };
+#endif
+#ifndef BTN_KEY_COUNT
+#define BTN_KEY_COUNT 1
+static const int BTN_KEY[] = { BTN_PWR };
+#endif
+
+// Physical button indices this file tracks individually. 8 comfortably
+// covers every device.json in this repository today (Watchy and the Pico
+// Display Pack 2 both declare four buttons total, the most of any pack or
+// silhouette here); an index at or past this bound is ignored the same way
+// an unrecognised index already is, rather than read out of bounds.
+#define MAX_BTN_SLOTS 8
+
+static bool btn_in(int index, const int *arr, int count) {
+    for (int i = 0; i < count; i++) {
+        if (arr[i] == index) return true;
+    }
+    return false;
+}
+static bool is_click_index(int index) { return btn_in(index, BTN_CLICK, BTN_CLICK_COUNT); }
+static bool is_key_index(int index) { return btn_in(index, BTN_KEY, BTN_KEY_COUNT); }
+
+// Per-index state for every declared button OTHER than BTN_BOOT/BTN_PWR
+// (those two keep using g_bootLevel/g_bootClickedPending/g_keyEvent below,
+// unchanged, so every existing port's behaviour is exactly what it was).
+// Zero-initialised by the loader, like every other static array here.
+static bool    g_extraLevel[MAX_BTN_SLOTS];
+static bool    g_extraClickPending[MAX_BTN_SLOTS];
+static uint8_t g_extraKeyBits[MAX_BTN_SLOTS];
+
+// Read-and-clear, same contract as sensors_boot_clicked(): a bystander
+// click-role button's own release edge, by its device.json index. False for
+// an index this device does not declare as click-role (including BTN_BOOT
+// itself - that one is sensors_boot_clicked()'s, not this function's).
+bool sensors_extra_click_take(int index) {
+    if (index < 0 || index >= MAX_BTN_SLOTS) return false;
+    bool v = g_extraClickPending[index];
+    g_extraClickPending[index] = false;
+    return v;
+}
+
+// Read-and-clear PRESS/RELEASE/SHORT/LONG bits (sensors.h's KEY_* values)
+// for a bystander key-role button, by its device.json index. Never carries
+// SHORT/LONG for an index that is really a click-role substitute (see
+// emu_button_verdict() below: that verdict only ever arrives for a button
+// the host itself decided has a longPressMs, and a click-role button
+// declares none - the same honesty tools/verdict.ts's buttonCheck already
+// states in prose ("a click button reports one click on release and
+// nothing else")).
+uint8_t sensors_extra_key_take(int index) {
+    if (index < 0 || index >= MAX_BTN_SLOTS) return 0;
+    uint8_t v = g_extraKeyBits[index];
+    g_extraKeyBits[index] = 0;
+    return v;
+}
+
 static uint8_t g_keyEvent = 0;
 
 uint8_t sensors_key_take(void) {
@@ -470,19 +548,46 @@ void emu_button(int index, int down) {
         bool wasDown = g_bootLevel;
         g_bootLevel = (down != 0);
         if (wasDown && !g_bootLevel) g_bootClickedPending = true; // click on release
-    } else if (index == BTN_PWR) {
+        return;
+    }
+    if (index == BTN_PWR) {
         if (down) g_keyEvent |= KEY_PRESS;
         else g_keyEvent |= KEY_RELEASE;
+        return;
     }
-    // Any other index: emu_device() declares two buttons, so this is a
-    // host bug; ignored rather than trapped.
+    // Every OTHER declared click/key button (BTN_CLICK[]/BTN_KEY[], above):
+    // tracked here instead of dropped, so a board with more usable buttons
+    // than app.h's app_frame_t has room for still makes every one of them
+    // real - see sensors_extra_click_take()/sensors_extra_key_take()'s own
+    // comments. An index in neither array (a declared "power"/"reset"
+    // button, or a genuine host bug) falls through and does nothing, same
+    // as before.
+    if (index < 0 || index >= MAX_BTN_SLOTS) return;
+    if (is_click_index(index)) {
+        bool wasDown = g_extraLevel[index];
+        g_extraLevel[index] = (down != 0);
+        if (wasDown && !g_extraLevel[index]) g_extraClickPending[index] = true;
+    } else if (is_key_index(index)) {
+        if (down) g_extraKeyBits[index] |= KEY_PRESS;
+        else g_extraKeyBits[index] |= KEY_RELEASE;
+    }
 }
 
 void emu_button_verdict(int index, int isLong) {
-    // Only PWR declares longPressMs in emu_device(), so this is the only
-    // index the host should ever call this for (emu_abi.h).
     if (index == BTN_PWR) {
+        // PWR carries a verdict even when it is a click-role button
+        // standing in for a missing key (BTN_PWR can be a spare click
+        // index, wasm/buttonWiring.ts): host/host.ts only calls this when
+        // the declared button has its own longPressMs, and a click-role
+        // button never does (docs/convention/device-pack.md), so this
+        // branch is unreachable for a substituted PWR in practice - kept
+        // rather than special-cased, so the two stay exactly the same
+        // check the host itself already makes.
         g_keyEvent |= isLong ? KEY_LONG : KEY_SHORT;
+        return;
+    }
+    if (index >= 0 && index < MAX_BTN_SLOTS && is_key_index(index)) {
+        g_extraKeyBits[index] |= isLong ? KEY_LONG : KEY_SHORT;
     }
 }
 

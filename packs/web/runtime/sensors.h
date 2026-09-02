@@ -92,6 +92,41 @@ uint8_t sensors_key_take(void);
 bool sensors_boot_clicked(void);
 bool sensors_boot_down(void);
 
+/* ---- every OTHER declared click/key button -----------------------------
+ *
+ * BOOT and PWR above are app.h's app_frame_t's own two signals
+ * (bootClicked, key), which every existing port already reads and which
+ * this pack's contract does not get to grow past two on (app.h is vendored
+ * byte-for-byte from the RP2350 sibling - see that file's own note). A
+ * device compiled against here through wasm/build.ts's --device flag may
+ * declare MORE than two usable buttons (a Watchy declares four clicks and
+ * no key at all, docs/convention/device-pack.md's silhouette section), and
+ * host/host.ts already draws a ghost button and sends emu_button() for
+ * every one of them, by its own true index. These two calls are where a
+ * port that needs more than the primary click and key reads the rest, by
+ * that same index - wasm/buttonWiring.ts (compiled into wasm/emu_shim.c's
+ * BTN_CLICK[]/BTN_KEY[] arrays) is what decides which index is which.
+ *
+ * No existing port in this repository calls either function: chrono and
+ * fluidbox both ask for exactly one click and one key
+ * (docs/convention/app-bundle.md's demands examples), which BOOT/PWR above
+ * already deliver in full. They exist so a board's other buttons are real
+ * rather than silently dropped, and so a future port CAN read a second
+ * click distinctly instead of it only ever being merged into bootClicked.
+ */
+// Read-and-clear: true on the frame a bystander click-role button (any
+// declared click OTHER than the one BOOT already reports) was released.
+bool sensors_extra_click_take(int index);
+
+// Read-and-clear PRESS/RELEASE/SHORT/LONG bits (the same KEY_* values
+// above) for a bystander key-role button, or for a click-role button
+// substituting for a missing key demand (tools/verdict.ts's buttonCheck):
+// SHORT/LONG never arrive for a substitute, since a click declares no
+// longPressMs to time against - PRESS/RELEASE do, which is the whole
+// difference between "silently dropped" and "really receives the click's
+// signal".
+uint8_t sensors_extra_key_take(int index);
+
 /* ---- shake -------------------------------------------------------------
  *
  * A monotonic counter, bumped once per accepted shake and suppressed while

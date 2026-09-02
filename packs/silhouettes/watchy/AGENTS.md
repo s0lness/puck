@@ -40,16 +40,27 @@ fast anything can happen.
   dimension for how long a tick may take and none for how often a frame
   appears, so an app whose tick fits still gets three frames a second here.
 
-## The seam this board exposes
+## The seam this board used to expose (closed)
 
-`packs/web`'s device header wires exactly one `click` index and one `key`
-index (`BTN_BOOT` and `BTN_PWR`, see that pack's `wasm/build.ts`). A device
-that declares no `key` at all therefore compiles with `BTN_PWR` at -1 and
-loses that control entirely on the page, while `tools/verdict.ts` reports
-the friendlier answer that a click stands in for it. Both are honest about
-their own question and they do not agree, and Watchy is the first target
-where that gap is visible. Fixing it means the web pack picking a
-substitute itself, which is a change to that pack, not to this file.
+`packs/web`'s device header used to wire exactly one `click` index and one
+`key` index (`BTN_BOOT` and `BTN_PWR`), picked as the first button of each
+role and nothing past it. A device that declared no `key` at all therefore
+compiled with `BTN_PWR` at -1 and lost that control entirely on the page,
+while `tools/verdict.ts` reported the friendlier answer that a click stands
+in for it - the two disagreed, and Watchy was the first target where the
+gap was visible (four declared clicks, all four still drawn as ghost
+buttons by `host/host.ts`, only the first one doing anything).
+
+Closed by `packs/web/wasm/buttonWiring.ts`: `wasm/build.ts`'s generated
+device header now names EVERY declared click/key button (`BTN_CLICK[]`,
+`BTN_KEY[]`), not only the primary pair, and `BTN_PWR` picks a spare
+click-role button as a real substitute when the device declares no `key` -
+UP is BOOT's click, DOWN is now PWR's substitute, and MENU/BACK are tracked
+too (`sensors_extra_click_take()`/`sensors_extra_key_take()`,
+`packs/web/runtime/sensors.h`) even though no port in this repository reads
+past the primary pair yet. `bun run pack:web:gate` asserts this against
+Watchy's own `device.json` directly, so a regression here fails fast rather
+than being rediscovered on a proof PNG.
 
 ## Running a cell
 
