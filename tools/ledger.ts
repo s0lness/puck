@@ -108,8 +108,15 @@ export interface LedgerCell {
   verdict: LedgerVerdict | null;
   /** Why there is no verdict, when there is none. */
   verdictUnavailable: string | null;
-  /** The bundle's own port entry for this target, flattened, or null when it declares none. */
-  port: { mode: string; verification: string; source: string | null; external: boolean; provenance: string | null } | null;
+  /**
+   * The bundle's own port entry for this target, flattened, or null when it
+   * declares none. `declaredVerdict` is what the PORT'S AUTHOR wrote, which
+   * is a different thing from `verdict` above and is allowed to disagree
+   * with it: docs/convention/app-bundle.md asks a port's prose verdict to
+   * agree with the mechanical one or argue against it explicitly, and it
+   * cannot do either if only one of the two is ever recorded.
+   */
+  port: { mode: string; verification: string; declaredVerdict: string | null; source: string | null; external: boolean; provenance: string | null } | null;
   emulator: { mark: EmulatorMark; reason: string };
   host: { mark: HostMark; reason: string };
   /**
@@ -125,6 +132,10 @@ export interface LedgerCell {
     proof: string | null;
     /** Which port source was compiled against the silhouette, when one was. */
     source: string | null;
+    /** Which pack's port that source belongs to: "gameos ran here" and "gameos's RP2350 port ran here" are not the same sentence. */
+    via: string | null;
+    /** That port's own build arguments, so site/build.ts rebuilds the identical module rather than guessing at a flag. */
+    buildArgs: string[];
     panel: { w: number; h: number } | null;
   };
   inputs: { bundleSha: string; packSha: string; verdictToolSha: string };
@@ -648,7 +659,7 @@ async function main(): Promise<void> {
       const panel = p.target.panel;
       const pick = silhouetteSourceFor(p.app.bundle);
       if (!panel) {
-        silhouetteResults.set(p.key, { mark: "build-failed", reason: `${p.target.name}'s device.json declares no panel`, proof: null, source: null, panel: null });
+        silhouetteResults.set(p.key, { mark: "build-failed", reason: `${p.target.name}'s device.json declares no panel`, proof: null, source: null, via: null, buildArgs: [], panel: null });
         continue;
       }
       if (!pick) {
@@ -657,6 +668,8 @@ async function main(): Promise<void> {
           reason: `${p.app.name}'s bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from`,
           proof: null,
           source: null,
+          via: null,
+          buildArgs: [],
           panel: { w: panel.w, h: panel.h },
         });
         continue;
@@ -665,7 +678,7 @@ async function main(): Promise<void> {
       const built = buildSilhouette({ silhouette: p.target.name, app: p.app.name, source: pick.source, buildArgs: pick.buildArgs });
       if (!built.ok) {
         console.log(`   build failed`);
-        silhouetteResults.set(p.key, { mark: "build-failed", reason: built.error, proof: null, source: pick.source, panel: { w: panel.w, h: panel.h } });
+        silhouetteResults.set(p.key, { mark: "build-failed", reason: built.error, proof: null, source: pick.source, via: pick.via, buildArgs: pick.buildArgs, panel: { w: panel.w, h: panel.h } });
         continue;
       }
       const proofPath = join(REPO_ROOT, "packs", "silhouettes", p.target.name, "proof", `${p.app.name.replace(/[\\/]/g, "-")}.png`);
@@ -676,6 +689,8 @@ async function main(): Promise<void> {
         reason: proof.reason,
         proof: proof.proof,
         source: pick.source,
+        via: pick.via,
+        buildArgs: pick.buildArgs,
         panel: { w: panel.w, h: panel.h },
       });
     }
@@ -733,12 +748,14 @@ async function main(): Promise<void> {
 
     const silhouette: LedgerCell["silhouette"] =
       target.kind === "silhouette"
-        ? (silhouetteResults.get(key) ?? { mark: "build-failed", reason: "not computed", proof: null, source: null, panel: null })
+        ? (silhouetteResults.get(key) ?? { mark: "build-failed", reason: "not computed", proof: null, source: null, via: null, buildArgs: [], panel: null })
         : {
             mark: "not applicable",
             reason: target.kind === "pack" ? "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run" : "this is a pack carried by its own author, not a silhouette",
             proof: null,
             source: null,
+            via: null,
+            buildArgs: [],
             panel: null,
           };
 
@@ -752,6 +769,7 @@ async function main(): Promise<void> {
         ? {
             mode: port.mode,
             verification: port.verification.kind,
+            declaredVerdict: port.verdict ?? null,
             source: port.source ?? null,
             external: Boolean(port.build),
             provenance: port.build ? `built by ${port.build.repo.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "")}@${shortSha(port.build.commit)}, its own command: ${port.build.command}` : null,
@@ -824,8 +842,13 @@ function printTable(ledger: Ledger): void {
   }
 }
 
-main().catch((err) => {
-  console.error(`tools/ledger.ts: unexpected error: ${err instanceof Error ? err.message : String(err)}`);
-  if (err instanceof Error && err.stack) console.error(err.stack);
-  process.exit(1);
-});
+// Guarded like tools/verdict.ts's own CLI: site/build.ts imports this
+// file's TYPES, and a type-only import is erased, but a runtime import from
+// anywhere else must not start a forty-cell sweep as a side effect.
+if (import.meta.main) {
+  main().catch((err) => {
+    console.error(`tools/ledger.ts: unexpected error: ${err instanceof Error ? err.message : String(err)}`);
+    if (err instanceof Error && err.stack) console.error(err.stack);
+    process.exit(1);
+  });
+}

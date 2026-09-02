@@ -95,6 +95,20 @@ const PIXEL_READERS: Record<string, PixelReader> = {
   rgb565,
 };
 
+/**
+ * Whether this emulator has a reader for a declared panel format, asked
+ * WITHOUT throwing. pixelReaderFor() below refuses an unknown format loudly,
+ * which is right when a module is already loading and wrong when a caller is
+ * deciding whether to offer that module at all: site/build.ts asks this
+ * before it emits a run page for a silhouette, so a board declaring a format
+ * nothing here can present gets an honest sentence instead of a page that
+ * would fail on open. The list is PIXEL_READERS' own keys, so a reader added
+ * there is offered here with no second place to update.
+ */
+export function supportsPixelFormat(format: string): boolean {
+  return Object.prototype.hasOwnProperty.call(PIXEL_READERS, format);
+}
+
 export function pixelReaderFor(format: string): PixelReader {
   const reader = PIXEL_READERS[format];
   if (!reader) {

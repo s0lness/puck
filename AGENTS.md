@@ -133,10 +133,21 @@ a compiler, so it is a comparison, never a prediction that the port runs.
 a **silhouette pack**, a device folder with no firmware in it at all
 (`packs/silhouettes/`, see `docs/convention/device-pack.md`). The web pack's
 host builds the page from whatever `device.json` says, so the app really
-runs at that board's panel size with that board's buttons.
-`bun run verify-silhouette` drives the first such cell headlessly (fluidbox
-on the M5StickC PLUS2) and writes
-`packs/silhouettes/m5stickc-plus2/proof/fluidbox.png`.
+runs at that board's panel size with that board's buttons. There are five
+silhouettes: the M5StickC PLUS2, the Feather ESP32-S2 TFT, the LILYGO
+T-Display-S3, a Pimoroni Pico Display Pack 2.0 on a Pico 2, and a Watchy,
+which is the first target here that is not a colour screen and refuses
+every app whose colour carries information.
+
+TWO PROOFS, TWO PICTURES, deliberately not one. `bun run ledger` drives
+every app against every silhouette through `scripts/silhouetteProof.ts` and
+writes `packs/silhouettes/<name>/proof/<app>.png`: the wide, mechanical
+answer to whether that app runs at that size, and the only place a port
+that hardcodes another board's panel is caught (its picture comes out
+empty, or clipped, or the module traps). `bun run verify-silhouette` is
+the deep answer for one hand-picked pair, fluidbox on the M5StickC PLUS2:
+it tilts the page with synthetic devicemotion, asserts the fluid poured the
+way gravity pointed, and writes `proof/fluidbox-tilt.png`.
 
 `bun run harness:selftest` proves the differential test harness's own
 mechanism works, with no real hardware required (see `harness/fixtures/loopbackLink.ts`'s
@@ -224,26 +235,48 @@ same flow written step by step for an agent to follow.
 
 ### The site
 
-`bun run site:build` (`site/build.ts`) builds the public gallery,
-`site/dist/`: every proven pack+app combination's module, one run page
-each, and the landing page, all derived from `registry.json` and each
-app's `bundle.json`, never hand-listed twice. `site/dist/` is committed
-and served as-is by Cloudflare Pages, so a change here is not live until
-this has actually run and the result has actually been committed.
-`site/demo-media/` holds the recorded, encoded demo loops (GIF, MP4,
-poster) every gallery card links to; `bun run site:record-demos`
-(`site/record-demos.ts`) regenerates them the same way `pack:demo`
-regenerates one pack's own README GIF, by driving the real page in a real
-browser.
+`bun run ledger` (`tools/ledger.ts`) is what the gallery is built FROM.
+It takes every app in `registry.json` (local, and an external one through
+the same pinned fetch `verify-bundle` uses) against every target in it
+(the three packs, every silhouette, and any pack an app's own bundle names
+that this repository does not carry) and writes `ledger.json` at the
+repository root: per pair, the mechanical verdict, the emulator mark
+(`verify-bundle`), the host mark (`hostdiff`), the key `/api/attest`
+counts silicon runs on, the silhouette mark and its proof PNG, the shas of
+its own inputs and the day it was computed. It is incremental by those
+shas (`--force` recomputes; `--app` and `--target` narrow a run), it
+prints a table, and it never reimplements a build or a comparison: it
+calls `computeVerdict()` in process and runs the two CLIs. See
+`docs/decisions/0012-the-gallery-is-built-from-a-ledger.md`, whose "what
+this costs" section names the gap in that incremental rule.
 
-`bun run site:verify-flash-ui`, `site:verify-embeds` and `site:verify-web`
-are the built gallery's own headless proofs, run against `site/dist/`
-itself rather than the dev server: that the "Flash to the real device"
-section renders and fails cleanly on an unsupported browser, that every
-card's recorded-loop assets actually exist and the landing/run-page split
-behaves, and that `packs/web`'s own installable `/web/<app>/` pages
-actually instantiate their module, paint pixels, respond to a real tap or
-drag, and register their service worker.
+`bun run site:build` (`site/build.ts`) builds the public gallery,
+`site/dist/`, **from `ledger.json`**: the landing page is the apps-by-
+devices matrix, one cell per pair, and every cell is either something that
+runs (with a link and a mark per proof), a verdict with its reason, or an
+empty state saying what is missing. It also writes every proven
+combination's module and run page, a run page for every silhouette cell
+that runs, and `/puck-publish/`. Run the ledger first or the build stops
+and says so. `site/dist/` is committed and served as-is by Cloudflare
+Pages, so a change here is not live until this has actually run and the
+result has actually been committed. `site/demo-media/` holds the recorded,
+encoded demo loops (GIF, MP4, poster) the matrix cells link to; `bun run
+site:record-demos` (`site/record-demos.ts`) regenerates them the same way
+`pack:demo` regenerates one pack's own README GIF, by driving the real
+page in a real browser.
+
+`bun run site:verify-matrix`, `site:verify-flash-ui`,
+`site:verify-attest-ui`, `site:verify-embeds` and `site:verify-web` are
+the built gallery's own headless proofs, run against `site/dist/` itself
+rather than the dev server: that the landing page is the ledger's own grid
+with no blank in it and every silhouette cell that claims to run opens at
+that board's declared panel size, that the "Flash to the real device"
+section renders and fails cleanly on an unsupported browser, that the
+attestation section renders and its counter falls back honestly with no
+endpoint, that every card's recorded-loop assets actually exist and the
+landing/run-page split behaves, and that `packs/web`'s own installable
+`/web/<app>/` pages actually instantiate their module, paint pixels,
+respond to a real tap or drag, and register their service worker.
 
 ## Conventions
 
@@ -381,14 +414,17 @@ test/verdict/   proves tools/verdict.ts against the real descriptors and
                 protecting is that chrono is refused on a one-button board.
 tools/          verify-bundle.ts (the listing verifier and actual
                 publishing gate), verdict.ts (go/degraded/refuse from a
-                descriptor's demands against a device.json),
-                externalBuild.ts (clone a repo at a pinned commit, run
-                its own build command, take the artifact - used by the
-                verifier and by test/external/), ci-verify-registry.ts,
-                and pack-lint.ts (bun run pack:lint: every local pack in
-                registry.json checked against
-                docs/convention/device-pack.md's required contents,
-                mechanically).
+                descriptor's demands against a device.json, as a CLI and
+                as computeVerdict() for callers), ledger.ts (bun run
+                ledger: every app against every target, written to
+                ledger.json, which is what site/build.ts renders - see
+                docs/decisions/0012), externalBuild.ts (clone a repo at a
+                pinned commit, run its own build command, take the
+                artifact - used by the verifier and by test/external/),
+                ci-verify-registry.ts, and pack-lint.ts (bun run
+                pack:lint: every local pack in registry.json checked
+                against docs/convention/device-pack.md's required
+                contents, mechanically).
 docs/           abi.md (the ABI as a page), requirements.md, agent-loop.md
                 (the optional freeze/annotate layer, plus the failed-
                 regression-check export), harness.md (also covers the
@@ -410,9 +446,20 @@ scripts/        headless proofs and small shared utilities, all puppeteer-core
                 built gallery's landing/run-page split and recorded-loop
                 assets), verify-web-apps.ts (packs/web's own installable
                 /web/<app>/ pages: instantiate, paint, tap, drag,
-                register the service worker), staticSite.ts (the small
-                static file server verify-flash-ui.ts and
-                verify-site-embeds.ts share for serving site/dist/),
+                register the service worker), verify-matrix.ts (the built
+                landing page held to ledger.json: the grid is complete,
+                every cell is exactly one of runs/verdict/empty state,
+                every silhouette cell claiming to run opens at that
+                board's own panel size, the external row carries its
+                provenance, and a phone scrolls the table rather than the
+                page), silhouetteProof.ts (the wide, every-app silhouette
+                run tools/ledger.ts drives: build against a device.json,
+                open it, assert the panel, write the proof PNG - where
+                verify-silhouette.ts is the deep, sensor-specific proof of
+                one hand-picked pair), staticSite.ts (the small
+                static file server verify-flash-ui.ts,
+                verify-site-embeds.ts and verify-matrix.ts share for
+                serving site/dist/),
                 browserClose.ts (works around Bun-on-Windows missing
                 Chrome's final child-process close notification),
                 capture-gameos-esp32-shell-frame.ts and
@@ -463,7 +510,9 @@ apps/           portable app bundles, one per app: chrono/ (the reference
                 original, reference/<donor>/ plus a NOTICE.md.
 site/           the public gallery. build.ts writes dist/ (committed,
                 served as-is by Cloudflare Pages: modules, one run page
-                per pack+app combination, the landing page), flasher/
+                per pack+app combination and per runnable silhouette
+                cell, the landing page as the apps-by-devices matrix read
+                out of ledger.json, and /puck-publish/), flasher/
                 (WebUSB/Web Serial flashing, bundled into dist/flash/ -
                 see NOTICE.md for the vendored esptool-js it ships),
                 demo-media/ (recorded, encoded demo loops every gallery
@@ -479,8 +528,14 @@ skills/         skills/puck-publish/SKILL.md: the step-by-step publishing
                 procedure for an agent porting or listing an app -
                 docs/convention/app-bundle.md and publishing.md are the
                 contract this skill walks through.
-registry.json   local pack and app paths, plus the registration point for
-                external packs and apps by URL.
+registry.json   local pack, silhouette and app paths, plus the
+                registration point for external packs and apps by URL
+                (an external app entry carries a "commit" pin next to its
+                "url": nothing here verifies an unpinned clone).
+ledger.json     computed, committed, and what the gallery renders: one
+                row per app per target, written by bun run ledger. Never
+                edited by hand - a value typed into it is exactly the
+                hand-written claim docs/decisions/0012 exists to remove.
 ```
 
 ## Gotchas that bite

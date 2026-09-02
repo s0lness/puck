@@ -5,6 +5,17 @@ serves it as-is, with no Pages-side build step. `bun run site:build` is the
 only build, and a change to anything under `site/` is not shipped until
 `site/dist/` is rebuilt and committed alongside it.
 
+**It builds from `ledger.json`, not from the bundles.** `bun run ledger`
+(`tools/ledger.ts`) computes every app in `registry.json` against every
+target in it and writes that file at the repository root; `site/build.ts`
+reads it and renders the landing page as the matrix, one cell per app per
+device. Run the ledger first, or the build stops and says so. The one thing
+still read out of a `bundle.json` is an attestable port's own trace files and
+recorded-frame directory, which are inputs a flash page hands a board rather
+than results about a port. `bundle.json`'s `silicon` block is read nowhere
+under `site/` any more: the silicon mark is a count from `/api/attest`. See
+[`docs/decisions/0012`](../docs/decisions/0012-the-gallery-is-built-from-a-ledger.md).
+
 The tracked sources are `site/build.ts` (the generator), `site/styles.css`,
 `site/flasher/` (the WebUSB and Web Serial flashers), `site/attest/` (the
 "prove it runs" step), `site/attest-client.ts` (the counter every page
@@ -12,13 +23,46 @@ shares), `site/functions/` (the Pages Functions), `site/flash-artifacts/` and
 `site/demo-media/`. Third-party code that ends up inside `site/dist/` is
 attributed in [`NOTICE.md`](NOTICE.md).
 
-Headless checks: `bun run site:verify-flash-ui`, `bun run site:verify-attest-ui`,
-`bun run site:verify-embeds`, `bun run site:verify-web`. All four drive the
-built `site/dist/` through a real Chrome with no board and no Cloudflare
-account anywhere. `bun run site:test-api` runs the Pages Functions' own unit
-tests against a fake KV namespace, which is where the endpoint's validation,
-rate limit and summary bookkeeping are proven (the headless check stubs
-`/api/attest` on purpose: its job is the page, not the function).
+Headless checks: `bun run site:verify-matrix`, `bun run site:verify-flash-ui`,
+`bun run site:verify-attest-ui`, `bun run site:verify-embeds`,
+`bun run site:verify-web`. All five drive the built `site/dist/` through a
+real Chrome with no board and no Cloudflare account anywhere.
+`site:verify-matrix` is the one that holds the landing page to the ledger:
+the grid is complete, every cell is exactly one of runs / verdict / empty
+state, every silhouette cell that claims to run opens at that board's own
+panel size, the external row carries its provenance, and the page never
+scrolls sideways on a phone while the table does. `bun run site:test-api`
+runs the Pages Functions' own unit tests against a fake KV namespace, which
+is where the endpoint's validation, rate limit and summary bookkeeping are
+proven (the headless check stubs `/api/attest` on purpose: its job is the
+page, not the function).
+
+## The matrix
+
+Rows are apps, columns are targets, in three groups that read left to right:
+the device packs this repository carries, then any pack an app's own bundle
+names that this repository does not carry, then the silhouettes. Each cell
+declares what it is on itself as `data-cell`:
+
+- `runs`: a link that opens something that runs, plus a chip per mark
+  (emulator, host, silicon, or the silhouette mark), each with its own
+  sentence in a `title`.
+- `verdict`: a mark and the reason behind it, printed on the page rather
+  than only in a tooltip.
+- `empty`: what is missing and a link to `/puck-publish/`, which serves
+  `skills/puck-publish/SKILL.md` whole.
+
+A silhouette cell that runs gets its own run page under `run/<app>-<silhouette>.html`,
+written by the same generator every other run page goes through, around a
+module built by `packs/web/wasm/build.ts --silhouette`. A silhouette whose
+declared panel format the emulator has no reader for (Watchy's `mono1`) gets
+no page and says why on the cell: `packs/web`'s framebuffer is RGB565
+whatever a `device.json` calls its glass, so presenting it would mean
+pretending otherwise.
+
+The table is the one thing on the page wider than the prose column, and it
+scrolls inside `.matrix-scroll`. The page itself must never scroll sideways;
+`site:verify-matrix` checks that at 390px.
 
 ## Attestations: `/api/attest`
 

@@ -88,35 +88,47 @@ date, nothing personal) to a small Worker with one table. Cards read:
 - Seed: flash all four apps on both boards from the site. Eight entries
   on day one, and the hand-typed `attestedAt` fields become derived.
 
-### 2. The ledger drives the gallery (two days)
+### 2. The ledger drives the gallery (DONE, 2026-09-02)
 
-CI writes `ledger.json`: per port, emulator verdict, sanitized-host
-verdict, silicon count from workstream 1, blind-port result from
-workstream 4, and the shas that produced them. `site/build.ts` builds from
-the ledger, so external bundles get cards automatically with provenance
-("reproduced from aliceisjustplaying/tinydraw@sha on date") and a red
-bundle shows red instead of vanishing. Alice's card is the acceptance
-test.
+`bun run ledger` writes `ledger.json`: per app per target, the mechanical
+verdict, the emulator mark, the sanitized-host mark, the key the silicon
+count comes back on, the silhouette mark, and the shas that produced them.
+`site/build.ts` builds from it. Alice's card was the acceptance test and it
+passes: the external bundle has a row, states "reproduced from
+aliceisjustplaying/tinydraw@sha on date", and shows red with the failing
+build's own sentence rather than vanishing. See
+`docs/decisions/0012-the-gallery-is-built-from-a-ledger.md`.
 
-### 3. The matrix and silhouette packs (one week)
+Still open from this workstream: nothing runs it but a person. It is not
+wired into CI, and the blind-port result from workstream 4 has no column
+yet.
 
-The gallery becomes apps down, devices across. Every cell shows what the
-port looks like, including devices with no pack yet.
+### 3. The matrix and silhouette packs (DONE, 2026-09-02)
 
-- A **silhouette pack** is a pack with only `device.json`: panel, buttons,
-  sensors, memory budget. The emulator already builds its chrome from that
-  JSON at runtime. The web pack's host compiles the app's C against the
-  silhouette's `device.json`, so the app genuinely runs at that size with
-  those buttons. Nothing is drawn by hand.
-- `puck verdict <app> <pack>`: a mechanical go / degraded / refuse from the
-  descriptor's demands against `device.json`, with reasons. A port's prose
-  verdict must agree with it or argue against it explicitly.
-- Three marks on a cell: silhouette (runs, no firmware exists), emulator,
-  silicon. An empty cell says "no port yet" and links to `/puck-publish`.
-- First cells: fluidbox on an M5StickC Plus2 silhouette (tilt carries,
-  particle count degrades with a number), then chrono refused on a
-  one-button device, because a refusal shown honestly is as convincing as
-  a port. Then five silhouettes from boards people actually own.
+The gallery is apps down, devices across, and every cell either runs the
+app's own C or says plainly what is missing.
+
+- Five silhouettes, each carrying a refusal the others cannot make:
+  `m5stickc-plus2`, `feather-esp32s2-tft`, `lilygo-t-display-s3`,
+  `pico-display-pack-2` (the only non-ESP32 one, and the clean `go`), and
+  `watchy` (200x200 e-paper, mono, no `key` button, its panel rather than
+  its CPU setting the tick budget).
+- `bun run verdict <app> <target>` is mechanical and its answer is on
+  every cell. `bun run site:verify-matrix` holds the page to the ledger.
+- An empty cell says "no port yet", carries the verdict's own reason, and
+  links to `/puck-publish/`.
+
+Two things the grid exposed, both visible on the page rather than fixed by
+dropping a cell, and both worth a workstream of their own:
+
+- **gameos's ports assume the reference panel.** On a smaller silhouette
+  its shell draws outside the panel, and on two of them the module traps.
+  `chrono` and `fluidbox` read `PANEL_W`/`PANEL_H` and are correct on all
+  five. Nothing yet stops a port hardcoding a panel except this picture.
+- **`packs/web` wires one `click` and one `key` and no more**, so a board
+  declaring four clicks and no key (Watchy) silently loses that control,
+  while `verdict` reports the friendlier "a click stands in for it". The
+  two disagree, and closing that is a change to the pack.
 
 ### 4. The blind port (one day to wire, then it runs on its own)
 
