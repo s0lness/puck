@@ -44,8 +44,8 @@ const HOME = homedir();
 const PICO_SDK_PATH = process.env.PICO_SDK_PATH ?? join(HOME, "pico", "pico-sdk");
 const PICO_TOOLCHAIN_PATH =
   process.env.PICO_TOOLCHAIN_PATH ?? "C:\\Program Files (x86)\\Arm GNU Toolchain arm-none-eabi\\14.2 rel1";
-const CMAKE_BIN_DIR = "C:\\Users\\sylve\\.espressif\\tools\\cmake\\3.30.2\\bin";
-const NINJA_BIN_DIR = "C:\\Users\\sylve\\.espressif\\tools\\ninja\\1.12.1";
+const CMAKE_BIN_DIR = process.env.CMAKE_BIN_DIR ?? join(HOME, ".espressif", "tools", "cmake", "3.30.2", "bin");
+const NINJA_BIN_DIR = process.env.NINJA_BIN_DIR ?? join(HOME, ".espressif", "tools", "ninja", "1.12.1");
 const PICOTOOL_DIR = join(HOME, "pico", "tools", "picotool-dist", "picotool");
 const PIOASM_DIR = join(HOME, "pico", "tools", "sdk-tools", "pioasm");
 
