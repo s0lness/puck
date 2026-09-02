@@ -63,13 +63,12 @@ import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import type { CapturedFrame } from "../src/frame";
 import type { TraceEvent } from "./types";
+import { runZigCc } from "../tools/zigSpawn";
 
 const HARNESS_DIR = import.meta.dir; // harness/
 const REPO_ROOT = resolve(HARNESS_DIR, ".."); // repo root
 const ABI_DIR = join(REPO_ROOT, "wasm"); // wasm/emu_abi.h
 const DRIVER_C = join(HARNESS_DIR, "host", "driver.c");
-
-const ZIG = process.env.ZIG_EXE ?? "zig";
 
 export interface HostSourceSpec {
   // Every pack source to build, INCLUDING that pack's own emu_shim.c (the
@@ -101,106 +100,33 @@ export interface HostBuildFail {
 }
 export type HostBuildResult = HostBuildOk | HostBuildFail;
 
-interface RunResult {
-  success: boolean;
-  stdout: string;
-  stderr: string;
-  exitCode: number | null;
-}
-
-// zig cc's own documented flake (this repo's AGENTS.md, every pack's
-// build.ts header comment): exit code 5, NO diagnostic text, roughly one
-// run in three for the wasm32-freestanding target, worse under concurrent
-// build load - reproduced here for the native target too while writing
-// this file. Retried up to this many times; a run that DOES print
-// diagnostic text is a real compile error and is never retried; retrying
-// it would only delay reporting a bug that will not go away.
-const MAX_ATTEMPTS = 8;
-// BACKOFF, NOT A FIXED PAUSE, for the attempts that genuinely produced
-// nothing (see producedOutput below for the much more common case, where
-// the compiler did the work and lost its own exit status). Measured on the
-// development machine: a heavy wasm build in another process leaves the
-// next zig invocations dying at exit 5 in about 20ms having written nothing
-// at all, which is a process that never got to run rather than a compiler
-// that tried and failed. Eight attempts at a flat 400ms cover 3.2 seconds
-// total, which is enough on an idle machine and not enough on a busy one:
-// under the load tools/ledger.ts puts on it, every one of the eight landed
-// inside the same window and a perfectly good port came out BUILD_FAILED.
-// Doubling from 400ms and holding at 10s covers about half a minute
-// instead, for the same eight attempts and the same near-zero cost when
-// nothing is wrong.
-const RETRY_PAUSE_START_MS = 400;
-const RETRY_PAUSE_CAP_MS = 10_000;
-const ATTEMPT_TIMEOUT_MS = 120_000;
-
-function looksLikeFlake(result: RunResult): boolean {
-  return !result.success && result.stderr.trim().length === 0;
-}
-
-/**
- * THE OUTPUT FILE IS THE VERDICT, NOT THE EXIT CODE, and that is a
- * measurement rather than an opinion. Probed on the development machine by
- * compiling the same source repeatedly right after a wasm build in another
- * process: some runs exit 5 with completely empty stderr AND a correct,
- * fully written object file on disk, in the same second as runs that exit 0
- * with byte-identical output. It happens under every sanitizer group and
- * with none, so it is not about ASan being unavailable; it is `zig cc` on
- * this Windows-on-ARM build losing its own exit status after doing the work.
- *
- * Retrying that is thirty seconds of nothing: the next attempt is just as
- * likely to lie. So an attempt that wrote the artifact it was asked for is
- * accepted, and only an attempt that wrote NOTHING is retried. A run that
- * printed diagnostic text is still a real compile error and is still never
- * retried and never accepted, whatever is on disk: a stale object from a
- * previous attempt must not be mistaken for a successful one, which is why
- * every caller passes an output path unique to its own attempt-free source.
- */
-function producedOutput(outPath: string): boolean {
-  try {
-    return statSync(outPath).size > 0;
-  } catch {
-    return false;
-  }
-}
-
-function runZig(args: string[], outPath: string): RunResult {
-  const spawnOnce = (): RunResult => {
-    const r = Bun.spawnSync([ZIG, ...args], { stdout: "pipe", stderr: "pipe", timeout: ATTEMPT_TIMEOUT_MS });
-    const stderr = r.stderr ? r.stderr.toString() : "";
-    const lied = !r.success && stderr.trim().length === 0 && producedOutput(outPath);
-    return { success: r.success || lied, stdout: r.stdout ? r.stdout.toString() : "", stderr, exitCode: r.exitCode };
-  };
-  let result = spawnOnce();
-  let pause = RETRY_PAUSE_START_MS;
-  for (let attempt = 2; looksLikeFlake(result) && attempt <= MAX_ATTEMPTS; attempt++) {
-    Bun.sleepSync(pause);
-    pause = Math.min(pause * 2, RETRY_PAUSE_CAP_MS);
-    result = spawnOnce();
-  }
-  return result;
-}
+// zig's own silent-flake retry, and "the artifact on disk is the verdict,
+// not the exit code", now live in ONE place (tools/zigSpawn.ts) rather
+// than a private copy in this file - see that file's header comment for
+// the measurement behind both. Object files here are native, not wasm, so
+// `isWasm` is left at its default false: no magic-byte check, just
+// non-empty.
 
 // Compiles one source to one object file with its own include list.
 // Returns an error string on failure (a real compile error, or the flake
-// exhausting every retry), null on success.
+// exhausting every retry - either way already printed by runZigCc), null
+// on success.
 function compileOne(src: string, includes: string[], defines: string[], sanitizeFlags: string[], outObj: string): string | null {
   const args = ["cc", "-c", "-O1", "-g", ...sanitizeFlags, ...defines, ...includes.flatMap((d) => ["-I", d]), src, "-o", outObj];
-  const result = runZig(args, outObj);
-  if (result.success) return null;
-  const tail = result.stderr.trim();
-  return tail.length > 0
-    ? `zig cc failed compiling ${src}:\n${tail}`
-    : `zig cc exited ${result.exitCode} compiling ${src} on all ${MAX_ATTEMPTS} attempts with no diagnostic text (the documented zig linker/codegen flake - see AGENTS.md)`;
+  const result = runZigCc(args, outObj);
+  if (result.ok) return null;
+  return result.stderr.trim().length > 0
+    ? `zig cc failed compiling ${src} (see diagnostics above)`
+    : `zig cc exited ${result.exitCode} compiling ${src} on all ${result.attempts} attempts with no diagnostic text (see AGENTS.md's toolchain notes)`;
 }
 
 function linkAll(objs: string[], sanitizeFlags: string[], outExe: string): string | null {
   const args = ["cc", ...sanitizeFlags, ...objs, "-o", outExe];
-  const result = runZig(args, outExe);
-  if (result.success) return null;
-  const tail = result.stderr.trim();
-  return tail.length > 0
-    ? `zig cc failed linking:\n${tail}`
-    : `zig cc exited ${result.exitCode} linking on all ${MAX_ATTEMPTS} attempts with no diagnostic text (the documented zig linker flake - see AGENTS.md)`;
+  const result = runZigCc(args, outExe);
+  if (result.ok) return null;
+  return result.stderr.trim().length > 0
+    ? `zig cc failed linking (see diagnostics above)`
+    : `zig cc exited ${result.exitCode} linking on all ${result.attempts} attempts with no diagnostic text (see AGENTS.md's toolchain notes)`;
 }
 
 // -fno-sanitize-recover=undefined: UBSan aborts on the FIRST violation

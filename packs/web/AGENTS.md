@@ -163,9 +163,14 @@ this to produce `/web/chrono/` and `/web/fluidbox/` on the gallery.
 build generates the `app_t` around them, with `--landscape` / `--shake`
 setting the two fields that vary per port.
 
-`zig` comes off `PATH` unless `ZIG_EXE` says otherwise. Its wasm link
-segfaults intermittently under this many `-Wl,--export=` flags; `build.ts`
-retries, and that is a known zig bug, not your change.
+`zig` comes off `PATH` unless `ZIG_EXE` says otherwise. It intermittently
+exits non-zero with no diagnostic text under this many `-Wl,--export=`
+flags - measured (AGENTS.md's own toolchain note, `tools/zigSpawn.ts`'s
+header comment) to be mostly this repository's own build scripts
+spawning it with inherited stdio while a parent process's stdout was
+itself a drained pipe, not a zig linker crash. `build.ts` retries through
+that shared helper, which pipes the child's stdio and trusts the artifact
+on disk over the exit code; this is not your change.
 
 ## Conventions
 

@@ -16,19 +16,14 @@
 // which calls buildWasiFixture() per module.
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { runZigCc } from "../../tools/zigSpawn";
 
 const SRC_DIR = join(import.meta.dir, "firmware");
 const DIST = join(import.meta.dir, "dist");
 
-const ZIG = process.env.ZIG_EXE ?? "zig";
-
-
-const MAX_ATTEMPTS = 5;
-const RETRY_PAUSE_MS = 300;
-const ATTEMPT_TIMEOUT_MS = 120_000;
-
 // name: the .c file's stem under firmware/, and the .wasm's stem under
-// dist/. Throws (zig's own stderr already printed) rather than returning a
+// dist/. Throws (zig's own diagnostics already printed by
+// tools/zigSpawn.ts's runZigCc, on a real failure) rather than returning a
 // flag: a build failure means the test cannot run at all, which is a
 // different thing from the test running and reporting a failure.
 export function buildWasiFixture(name: string): string {
@@ -50,25 +45,23 @@ export function buildWasiFixture(name: string): string {
     out,
   ];
 
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    let result: ReturnType<typeof Bun.spawnSync>;
-    try {
-      result = Bun.spawnSync([ZIG, ...args], { stdout: "inherit", stderr: "inherit", timeout: ATTEMPT_TIMEOUT_MS });
-    } catch (err) {
-      throw new Error(
-        `could not run "${ZIG}" building ${name}: ${err instanceof Error ? err.message : String(err)} ` +
-          `(zig not found? set ZIG_EXE to its path)`
-      );
-    }
-    if (result.success) return out;
-    lastError = new Error(`zig cc exited ${result.exitCode} building ${name}`);
-    if (attempt < MAX_ATTEMPTS) {
-      console.warn(`zig cc exited ${result.exitCode} building ${name} (attempt ${attempt}/${MAX_ATTEMPTS}), retrying...`);
-      Bun.sleepSync(RETRY_PAUSE_MS);
-    }
-  }
-  throw lastError;
+  // The retry/verdict mechanics live in tools/zigSpawn.ts now (one shared
+  // implementation across every pack and every test build script - see
+  // that file's header comment for the measurement this loop used to
+  // guess at blind: piped stdio means a genuine compile error is captured
+  // and reported immediately instead of retried, and the artifact at
+  // `out` is checked directly rather than trusted to zig's own exit code).
+  // maxAttempts left at tools/zigSpawn.ts's default (8, same as every
+  // pack's own build.ts) - see test/hostile/build.ts's equivalent comment
+  // for why the previous 5-attempt, flat-300ms-pause budget measurably
+  // was not enough under today's real concurrent load.
+  const result = runZigCc(args, out, { isWasm: true });
+  if (result.ok) return out;
+  throw new Error(
+    result.stderr.trim().length > 0
+      ? `zig cc failed building ${name} (see diagnostics above)`
+      : `zig cc exited ${result.exitCode} building ${name} on all ${result.attempts} attempts and wrote nothing, with no diagnostic text`
+  );
 }
 
 if (import.meta.main) {

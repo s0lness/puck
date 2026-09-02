@@ -341,12 +341,20 @@ its spirit.
 
 ## Gotchas that bite
 
-- **The wasm link segfaults intermittently.** `zig cc` for
-  `wasm32-freestanding` crashes in its own linker (`exited 5`, no diagnostic)
-  on roughly one invocation in three with this many `-Wl,--export=` flags. It
-  is not your change and there is nothing to debug: run `bun run pack:build`
-  again. `wasm/build.ts`'s header records the same flakiness for
-  `-Wl,--export-dynamic`, which is why it is not used.
+- **`zig cc` intermittently exits non-zero with no diagnostic text.**
+  `wasm32-freestanding` links here exit 5 with empty stderr under this many
+  `-Wl,--export=` flags, worse under concurrent build load. Measured (see
+  AGENTS.md's own toolchain note and `tools/zigSpawn.ts`'s header comment):
+  it is mostly not zig's own linker crashing but this repository's own
+  build scripts previously spawning it with inherited stdio while a
+  parent process's stdout was itself a drained pipe, which can make a
+  child that never got to run at all look identical to a real compiler
+  crash. `wasm/build.ts` now goes through that shared helper, which pipes
+  the child's stdio and trusts the artifact on disk over the exit code -
+  it is still not your change and there is nothing to debug, `bun run
+  pack:build` just retries automatically now. `wasm/build.ts`'s header
+  records the same flakiness for `-Wl,--export-dynamic`, which is why it
+  is not used.
 - **The firmware carries a patch to `AMOLED_1IN8_DisplayWindows`.** Upstream's
   DMA loop is `for (i = Ystart; i < Yend - 1; i++)`, which sends one row fewer
   than the window `SetWindows` just declared to the panel (it programs `Yend-1`

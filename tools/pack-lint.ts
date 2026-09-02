@@ -33,10 +33,14 @@
 // must bound each attempt with a timeout. Not part of the convention doc
 // yet, added here because a build with no per-attempt bound has already
 // hung past ten minutes on this machine (see docs/decisions/0008, and
-// docs/roadmap.md's workstream 0). Checked by finding every
-// `Bun.spawnSync(...)` call in the file and requiring at least one to
-// carry a `timeout:` option - a text check, not a build, so it stays fast
-// and works without zig installed.
+// docs/roadmap.md's workstream 0). Checked by requiring EITHER of two
+// things: the file imports tools/zigSpawn.ts (whose runZigCc() always
+// bounds every attempt with a timeout - one shared implementation, see
+// that file's header comment), or, for a script that spawns zig some
+// other way, at least one `Bun.spawnSync(...)` call in the file carries a
+// `timeout:` option itself. A text check, not a build, so it stays fast
+// and works without zig installed - and still red on a script with
+// neither.
 //
 // External packs (a `{"name","url"}` registry.json entry) are not checked:
 // nothing about them exists on this machine to lint.
@@ -140,16 +144,22 @@ function checkGotchas(pack: string, dir: string): void {
 
 function checkBuildTimeout(pack: string, buildPath: string): void {
   const text = readFileSync(buildPath, "utf8");
+  // tools/zigSpawn.ts's runZigCc() always bounds every attempt with a
+  // timeout (a default, overridable per call) - importing it is enough on
+  // its own, whatever the import path's relative depth looks like.
+  const importsHelper = /from\s+["'][^"']*\/tools\/zigSpawn["']/.test(text);
+  if (importsHelper) return;
+
   const calls = extractCalls(text, "Bun.spawnSync(");
   if (calls.length === 0) {
-    fail(pack, "wasm/build.ts has no Bun.spawnSync call to bound with a per-attempt timeout");
+    fail(pack, "wasm/build.ts neither imports tools/zigSpawn.ts nor has a Bun.spawnSync call to bound with a per-attempt timeout");
     return;
   }
   const uncapped = calls.filter((call) => !/timeout\s*:/.test(call));
   if (uncapped.length > 0) {
     fail(
       pack,
-      `wasm/build.ts: ${uncapped.length} of ${calls.length} Bun.spawnSync call(s) have no per-attempt timeout: option`
+      `wasm/build.ts: ${uncapped.length} of ${calls.length} Bun.spawnSync call(s) have no per-attempt timeout: option, and the file does not import tools/zigSpawn.ts either`
     );
   }
 }
