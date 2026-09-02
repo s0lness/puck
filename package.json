@@ -36,6 +36,7 @@
     "site:build": "bun run site/build.ts",
     "site:record-demos": "bun run site/record-demos.ts",
     "site:verify-flash-ui": "bun run scripts/verify-flash-ui.ts",
+    "site:verify-attest-ui": "bun run scripts/verify-attest-ui.ts",
     "site:verify-embeds": "bun run scripts/verify-site-embeds.ts",
     "site:verify-web": "bun run scripts/verify-web-apps.ts"
   },
