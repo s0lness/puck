@@ -277,8 +277,20 @@ void sensors_set_finger_down(bool down) {
 /* ---- PWR key: bits latched the way the board's PMIC latches register
  * 0x49, fed by emu_button()/emu_button_verdict() for button index BTN_PWR.
  * sensors_key_take() is read-and-clear, once per tick, same contract. */
+// Indices into emu_device()'s "buttons" array below, which must stay in
+// sync. Guarded rather than plain, because a --device build (wasm/build.ts)
+// compiles this pack against ANOTHER device's descriptor, where the button
+// carrying the click role and the button carrying the key role sit at
+// whatever indices that device declares, or at -1 when it declares none at
+// all. -1 is a real answer, not an error: a board with one button genuinely
+// cannot deliver the other signal, and an index that matches nothing is
+// exactly how this file already ignores a host bug.
+#ifndef BTN_BOOT
 #define BTN_BOOT 0
+#endif
+#ifndef BTN_PWR
 #define BTN_PWR  1
+#endif
 
 static uint8_t g_keyEvent = 0;
 
@@ -336,8 +348,15 @@ static float g_tiltX = 0.0f, g_tiltY = 0.0f, g_tiltZ = 0.0f;
 // Index into emu_device()'s "sensors" array below, which must stay in
 // sync: 0 is "shake", 1 is "tilt". Any other index is a host bug; ignored
 // rather than trapped, same policy emu_button() uses for a bad index.
+// Guarded for the same reason BTN_BOOT/BTN_PWR above are: a --device build
+// takes both indices from the device it was pointed at, and -1 where that
+// device declares no such sensor.
+#ifndef SENSOR_IDX_SHAKE
 #define SENSOR_IDX_SHAKE 0
+#endif
+#ifndef SENSOR_IDX_TILT
 #define SENSOR_IDX_TILT  1
+#endif
 
 void emu_sensor_vector(int index, float x, float y, float z) {
     if (index != SENSOR_IDX_TILT) return;
@@ -489,7 +508,13 @@ void emu_app_switch(int index) {
  * and longPressMs so a recorded trace's button index 1 still means PWR
  * here. App names come from g_apps[]/g_appCount (app.h), not hardcoded.
  */
-static char g_deviceJson[512];
+// 1KB rather than the literal below's ~400 bytes: a --device build
+// (wasm/build.ts) replaces the head of this JSON with another device's
+// descriptor, which may declare more buttons and more sensors than this
+// pack's own two and two. The buffer is static and never grows, so it is
+// sized for the widest descriptor a silhouette is allowed to carry rather
+// than for the one written here.
+static char g_deviceJson[1024];
 
 static char *json_append(char *p, const char *s) {
     while (*s) *p++ = *s++;
@@ -509,16 +534,30 @@ static int str_eq(const char *a, const char *b) {
 
 int emu_device(void) {
     char *p = g_deviceJson;
+#ifdef PUCK_DEVICE_JSON
+    // A --device build (wasm/build.ts): the head of this descriptor, from
+    // "{" through "\"apps\":[", was generated from another device's
+    // device.json and handed to the compiler as one string. The apps array
+    // below is still built from g_apps[] at runtime, because which app is
+    // in this module is a fact about the BUILD, not about the device.
+    //
+    // Written as an #ifdef inside the function rather than as a second
+    // emu_device(), so the literals below stay exactly where
+    // gate/device-agrees.ts reads them from and this pack keeps stating
+    // its own shape in its own source.
+    p = json_append(p, PUCK_DEVICE_JSON);
+#else
     p = json_append(p, "{\"name\":\"Web-Touch\",");
     p = json_append(p, "\"panel\":{\"w\":368,\"h\":448,\"format\":\"rgb565be\"},");
     p = json_append(p, "\"buttons\":[");
-    p = json_append(p, "{\"id\":\"boot\",\"label\":\"BOOT\",\"edge\":\"right\",\"at\":0.38},");
-    p = json_append(p, "{\"id\":\"pwr\",\"label\":\"PWR\",\"edge\":\"right\",\"at\":0.62,\"longPressMs\":1500}");
+    p = json_append(p, "{\"id\":\"boot\",\"label\":\"BOOT\",\"edge\":\"right\",\"at\":0.38,\"role\":\"click\"},");
+    p = json_append(p, "{\"id\":\"pwr\",\"label\":\"PWR\",\"edge\":\"right\",\"at\":0.62,\"role\":\"key\",\"longPressMs\":1500}");
     p = json_append(p, "],");
     p = json_append(p, "\"touch\":{\"points\":1},");
     p = json_append(p, "\"sensors\":[{\"id\":\"shake\",\"kind\":\"event\"},");
     p = json_append(p, "{\"id\":\"tilt\",\"kind\":\"vector\"}],");
     p = json_append(p, "\"apps\":[");
+#endif
     // Deduplicated by name, kept from the sibling's shim even though this
     // pack's table holds exactly one app: the loop is the sibling's, and
     // a table that grows past one slot here should not have to rediscover
