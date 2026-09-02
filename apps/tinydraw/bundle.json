@@ -26,6 +26,18 @@
         "captureAt": [750, 1050, 1350, 1600]
       },
       "source": "apps/tinydraw/ports/web/tinydraw.c"
+    },
+    {
+      "pack": "esp32-s3-touch-amoled-18",
+      "mode": "adaptation",
+      "verdict": "degraded",
+      "verification": {
+        "kind": "invariants",
+        "checker": "apps/tinydraw/invariants.ts",
+        "trace": "apps/tinydraw/traces/tinydraw-demo.trace.json",
+        "captureAt": [750, 1050, 1350, 1600]
+      },
+      "source": "apps/tinydraw/ports/esp32-s3-touch-amoled-18/tinydraw.c"
     }
   ]
 }
