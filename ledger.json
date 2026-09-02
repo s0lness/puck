@@ -1589,8 +1589,8 @@
         "reason": "all invariants held over 3 frame(s)"
       },
       "host": {
-        "mark": "DIVERGE",
-        "reason": "3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)"
+        "mark": "MATCH",
+        "reason": "3/3 capture point(s) identical to the wasm build, sanitizers address, undefined"
       },
       "silicon": {
         "key": "fluidbox:esp32-s3-touch-amoled-18"
@@ -2125,8 +2125,8 @@
         "reason": "all invariants held over 3 frame(s)"
       },
       "host": {
-        "mark": "DIVERGE",
-        "reason": "3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)"
+        "mark": "MATCH",
+        "reason": "3/3 capture point(s) identical to the wasm build, sanitizers address, undefined"
       },
       "silicon": {
         "key": "fluidbox:rp2350-touch-amoled-18"
@@ -2434,8 +2434,8 @@
         "reason": "all invariants held over 3 frame(s)"
       },
       "host": {
-        "mark": "DIVERGE",
-        "reason": "3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)"
+        "mark": "MATCH",
+        "reason": "3/3 capture point(s) identical to the wasm build, sanitizers address, undefined"
       },
       "silicon": {
         "key": "fluidbox:web"
@@ -2517,8 +2517,8 @@
         "reason": "all invariants held over 21 frame(s)"
       },
       "host": {
-        "mark": "CRASHED",
-        "reason": "harness/hostdiff.ts: unexpected error: EOF: end of file, write Error: EOF: end of file, write     at async replayHost (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a8c3679ce402d6b36\\harness\\hostSide.ts:330:20)     at async main (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a8c3679ce402d6b36\\harness\\hostdiff.ts:280:30)"
+        "mark": "SANITIZER",
+        "reason": "the sanitized host build trapped on gameos-demo-esp32 (address, undefined): signed integer overflow: 1499045572 + 668265263 cannot be represented in type 'int' at apps/gameos/reference/esp32-gameos/golf.c:118 in noise2d"
       },
       "silicon": {
         "key": "gameos:esp32-s3-touch-amoled-18"
@@ -2539,7 +2539,7 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "5b8112c06c7f3adc",
+        "bundleSha": "ab2620371cfc6073",
         "packSha": "71997abbc23eae96",
         "verdictToolSha": "ef1a841369f9a5af"
       },
@@ -2995,8 +2995,8 @@
         "reason": "all invariants held over 12 frame(s)"
       },
       "host": {
-        "mark": "DIVERGE",
-        "reason": "3/12 capture point(s) differ from the wasm build, first gameos-demo t=304ms at 376/164864px (0.23%)"
+        "mark": "MATCH",
+        "reason": "12/12 capture point(s) identical to the wasm build, sanitizers address, undefined"
       },
       "silicon": {
         "key": "gameos:rp2350-touch-amoled-18"
@@ -3017,7 +3017,7 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "5b8112c06c7f3adc",
+        "bundleSha": "ab2620371cfc6073",
         "packSha": "5f7b37d2127fbf77",
         "verdictToolSha": "ef1a841369f9a5af"
       },
