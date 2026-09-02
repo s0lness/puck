@@ -533,6 +533,91 @@ function silhouetteSourceFor(bundle: Bundle | null): { source: string; buildArgs
   return null;
 }
 
+// ---- choosing the silhouette proof by what the app actually demands ------
+// proveSilhouettePage (scripts/silhouetteProof.ts) is a wide, app-agnostic
+// check: it asserts the module was compiled against the right device.json
+// and paints something at the right size, and calls anything that is one
+// flat colour "blank" - the honest mechanical answer when nothing tried to
+// drive the app's own input. That is fine for chrono (asks for nothing but
+// a panel) and for fluidbox (its fluid already rests under gravity at
+// idle, so a first frame is never flat), but it is the WRONG question for
+// an app whose whole surface is touch: tinydraw's first frame is a blank
+// page by design, and "blank" there does not mean broken, it means nobody
+// touched it yet. So this file picks the proof by the app's own demands
+// (apps/*/descriptor.md's `json demands` block, already read into
+// ResolvedApp.demands for the verdict above) rather than running the same
+// generic check for every cell:
+//
+//   touch.points > 0 AND the silhouette declares a digitizer: a real
+//   synthetic drag (scripts/verify-silhouette.ts --stroke) has to leave a
+//   visible difference on the panel. tilt mode stays untouched for a
+//   sensor demand (fluidbox), and the generic "painted something" check
+//   stays untouched for an app that demands neither (chrono) - the ask
+//   this answers is only "does this app's touch actually reach the host",
+//   and the other two cases already had a working answer.
+//
+//   touch.points > 0 and the silhouette declares NO digitizer: nothing to
+//   build here even proves anything the mechanical verdict (buttonCheck's
+//   sibling, touchCheck in tools/verdict.ts) has not already said, so this
+//   stays the plain generic check's own "blank" mark, with the reason
+//   rewritten to name the missing digitizer explicitly rather than
+//   describing pixels.
+function appTouchDemand(demands: Demands | null): number {
+  return demands?.touch?.points ?? 0;
+}
+
+interface VerifySilhouetteJson {
+  ok: boolean;
+  mode: "tilt" | "stroke";
+  panel: { w: number; h: number };
+  proof: string | null;
+  checks: { name: string; ok: boolean; detail: string }[];
+}
+
+const VERIFY_SILHOUETTE_TIMEOUT_MS = 5 * 60 * 1000;
+
+/**
+ * Shells out to scripts/verify-silhouette.ts --stroke against a silhouette
+ * ALREADY built by buildSilhouette() above (--no-build: the same dist
+ * directory, so this never pays for a second zig invocation on top of the
+ * one every cell already takes), and turns its --json payload into the
+ * same {mark, reason, proof} shape proveSilhouettePage returns, so the
+ * caller below does not need to know which of the two ran.
+ */
+async function runVerifySilhouetteStroke(
+  silhouette: string,
+  source: string,
+  proofPath: string
+): Promise<{ mark: SilhouetteMark; reason: string; proof: string | null }> {
+  const proofRel = proofPath.slice(REPO_ROOT.length + 1).replace(/\\/g, "/");
+  const r = await runCaptured(
+    ["run", "scripts/verify-silhouette.ts", "--stroke", "--silhouette", silhouette, "--app", source, "--no-build", "--proof", proofRel, "--json"],
+    VERIFY_SILHOUETTE_TIMEOUT_MS
+  );
+  const parsed = tailJson<VerifySilhouetteJson>(r.stdout);
+  if (!parsed) {
+    const tail = (r.stderr || r.stdout).trim().split("\n").slice(-8).join(" ").slice(0, 500);
+    return { mark: "page-error", reason: `verify-silhouette --stroke exited ${r.exitCode} without a JSON result${tail ? `: ${tail}` : ""}`, proof: null };
+  }
+  if (parsed.ok) {
+    return { mark: "runs", reason: parsed.checks.map((c) => c.detail).join("; "), proof: parsed.proof };
+  }
+  const failed = parsed.checks.filter((c) => !c.ok);
+  // module-panel/canvas-panel failing is the same fact proveSilhouettePage
+  // names "wrong-panel"; stroke-diff failing means the touch never visibly
+  // reached the app, which is the same shape as the generic check's own
+  // "blank" (a real screenshot, nothing to distinguish "not yet drawn" from
+  // "never will be" beyond the sentence beside it); anything else (a page
+  // exception mid-drag) is page-error, the same as the generic check.
+  if (failed.some((c) => c.name === "module-panel" || c.name === "canvas-panel")) {
+    return { mark: "wrong-panel", reason: failed.map((c) => c.detail).join("; "), proof: parsed.proof };
+  }
+  if (failed.some((c) => c.name === "stroke-diff")) {
+    return { mark: "blank", reason: failed.find((c) => c.name === "stroke-diff")!.detail, proof: parsed.proof };
+  }
+  return { mark: "page-error", reason: failed.map((c) => c.detail).join("; ") || "verify-silhouette --stroke failed with no check named", proof: parsed.proof };
+}
+
 // ---- run -----------------------------------------------------------------
 
 interface Args {
@@ -781,8 +866,32 @@ async function main(): Promise<void> {
         silhouetteResults.set(p.key, { mark: "build-failed", reason: built.error, proof: null, source: pick.source, via: pick.via, buildArgs: pick.buildArgs, panel: { w: panel.w, h: panel.h } });
         continue;
       }
-      const proofPath = join(REPO_ROOT, "packs", "silhouettes", p.target.name, "proof", `${p.app.name.replace(/[\\/]/g, "-")}.png`);
-      const proof = await proveSilhouettePage(browser!, built.distDir, { w: panel.w, h: panel.h }, proofPath, proofPort++);
+
+      const touchWant = appTouchDemand(p.app.demands);
+      const touchHas = deviceOf.get(p.target.name)?.touch?.points ?? 0;
+
+      let proof: { mark: SilhouetteMark; reason: string; proof: string | null };
+      if (touchWant > 0 && touchHas > 0) {
+        // The app demands touch and this board has a digitizer: the wide
+        // "painted something" check cannot tell a first frame with nothing
+        // drawn yet from an app whose touch handling is silently broken -
+        // both are flat and both would read "blank". A real synthetic drag
+        // is the only thing that tells those two apart.
+        const proofPath = join(REPO_ROOT, "packs", "silhouettes", p.target.name, "proof", `${p.app.name.replace(/[\\/]/g, "-")}-stroke.png`);
+        proof = await runVerifySilhouetteStroke(p.target.name, pick.source, proofPath);
+      } else {
+        const proofPath = join(REPO_ROOT, "packs", "silhouettes", p.target.name, "proof", `${p.app.name.replace(/[\\/]/g, "-")}.png`);
+        const wide = await proveSilhouettePage(browser!, built.distDir, { w: panel.w, h: panel.h }, proofPath, proofPort++);
+        proof = { mark: wide.mark, reason: wide.reason, proof: wide.proof };
+        if (touchWant > 0 && touchHas <= 0 && wide.mark === "blank") {
+          // Named explicitly rather than left as "100% one colour": the
+          // mechanical verdict already refuses this pair on touch
+          // (tools/verdict.ts's touchCheck), and the silhouette cell
+          // should say the same thing rather than a sentence about pixels
+          // that reads as if the app might just not have been touched yet.
+          proof.reason = `${p.target.name} declares no digitizer (touch.points ${touchHas}), and ${p.app.name} demands ${touchWant} touch point(s), so there is nothing here that could ever answer a touch. ${wide.reason}`;
+        }
+      }
       console.log(`   ${proof.mark}: ${proof.reason}`);
       silhouetteResults.set(p.key, {
         mark: proof.mark,
