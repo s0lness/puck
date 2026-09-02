@@ -139,7 +139,32 @@ The one change made from this: `DEFAULT_MAX_ATTEMPTS` in
 watched consumed 6 of its 8 attempts more than once and exhausted all 8
 at least once, for a build that a later attempt was going to succeed at
 anyway - not a fix for the flake, just enough more room not to run out
-of retries against it. `bun run
+of retries against it. The four-launcher table above pointed at zig
+itself, not Bun: PowerShell calling zig directly, with no Bun anywhere in
+the process, crashed the most (5/20 access violations). Checked directly
+next: `C:\Users\sylve\tools\zig\zig.exe`'s PE header is a native ARM64
+binary (no emulation involved), version 0.16.0. Downloaded two other
+official `aarch64-windows` builds from `ziglang.org/download/index.json`
+(sha256 verified against that index) into `C:\Users\sylve\tools\`,
+outside the repo, and ran the exact same launcher-(a) probe (the
+`button_trap.c` fixture, 20 runs, `Bun.spawnSync` direct) against all
+three, one at a time, back to back on the same machine under the same
+load: 0.15.2 (the release before this one) - 20/20 clean, every run exit
+0; the 0.17.0-dev nightly - 20/20 clean, every run exit 0; 0.16.0 - two
+separate 20-run passes, 12/20 (8 silent) and 20/20-but-5-of-them-lying
+(exit 5 with the artifact fine). In 40 combined runs of 0.15.2 and
+nightly, not one non-zero exit; in 40 combined runs of 0.16.0, 13. That
+is a zig 0.16.0 regression on Windows ARM64, not a Bun bug and not this
+repo's own doing - **point `ZIG_EXE` at a 0.15.x build on this platform**
+(0.15.2 specifically, the one actually measured clean; the nightly is
+also clean but is a moving, unpinned snapshot and not something to point
+a stable setup at). The CI pin is deliberately left alone (CI does not
+run on Windows ARM64, so it was never exposed to this). `tools/zigSpawn.ts`
+now runs `zig version` once per process (Windows ARM64 only, and only if
+`ZIG_EXE` is actually 0.16.0) and prints a single warning naming this
+paragraph - never a hard failure, since the retry loop above already
+gets a real build through on 0.16.0 too, just with more attempts spent
+than a non-broken version would need. `bun run
 pack:esp32:build` does the
 same for `packs/esp32-s3-touch-amoled-18/`, and `bun run pack:web:build`
 for `packs/web/`; `bun run pack:web:host` builds that pack's second mode

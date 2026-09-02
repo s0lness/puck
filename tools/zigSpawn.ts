@@ -426,12 +426,44 @@ export interface ZigCcOptions {
   useAmbientCache?: boolean;
 }
 
+// A specific zig.exe VERSION, not this file's own retry loop, turned out
+// to be a large share of the Windows-ARM64 exit-5/exit-9 flake this file
+// was written to absorb - see AGENTS.md's zig section for the full
+// measurement (0.16.0: 12/20 and 20/20-with-5-lying-exits across two
+// runs; 0.15.2 and a 0.17.0-dev nightly: 20/20 clean, exit 0 every time,
+// both runs, same fixture, same machine, back to back). Warned about
+// here, once per process, never a hard failure: this repo does not pin a
+// zig version in CI, and the retry loop above already gets a real build
+// through even on a bad version, just with more attempts spent than
+// necessary.
+const KNOWN_BAD_ZIG_VERSIONS_WINDOWS_ARM64 = new Set(["0.16.0"]);
+let zigVersionWarned = false;
+function warnIfKnownBadZigVersion(): void {
+  if (zigVersionWarned) return;
+  zigVersionWarned = true;
+  if (process.platform !== "win32" || process.arch !== "arm64") return;
+  try {
+    const r = Bun.spawnSync([ZIG_EXE, "version"], { stdout: "pipe", stderr: "pipe" });
+    const version = (r.stdout ? r.stdout.toString() : "").trim();
+    if (KNOWN_BAD_ZIG_VERSIONS_WINDOWS_ARM64.has(version)) {
+      console.warn(
+        `zig ${version} is measurably more prone to exiting non-zero (sometimes silently, artifact never written) than 0.15.2 or a current nightly build on Windows ARM64 - see AGENTS.md's zig section for the counts. Consider pointing ZIG_EXE at a 0.15.x or newer build instead.`
+      );
+    }
+  } catch {
+    // Never fails: a zig that cannot even report its own version surfaces
+    // that as a real error soon enough, from the actual build attempt
+    // this warning precedes - not this check's own job to report.
+  }
+}
+
 // Runs `zig cc ...args`, writing to `outPath`. See spawnWithRetry above
 // for the full retry/verdict contract this wraps. `outPath` is removed
 // before every attempt (including the first): a stale file left at that
 // exact path, by this call's own previous attempt or an unrelated earlier
 // run, must never be mistaken for THIS attempt's output.
 export function runZigCc(args: string[], outPath: string, opts: ZigCcOptions = {}): SpawnRetryResult {
+  warnIfKnownBadZigVersion();
   // ZIG_GLOBAL_CACHE_DIR: repo-local by default (DEFAULT_ZIG_GLOBAL_CACHE_DIR
   // above), UNLESS opts.useAmbientCache opts all the way out (see that
   // field's own comment), or it is already set - by this call's own
