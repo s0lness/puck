@@ -9,7 +9,7 @@
 <meta property="og:description" content="A gallery of firmware ported between device packs: recorded demo loops on this page, the real WebAssembly build one click away on every run page." />
 <meta property="og:type" content="website" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2214%22%20fill%3D%22%232f6feb%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23fafafa%22%2F%3E%3C%2Fsvg%3E" />
-<link rel="stylesheet" href="styles.css?v=681de05b49" />
+<link rel="stylesheet" href="styles.css?v=f3a91b140c" />
 </head>
 <body>
 <div class="wrap">
@@ -38,6 +38,7 @@
     <h3>chrono</h3>
     <p>A full-screen stopwatch: six seven-segment digits, two buttons, nothing else on screen.</p>
     <div class="badges"><span class="badge accent">native · pixel-exact</span><span class="badge accent">faithful port · pixel-exact</span></div>
+    <ul class="attest-counters"><li><span class="attest-pack">RP2350-Touch-AMOLED-1.8</span> <span class="attest-counter attest-counter-empty" data-attest-app="chrono" data-attest-pack="rp2350-touch-amoled-18">no board has confirmed this yet</span></li><li><span class="attest-pack">ESP32-S3-Touch-AMOLED-1.8</span> <span class="attest-counter attest-counter-empty" data-attest-app="chrono" data-attest-pack="esp32-s3-touch-amoled-18">no board has confirmed this yet</span></li></ul>
     <div class="links">
       <a href="run/chrono-rp2350.html">run on RP2350-Touch-AMOLED-1.8</a><a href="run/chrono-esp32.html">run on ESP32-S3-Touch-AMOLED-1.8</a><a href="web/chrono/">run on your phone: Web-Touch</a>
       <a href="https://github.com/s0lness/puck/blob/master/apps/chrono/descriptor.md">descriptor</a>
@@ -60,6 +61,7 @@
     <h3>fluidbox</h3>
     <p>A particle liquid that sloshes and settles inside the device&#39;s own enclosure shape.</p>
     <div class="badges"><span class="badge">adaptation · invariants</span><span class="badge accent">adaptation · invariants</span></div>
+    <ul class="attest-counters"><li><span class="attest-pack">RP2350-Touch-AMOLED-1.8</span> <span class="attest-counter attest-counter-empty" data-attest-app="fluidbox" data-attest-pack="rp2350-touch-amoled-18">no board has confirmed this yet</span></li><li><span class="attest-pack">ESP32-S3-Touch-AMOLED-1.8</span> <span class="attest-counter attest-counter-empty" data-attest-app="fluidbox" data-attest-pack="esp32-s3-touch-amoled-18">no board has confirmed this yet</span></li></ul>
     <div class="links">
       <a href="run/fluidbox-rp2350.html">run on RP2350-Touch-AMOLED-1.8</a><a href="run/fluidbox-esp32.html">run on ESP32-S3-Touch-AMOLED-1.8</a><a href="web/fluidbox/">run on your phone: Web-Touch</a>
       <a href="https://github.com/s0lness/puck/blob/master/apps/fluidbox/descriptor.md">descriptor</a>
@@ -82,6 +84,7 @@
     <h3>tinydraw</h3>
     <p>A full-panel finger-drawing canvas: variable-width antialiased ink, two-level zoom, one-stroke undo.</p>
     <div class="badges"><span class="badge">adaptation · invariants</span></div>
+    <ul class="attest-counters"><li><span class="attest-pack">RP2350-Touch-AMOLED-1.8</span> <span class="attest-counter attest-counter-empty" data-attest-app="tinydraw" data-attest-pack="rp2350-touch-amoled-18">no board has confirmed this yet</span></li></ul>
     <div class="links">
       <a href="run/tinydraw-rp2350.html">run on RP2350-Touch-AMOLED-1.8</a><a href="web/tinydraw/">run on your phone: Web-Touch</a>
       <a href="https://github.com/s0lness/puck/blob/master/apps/tinydraw/descriptor.md">descriptor</a>
@@ -104,6 +107,7 @@
     <h3>gameos</h3>
     <p>A handheld game console shell: pick a game to launch a thermal gunner, a slot machine, or a swing-driven procedural golf course.</p>
     <div class="badges"><span class="badge">adaptation · invariants</span></div>
+    <ul class="attest-counters"><li><span class="attest-pack">ESP32-S3-Touch-AMOLED-1.8</span> <span class="attest-counter attest-counter-empty" data-attest-app="gameos" data-attest-pack="esp32-s3-touch-amoled-18">no board has confirmed this yet</span></li><li><span class="attest-pack">RP2350-Touch-AMOLED-1.8</span> <span class="attest-counter attest-counter-empty" data-attest-app="gameos" data-attest-pack="rp2350-touch-amoled-18">no board has confirmed this yet</span></li></ul>
     <div class="links">
       <a href="run/gameos-esp32.html">run on ESP32-S3-Touch-AMOLED-1.8</a><a href="run/gameos-rp2350.html">run on RP2350-Touch-AMOLED-1.8</a>
       <a href="https://github.com/s0lness/puck/blob/master/apps/gameos/descriptor.md">descriptor</a>
@@ -223,10 +227,11 @@
   <footer>
     <div class="wrap" style="padding:0">
       <a href="https://github.com/s0lness/puck/blob/master/README.md">s0lness/puck</a> on GitHub, MIT licensed.
-      &middot; <a href="agents.html?v=4b8013611a">agents</a>
+      &middot; <a href="agents.html?v=5f1e70f0fe">agents</a>
     </div>
   </footer>
 </div>
+<script type="module" src="attest-counters.js?v=d6ec50cd4d"></script>
 <script>/* markup: visual-feedback overlay, only for a browser holding the key */(function(){if(!(/[?&](markup|edit)([=&]|$)/.test(location.search)||sessionStorage.getItem("markup-on")))return;var m=/[#&]k=([A-Za-z0-9_-]+)/.exec(location.hash),k=null;try{if(m)localStorage.setItem("markup-key",m[1]);k=localStorage.getItem("markup-key")}catch(e){}var local=location.hostname==="localhost"||location.hostname==="127.0.0.1";if(!k&&!local)return;document.head.appendChild(Object.assign(document.createElement("script"),{src:"https://markup.sylve.org/markup.js"}))})()</script>
 </body>
 </html>

@@ -363,3 +363,85 @@ footer { padding: 30px 0 60px; color: var(--text-soft); font-size: 0.85rem; bord
 .flash-ritual { margin-top: 16px; font-size: 0.88rem; }
 .flash-ritual summary { cursor: pointer; color: var(--text-soft); font-weight: 600; }
 .flash-ritual p { margin: 8px 0 0; color: var(--text-soft); }
+
+/* ---- attestation: the board answers for itself ----
+   Deliberately the flash section's twin (same card, same pill button, same
+   "the error message IS the instruction" rule), because it is the next step
+   in the same gesture: flash the board, then make it prove the port draws
+   what the bundle says it draws. What is NOT shared is the verdict block,
+   which has to read as a result rather than as a status. */
+.attest-section {
+  margin: 0 0 40px;
+  padding: 20px 22px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.attest-section h2 { margin: 0 0 10px; font-size: 1.15rem; }
+.attest-section .attest-note { margin: 0 0 12px; color: var(--text-soft); font-size: 0.92rem; }
+.attest-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.attest-btn, .attest-post-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+.attest-btn:hover, .attest-post-btn:hover { opacity: 0.92; }
+.attest-btn:disabled, .attest-post-btn:disabled { opacity: 0.55; cursor: default; }
+.attest-hint { margin: 12px 0 0; color: var(--text-soft); font-size: 0.85rem; }
+.attest-progress { margin-top: 14px; }
+.attest-status { margin: 0; color: var(--text-soft); font-size: 0.85rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+/* One row per capture point, monospaced so the pixel counts line up and a
+   column of MATCH reads as a column. */
+.attest-points { list-style: none; margin: 14px 0 0; padding: 0; font-size: 0.85rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.attest-point { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.attest-point:last-child { border-bottom: 0; }
+.attest-point-mark { font-weight: 700; min-width: 7ch; }
+.attest-point-match .attest-point-mark { color: var(--success); }
+.attest-point-diverge .attest-point-mark { color: var(--accent); }
+.attest-point-label { color: var(--text); }
+.attest-point-detail { color: var(--text-soft); }
+
+.attest-verdict {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+.attest-verdict-match { border-color: var(--success); color: var(--success); }
+/* A divergence is a RESULT, not an error: it is evidence about this port on
+   this silicon and it is worth posting. So it gets the accent, not the
+   error card's muted grey, and never a red. */
+.attest-verdict-diverge { border-color: var(--accent); color: var(--accent); }
+.attest-post { margin-top: 14px; }
+.attest-posted { margin-top: 12px; color: var(--success); font-size: 0.88rem; font-weight: 600; }
+.attest-error {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+/* ---- the counter, on cards and on the flash page ----
+   The empty state is the same node with different text, so the layout does
+   not move when the counts arrive. */
+.attest-counters { list-style: none; margin: 0 0 4px; padding: 0; font-size: 0.82rem; }
+.attest-counters li { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; padding: 2px 0; }
+.attest-pack { color: var(--text-soft); }
+.attest-counter { color: var(--text); font-weight: 600; }
+.attest-counter-empty { color: var(--text-soft); font-weight: 400; }
+.attest-section .attest-counter { display: block; margin: 0 0 14px; font-size: 0.88rem; }
