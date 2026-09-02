@@ -2,6 +2,7 @@
   "combo": "chrono-esp32",
   "app": "chrono",
   "pack": "esp32-s3-touch-amoled-18",
+  "kind": "pixel-exact",
   "boardFamily": "esp32",
   "tolerance": 0,
   "artifact": "../flash/esp32/chrono-esp32.bin",

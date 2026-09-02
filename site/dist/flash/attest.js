@@ -581,6 +581,7 @@ function onSections(selector, init) {
 }
 
 // site/attest-client.ts
+var ATTESTATION_KINDS = ["pixel-exact", "invariants"];
 function attestationKey(app, pack) {
   return `${app}:${pack}`;
 }
@@ -611,12 +612,22 @@ async function fetchAttestations(endpoint = "/api/attest") {
     const v = value;
     if (typeof v.confirmations !== "number")
       continue;
+    const rawKinds = v.kinds ?? {};
+    const kinds = {};
+    for (const kind of ATTESTATION_KINDS) {
+      const entry = rawKinds[kind];
+      kinds[kind] = {
+        confirmations: typeof entry?.confirmations === "number" ? entry.confirmations : 0,
+        diverged: typeof entry?.diverged === "number" ? entry.diverged : 0
+      };
+    }
     out[key] = {
       app: typeof v.app === "string" ? v.app : key.split(":")[0],
       pack: typeof v.pack === "string" ? v.pack : key.split(":").slice(1).join(":"),
       confirmations: v.confirmations,
       lastConfirmedAt: typeof v.lastConfirmedAt === "string" ? v.lastConfirmedAt : null,
-      diverged: typeof v.diverged === "number" ? v.diverged : 0
+      diverged: typeof v.diverged === "number" ? v.diverged : 0,
+      kinds
     };
   }
   return { counts: out };
@@ -645,8 +656,16 @@ function describeAttestation(count) {
   if (!count || count.confirmations === 0)
     return ATTEST_EMPTY_STATE;
   const runs = count.confirmations === 1 ? "1 confirmation" : `${count.confirmations} confirmations`;
+  const kind = describeKinds(count);
   const age = describeAge(count.lastConfirmedAt);
-  return age ? `${runs} · ${age}` : runs;
+  return [kind ? `${runs} (${kind})` : runs, age].filter(Boolean).join(" · ");
+}
+function describeKinds(count) {
+  const seen = ATTESTATION_KINDS.filter((k) => count.kinds[k].confirmations > 0 || count.kinds[k].diverged > 0);
+  if (seen.length < 2)
+    return "";
+  const confirmed = ATTESTATION_KINDS.filter((k) => count.kinds[k].confirmations > 0);
+  return confirmed.join(" and ");
 }
 async function paintAttestCounters(root = document, endpoint = "/api/attest") {
   const nodes = Array.from(root.querySelectorAll("[data-attest-app][data-attest-pack]"));
@@ -738,6 +757,528 @@ function compareFrames(a, b, tolerance) {
     }
   }
   return { match: diffPixels === 0, diffPixels, totalPixels: w * h, firstDiffAt, maxChannelDelta, diffImage: diffPixels > 0 ? diffRgb : null };
+}
+
+// harness/invariantTypes.ts
+function held(id, name, fails, passMessage) {
+  return fails.length > 0 ? { id, name, status: "fail", message: fails.join("; ") } : { id, name, status: "pass", message: passMessage };
+}
+function summariseInvariants(outcomes) {
+  const failures = outcomes.filter((o) => o.status === "fail").map((o) => o.message);
+  return { pass: failures.length === 0, failures, invariants: outcomes };
+}
+
+// apps/fluidbox/invariants.ts
+var BG_R = 0;
+var BG_G = 0;
+var BG_B = 0;
+function isBackground(rgb, idx) {
+  return rgb[idx] === BG_R && rgb[idx + 1] === BG_G && rgb[idx + 2] === BG_B;
+}
+function countNonBackground(frame) {
+  const { width, height, rgb } = frame;
+  let n = 0;
+  for (let i = 0;i < width * height; i++) {
+    if (!isBackground(rgb, i * 3))
+      n++;
+  }
+  return n;
+}
+function topRowPerColumn(frame) {
+  const { width, height, rgb } = frame;
+  const top = new Array(width).fill(-1);
+  for (let y = 0;y < height; y++) {
+    for (let x = 0;x < width; x++) {
+      if (top[x] !== -1)
+        continue;
+      if (!isBackground(rgb, (y * width + x) * 3))
+        top[x] = y;
+    }
+  }
+  return top;
+}
+var CORNER_MARGIN_PX = 57;
+var FLATNESS_BINS = 10;
+function bucketFlatness(frame) {
+  const top = topRowPerColumn(frame);
+  const lo = CORNER_MARGIN_PX, hi = frame.width - CORNER_MARGIN_PX;
+  const binWidth = Math.floor((hi - lo) / FLATNESS_BINS);
+  const medians = [];
+  for (let b = 0;b < FLATNESS_BINS; b++) {
+    const vals = [];
+    for (let x = lo + b * binWidth;x < lo + (b + 1) * binWidth; x++) {
+      if (top[x] !== -1)
+        vals.push(top[x]);
+    }
+    if (vals.length === 0)
+      continue;
+    vals.sort((a, c) => a - c);
+    medians.push(vals[Math.floor(vals.length / 2)]);
+  }
+  if (medians.length === 0)
+    return Infinity;
+  return Math.max(...medians) - Math.min(...medians);
+}
+function diffPixelCount(a, b) {
+  let diff = 0;
+  const n = Math.min(a.rgb.length, b.rgb.length);
+  for (let i = 0;i < n; i += 3) {
+    if (a.rgb[i] !== b.rgb[i] || a.rgb[i + 1] !== b.rgb[i + 1] || a.rgb[i + 2] !== b.rgb[i + 2])
+      diff++;
+  }
+  return diff;
+}
+var MASS_DRIFT_MAX_PCT = 5;
+var FLATNESS_MAX_SPREAD_PX = 40;
+var SHAKE_DIFF_MIN_PX = 1500;
+function borderIsClean(frame) {
+  const { width, height, rgb } = frame;
+  for (let x = 0;x < width; x++) {
+    if (!isBackground(rgb, (0 * width + x) * 3))
+      return false;
+    if (!isBackground(rgb, ((height - 1) * width + x) * 3))
+      return false;
+  }
+  for (let y = 0;y < height; y++) {
+    if (!isBackground(rgb, (y * width + 0) * 3))
+      return false;
+    if (!isBackground(rgb, (y * width + (width - 1)) * 3))
+      return false;
+  }
+  return true;
+}
+var PUSH_PIXELS_MAX = 90000;
+var PUSH_COUNT_MAX = 4;
+function check(frames, meta) {
+  if (frames.length !== 3) {
+    return summariseInvariants([
+      {
+        id: "capture-contract",
+        name: "the trace's own three capture points arrived",
+        status: "fail",
+        message: `expected exactly 3 captures (settled1, afterShake, settled2) per this trace's own contract, got ${frames.length}`
+      }
+    ]);
+  }
+  const [settled1, afterShake, settled2] = frames;
+  const outcomes = [];
+  const mass1 = countNonBackground(settled1.frame);
+  const mass2 = countNonBackground(settled2.frame);
+  const massDriftPct = mass1 === 0 ? 100 : Math.abs(mass1 - mass2) / mass1 * 100;
+  const massFails = [];
+  if (mass1 === 0) {
+    massFails.push(`mass proxy: settled1 (t=${settled1.atMs}) has zero non-background pixels - nothing rendered`);
+  } else if (massDriftPct > MASS_DRIFT_MAX_PCT) {
+    massFails.push(`mass proxy: non-background pixel count drifted ${massDriftPct.toFixed(2)}% between settled1 (${mass1}px) and settled2 (${mass2}px), max allowed ${MASS_DRIFT_MAX_PCT}%`);
+  }
+  outcomes.push(held("mass", "the same fluid is still there after the shake", massFails, `mass proxy: ${mass1}px non-background at settled1, ${mass2}px at settled2, a ${massDriftPct.toFixed(2)}% drift (max allowed ${MASS_DRIFT_MAX_PCT}%)`));
+  const flat1 = bucketFlatness(settled1.frame);
+  const flat2 = bucketFlatness(settled2.frame);
+  const flatFails = [];
+  if (flat1 > FLATNESS_MAX_SPREAD_PX) {
+    flatFails.push(`flat surface: settled1 (t=${settled1.atMs}) bucket-median spread ${flat1}px exceeds max ${FLATNESS_MAX_SPREAD_PX}px`);
+  }
+  if (flat2 > FLATNESS_MAX_SPREAD_PX) {
+    flatFails.push(`flat surface: settled2 (t=${settled2.atMs}) bucket-median spread ${flat2}px exceeds max ${FLATNESS_MAX_SPREAD_PX}px`);
+  }
+  outcomes.push(held("flatness", "the settled surface lies roughly flat", flatFails, `flat surface: bucket-median spread ${flat1}px at settled1 and ${flat2}px at settled2 (max allowed ${FLATNESS_MAX_SPREAD_PX}px)`));
+  const shakeDiff = diffPixelCount(settled1.frame, afterShake.frame);
+  const shakeFails = [];
+  if (shakeDiff < SHAKE_DIFF_MIN_PX) {
+    shakeFails.push(`shake agitation: only ${shakeDiff}px differ between settled1 (t=${settled1.atMs}) and afterShake (t=${afterShake.atMs}), min required ${SHAKE_DIFF_MIN_PX}px`);
+  }
+  outcomes.push(held("shake", "a shake visibly agitates the fluid", shakeFails, `shake agitation: ${shakeDiff}px differ between settled1 (t=${settled1.atMs}) and afterShake (t=${afterShake.atMs}), min required ${SHAKE_DIFF_MIN_PX}px`));
+  const boundsFails = [];
+  for (const f of frames) {
+    if (!borderIsClean(f.frame)) {
+      boundsFails.push(`bounds: fluid pixel found in the panel's outermost 1px border at t=${f.atMs} (wall containment broken)`);
+    }
+  }
+  outcomes.push(held("bounds", "wall containment keeps every particle off the panel edge", boundsFails, `bounds: the panel's outermost 1px border is clear on all ${frames.length} captures`));
+  if (meta.device.name !== "RP2350-Touch-AMOLED-1.8") {
+    outcomes.push({
+      id: "push",
+      name: "one tick never pushes the whole panel",
+      status: "skip",
+      message: `panel push: not checked on ${meta.device.name ?? "this device"} - this bound is the RP2350 pack's own QSPI and panel finding, and its numbers are that pack's alone`
+    });
+  } else if (!meta.pushStats) {
+    outcomes.push({
+      id: "push",
+      name: "one tick never pushes the whole panel",
+      status: "unevaluable",
+      message: `panel push: this run reports the framebuffer and not what was pushed to the panel, so the ${PUSH_PIXELS_MAX}px-per-tick ` + `bound cannot be answered from it. A board answers SHOT with its framebuffer; the bound is checked against the emulator ` + `by "bun run verify-bundle".`
+    });
+  } else {
+    const { maxPushesPerTick, maxPushPixelsPerTick, tickCount } = meta.pushStats;
+    const pushFails = [];
+    if (maxPushPixelsPerTick > PUSH_PIXELS_MAX) {
+      pushFails.push(`panel push: worst tick pushed ${maxPushPixelsPerTick}px (of ${tickCount} ticks replayed), max allowed ${PUSH_PIXELS_MAX}px - see this port's README's "Panel push" section`);
+    }
+    if (maxPushesPerTick > PUSH_COUNT_MAX) {
+      pushFails.push(`panel push: worst tick issued ${maxPushesPerTick} gfx_push call(s), max allowed ${PUSH_COUNT_MAX} - looks like a return of per-particle pushes`);
+    }
+    outcomes.push(held("push", "one tick never pushes the whole panel", pushFails, `panel push: worst of ${tickCount} ticks pushed ${maxPushPixelsPerTick}px in ${maxPushesPerTick} call(s), max allowed ${PUSH_PIXELS_MAX}px in ${PUSH_COUNT_MAX}`));
+  }
+  return summariseInvariants(outcomes);
+}
+
+// apps/tinydraw/invariants.ts
+function isWhite(rgb, idx) {
+  return rgb[idx] === 255 && rgb[idx + 1] === 255 && rgb[idx + 2] === 255;
+}
+function countInk(frame) {
+  const { width, height, rgb } = frame;
+  let n = 0;
+  for (let i = 0;i < width * height; i++) {
+    if (!isWhite(rgb, i * 3))
+      n++;
+  }
+  return n;
+}
+function colHeights(frame) {
+  const { width, height, rgb } = frame;
+  const heights = new Array(width).fill(0);
+  for (let x = 0;x < width; x++) {
+    let c = 0;
+    for (let y = 0;y < height; y++) {
+      if (!isWhite(rgb, (y * width + x) * 3))
+        c++;
+    }
+    heights[x] = c;
+  }
+  return heights;
+}
+function bandAvgHeight(heights, lo, hi) {
+  const vals = [];
+  for (let x = lo;x < hi; x++) {
+    if (heights[x] > 0)
+      vals.push(heights[x]);
+  }
+  if (vals.length === 0)
+    return 0;
+  return vals.reduce((s, v) => s + v, 0) / vals.length;
+}
+function diffPixelCount2(a, b) {
+  let diff = 0;
+  const n = Math.min(a.rgb.length, b.rgb.length);
+  for (let i = 0;i < n; i += 3) {
+    if (a.rgb[i] !== b.rgb[i] || a.rgb[i + 1] !== b.rgb[i + 1] || a.rgb[i + 2] !== b.rgb[i + 2])
+      diff++;
+  }
+  return diff;
+}
+var MIN_INK_PX = 500;
+var WIDTH_RATIO_MIN = 1.1;
+var ZOOM_RATIO_MIN = 2.2;
+var ZOOM_RATIO_MAX = 4.4;
+var MIN_SECOND_STROKE_DELTA_PX = 150;
+var MAX_UNDO_DIFF_PX = 0;
+function check2(frames, meta) {
+  if (frames.length !== 4) {
+    return summariseInvariants([
+      {
+        id: "capture-contract",
+        name: "the trace's own four capture points arrived",
+        status: "fail",
+        message: `expected exactly 4 captures (drawn, zoomed, twoStrokes, afterUndo) per this trace's own contract, got ${frames.length}`
+      }
+    ]);
+  }
+  const [drawn, zoomed, twoStrokes, afterUndo] = frames;
+  const outcomes = [];
+  const inkDrawn = countInk(drawn.frame);
+  const inkFails = [];
+  if (inkDrawn < MIN_INK_PX) {
+    inkFails.push(`ink drawn: only ${inkDrawn}px non-white at drawn (t=${drawn.atMs}), min required ${MIN_INK_PX}px`);
+  }
+  outcomes.push(held("ink", "the stroke is actually drawn", inkFails, `ink drawn: ${inkDrawn}px non-white at drawn (t=${drawn.atMs}), min required ${MIN_INK_PX}px`));
+  const heights = colHeights(drawn.frame);
+  const nonZeroXs = [];
+  for (let x = 0;x < heights.length; x++)
+    if (heights[x] > 0)
+      nonZeroXs.push(x);
+  const widthFails = [];
+  let widthPassMessage = "";
+  if (nonZeroXs.length < 10) {
+    widthFails.push(`variable width: too little ink at drawn (t=${drawn.atMs}) to measure a width profile (${nonZeroXs.length} ink columns)`);
+  } else {
+    const lo = nonZeroXs[0], hi = nonZeroXs[nonZeroXs.length - 1];
+    const span = hi - lo;
+    const startAvg = bandAvgHeight(heights, lo, lo + Math.floor(span * 0.15));
+    const midAvg = bandAvgHeight(heights, lo + Math.floor(span * 0.4), lo + Math.floor(span * 0.6));
+    const endAvg = bandAvgHeight(heights, hi - Math.floor(span * 0.15), hi);
+    const ratioStart = startAvg > 0 ? midAvg / startAvg : 0;
+    const ratioEnd = endAvg > 0 ? midAvg / endAvg : 0;
+    if (ratioStart < WIDTH_RATIO_MIN || ratioEnd < WIDTH_RATIO_MIN) {
+      widthFails.push(`variable width: mid-band avg height ${midAvg.toFixed(2)}px is not >= ${WIDTH_RATIO_MIN}x both end bands (start ${startAvg.toFixed(2)}px, end ${endAvg.toFixed(2)}px) at drawn (t=${drawn.atMs}) - line reads roughly constant width`);
+    }
+    widthPassMessage = `variable width: mid-band avg height ${midAvg.toFixed(2)}px against start ${startAvg.toFixed(2)}px (${ratioStart.toFixed(2)}x) and ` + `end ${endAvg.toFixed(2)}px (${ratioEnd.toFixed(2)}x), min required ${WIDTH_RATIO_MIN}x`;
+  }
+  outcomes.push(held("width", "the stroke is thicker in its middle than at either end", widthFails, widthPassMessage));
+  const inkZoomed = countInk(zoomed.frame);
+  const zoomRatio = inkDrawn > 0 ? inkZoomed / inkDrawn : 0;
+  const zoomFails = [];
+  if (zoomRatio < ZOOM_RATIO_MIN || zoomRatio > ZOOM_RATIO_MAX) {
+    zoomFails.push(`zoom scaling: ink went from ${inkDrawn}px (drawn, t=${drawn.atMs}) to ${inkZoomed}px (zoomed, t=${zoomed.atMs}), a ${zoomRatio.toFixed(2)}x change, expected between ${ZOOM_RATIO_MIN}x and ${ZOOM_RATIO_MAX}x`);
+  }
+  outcomes.push(held("zoom", "zoom reprojects the ink already there, at about 2x", zoomFails, `zoom scaling: ${inkDrawn}px (drawn) to ${inkZoomed}px (zoomed), a ${zoomRatio.toFixed(2)}x change, expected between ${ZOOM_RATIO_MIN}x and ${ZOOM_RATIO_MAX}x`));
+  const inkTwoStrokes = countInk(twoStrokes.frame);
+  const secondStrokeDelta = inkTwoStrokes - inkZoomed;
+  const secondFails = [];
+  if (secondStrokeDelta < MIN_SECOND_STROKE_DELTA_PX) {
+    secondFails.push(`second stroke: only +${secondStrokeDelta}px between zoomed (t=${zoomed.atMs}, ${inkZoomed}px) and twoStrokes (t=${twoStrokes.atMs}, ${inkTwoStrokes}px), min required +${MIN_SECOND_STROKE_DELTA_PX}px`);
+  }
+  outcomes.push(held("second-stroke", "a second stroke adds real ink of its own", secondFails, `second stroke: +${secondStrokeDelta}px between zoomed (${inkZoomed}px) and twoStrokes (${inkTwoStrokes}px), min required +${MIN_SECOND_STROKE_DELTA_PX}px`));
+  const undoDiff = diffPixelCount2(zoomed.frame, afterUndo.frame);
+  const undoFails = [];
+  if (undoDiff > MAX_UNDO_DIFF_PX) {
+    undoFails.push(`undo exactness: afterUndo (t=${afterUndo.atMs}) differs from zoomed (t=${zoomed.atMs}) by ${undoDiff}px, expected ${MAX_UNDO_DIFF_PX} (undo must reproduce the pre-second-stroke panel exactly)`);
+  }
+  outcomes.push(held("undo", "undo removes exactly the most recent stroke and nothing else", undoFails, `undo exactness: afterUndo (t=${afterUndo.atMs}) differs from zoomed (t=${zoomed.atMs}) by ${undoDiff}px, expected ${MAX_UNDO_DIFF_PX}`));
+  return summariseInvariants(outcomes);
+}
+
+// apps/gameos/invariants.ts
+function diffPixelCount3(a, b) {
+  let diff = 0;
+  const n = Math.min(a.rgb.length, b.rgb.length);
+  for (let i = 0;i < n; i += 3) {
+    if (a.rgb[i] !== b.rgb[i] || a.rgb[i + 1] !== b.rgb[i + 1] || a.rgb[i + 2] !== b.rgb[i + 2])
+      diff++;
+  }
+  return diff;
+}
+function countDark(frame, thresh) {
+  const { width, height, rgb } = frame;
+  let n = 0;
+  for (let i = 0;i < width * height; i++) {
+    const r = rgb[i * 3], g = rgb[i * 3 + 1], b = rgb[i * 3 + 2];
+    if ((r + g + b) / 3 < thresh)
+      n++;
+  }
+  return n;
+}
+function countCyan(frame) {
+  const { width, height, rgb } = frame;
+  let n = 0;
+  for (let i = 0;i < width * height; i++) {
+    const r = rgb[i * 3], g = rgb[i * 3 + 1], b = rgb[i * 3 + 2];
+    if (r < 120 && g > 150 && b > 150)
+      n++;
+  }
+  return n;
+}
+function countGold(frame) {
+  const { width, height, rgb } = frame;
+  let n = 0;
+  for (let i = 0;i < width * height; i++) {
+    const r = rgb[i * 3], g = rgb[i * 3 + 1], b = rgb[i * 3 + 2];
+    if (r > 180 && g > 130 && b < 120)
+      n++;
+  }
+  return n;
+}
+var MIN_GRID_DARK_PX = 500;
+var MIN_GRID_CYAN_PX = 300;
+var MIN_LAUNCH_DIFF_PX = 50000;
+var MIN_TICK_DIFF_PX = 5000;
+var MAX_GUNSHIP_GOLD_PX = 0;
+var MAX_RETURN_DIFF_PX = 0;
+var MIN_GOLF_SWING_DIFF_PX = 30000;
+var MAX_GOLF_RETURN_DIFF_PX = 0;
+var MIN_OPEN_DIFF_PX = 50000;
+function check3(frames, meta) {
+  if (frames.length !== 12 && frames.length !== 21) {
+    return summariseInvariants([
+      {
+        id: "capture-contract",
+        name: "one of this checker's two known capture-point shapes arrived",
+        status: "fail",
+        message: `expected exactly 12 (rp2350 port, its own bespoke picker) or 21 (esp32 port, the real donor shell) captures per this trace's own contract, got ${frames.length}`
+      }
+    ]);
+  }
+  const outcomes = [];
+  if (frames.length === 12) {
+    const [launcher16, launcher48, launcher80, briefing2, missionStart2, firing2, wave2, backToLauncher, idle2, midSpin2, landed2, win2] = frames;
+    const contentFails = [];
+    const brights = [];
+    for (const [label, f] of [["launcher16", launcher16], ["launcher48", launcher48], ["launcher80", launcher80]]) {
+      const bright = (() => {
+        const { width, height, rgb } = f.frame;
+        let n = 0;
+        for (let i = 0;i < width * height; i++) {
+          const r = rgb[i * 3], g = rgb[i * 3 + 1], b = rgb[i * 3 + 2];
+          if ((r + g + b) / 3 > 200)
+            n++;
+        }
+        return n;
+      })();
+      brights.push(`${label} ${bright}px`);
+      if (bright < 1500)
+        contentFails.push(`launcher content: only ${bright}px bright(>200) at ${label} (t=${f.atMs}), min required 1500px`);
+    }
+    outcomes.push(held("launcher", "the launcher draws its cards, not a blank field", contentFails, `launcher content: bright(>200) ${brights.join(", ")}, min required 1500px`));
+    const launchDiff2 = diffPixelCount3(launcher80.frame, briefing2.frame);
+    const launchFails2 = [];
+    if (launchDiff2 < 50000)
+      launchFails2.push(`launch transition: only ${launchDiff2}px differ between launcher80 and briefing, min required 50000px`);
+    outcomes.push(held("launch", "tapping a card launches its game", launchFails2, `launch transition: ${launchDiff2}px differ between launcher80 and briefing, min required 50000px`));
+    const ticks2 = [
+      ["briefing->missionStart", briefing2, missionStart2],
+      ["missionStart->firing", missionStart2, firing2],
+      ["firing->wave", firing2, wave2],
+      ["idle->midSpin", idle2, midSpin2],
+      ["midSpin->landed", midSpin2, landed2],
+      ["landed->win", landed2, win2]
+    ];
+    const simFails2 = [];
+    const simSeen2 = [];
+    for (const [label, a, b] of ticks2) {
+      const d = diffPixelCount3(a.frame, b.frame);
+      simSeen2.push(`${label} ${d}px`);
+      if (d < 5000)
+        simFails2.push(`simulation alive: only ${d}px differ across ${label}, min required 5000px`);
+    }
+    outcomes.push(held("sim", "each game's own simulation keeps advancing", simFails2, `simulation alive: ${simSeen2.join(", ")}, min required 5000px each`));
+    const goldFails2 = [];
+    const goldSeen2 = [];
+    for (const [label, f] of [["briefing", briefing2], ["missionStart", missionStart2], ["firing", firing2], ["wave", wave2]]) {
+      const gold = countGold(f.frame);
+      goldSeen2.push(`${label} ${gold}px`);
+      if (gold > 0)
+        goldFails2.push(`gunship palette: ${gold}px read as gold/amber at ${label}, max allowed 0px`);
+    }
+    outcomes.push(held("palette", "GUNSHIP's thermal palette holds during play", goldFails2, `gunship palette: gold/amber ${goldSeen2.join(", ")}, max allowed 0px`));
+    const returnDiff = diffPixelCount3(launcher80.frame, backToLauncher.frame);
+    const returnFails2 = [];
+    if (returnDiff > 0)
+      returnFails2.push(`launcher exactness: backToLauncher differs from launcher80 by ${returnDiff}px, expected 0`);
+    outcomes.push(held("launcher-exact", "leaving a game reproduces the launcher exactly", returnFails2, `launcher exactness: backToLauncher differs from launcher80 by ${returnDiff}px, expected 0`));
+    return summariseInvariants(outcomes);
+  }
+  const [
+    grid16,
+    grid48,
+    grid80,
+    briefing,
+    missionStart,
+    firing,
+    wave,
+    pauseOverlay,
+    backToGrid,
+    idle,
+    midSpin,
+    landed,
+    win,
+    backToGridFromLucky7,
+    golfReady,
+    golfSwingImpact,
+    backToGridFromGolf,
+    aimTestOpen,
+    backToGridFromAimTest,
+    diagOpen,
+    backToGridFromDiag
+  ] = frames;
+  const gridFails = [];
+  const gridSeen = [];
+  for (const [label, f] of [["grid16", grid16], ["grid48", grid48], ["grid80", grid80]]) {
+    const dark = countDark(f.frame, 100);
+    const cyan = countCyan(f.frame);
+    gridSeen.push(`${label} ${dark}px dark / ${cyan}px cyan`);
+    if (dark < MIN_GRID_DARK_PX) {
+      gridFails.push(`grid content: only ${dark}px dark(<100) at ${label} (t=${f.atMs}), min required ${MIN_GRID_DARK_PX}px - grid reads as a blank field`);
+    }
+    if (cyan < MIN_GRID_CYAN_PX) {
+      gridFails.push(`grid content: only ${cyan}px cyan (tile icons) at ${label} (t=${f.atMs}), min required ${MIN_GRID_CYAN_PX}px - tile icons missing`);
+    }
+  }
+  outcomes.push(held("grid", "the grid draws its five tiles, borders and title, not a flat field", gridFails, `grid content: ${gridSeen.join(", ")}, min required ${MIN_GRID_DARK_PX}px dark and ${MIN_GRID_CYAN_PX}px cyan`));
+  const launchDiff = diffPixelCount3(grid80.frame, briefing.frame);
+  const launchFails = [];
+  if (launchDiff < MIN_LAUNCH_DIFF_PX) {
+    launchFails.push(`launch transition: only ${launchDiff}px differ between grid80 (t=${grid80.atMs}) and briefing (t=${briefing.atMs}), min required ${MIN_LAUNCH_DIFF_PX}px - tapping the GUNSHIP tile does not appear to launch it`);
+  }
+  outcomes.push(held("launch", "tapping a tile launches its game", launchFails, `launch transition: ${launchDiff}px differ between grid80 (t=${grid80.atMs}) and briefing (t=${briefing.atMs}), min required ${MIN_LAUNCH_DIFF_PX}px`));
+  const ticks = [
+    ["briefing->missionStart", briefing, missionStart],
+    ["missionStart->firing", missionStart, firing],
+    ["firing->wave", firing, wave],
+    ["idle->midSpin", idle, midSpin],
+    ["midSpin->landed", midSpin, landed],
+    ["landed->win", landed, win]
+  ];
+  const simFails = [];
+  const simSeen = [];
+  for (const [label, a, b] of ticks) {
+    const d = diffPixelCount3(a.frame, b.frame);
+    simSeen.push(`${label} ${d}px`);
+    if (d < MIN_TICK_DIFF_PX) {
+      simFails.push(`simulation alive: only ${d}px differ across ${label} (t=${a.atMs}->t=${b.atMs}), min required ${MIN_TICK_DIFF_PX}px - looks frozen`);
+    }
+  }
+  outcomes.push(held("sim", "each game's own simulation keeps advancing", simFails, `simulation alive: ${simSeen.join(", ")}, min required ${MIN_TICK_DIFF_PX}px each`));
+  const goldFails = [];
+  const goldSeen = [];
+  for (const [label, f] of [["briefing", briefing], ["missionStart", missionStart], ["firing", firing], ["wave", wave]]) {
+    const gold = countGold(f.frame);
+    goldSeen.push(`${label} ${gold}px`);
+    if (gold > MAX_GUNSHIP_GOLD_PX) {
+      goldFails.push(`gunship palette: ${gold}px read as gold/amber at ${label} (t=${f.atMs}), max allowed ${MAX_GUNSHIP_GOLD_PX}px - the thermal ramp is not holding during play`);
+    }
+  }
+  outcomes.push(held("palette", "GUNSHIP's thermal palette holds during play", goldFails, `gunship palette: gold/amber ${goldSeen.join(", ")}, max allowed ${MAX_GUNSHIP_GOLD_PX}px`));
+  const returnFails = [];
+  const returnSeen = [];
+  for (const [label, f] of [["backToGrid", backToGrid], ["backToGridFromLucky7", backToGridFromLucky7]]) {
+    const d = diffPixelCount3(grid80.frame, f.frame);
+    returnSeen.push(`${label} ${d}px`);
+    if (d > MAX_RETURN_DIFF_PX) {
+      returnFails.push(`grid exactness: ${label} (t=${f.atMs}) differs from grid80 (t=${grid80.atMs}) by ${d}px, expected ${MAX_RETURN_DIFF_PX} (returning to the grid must reproduce it exactly)`);
+    }
+  }
+  outcomes.push(held("grid-exact", "leaving a game reproduces the grid exactly", returnFails, `grid exactness: ${returnSeen.join(", ")} against grid80, expected ${MAX_RETURN_DIFF_PX}`));
+  const swingDiff = diffPixelCount3(golfReady.frame, golfSwingImpact.frame);
+  const swingFails = [];
+  if (swingDiff < MIN_GOLF_SWING_DIFF_PX) {
+    swingFails.push(`golf swing: only ${swingDiff}px differ between golfReady (t=${golfReady.atMs}) and golfSwingImpact (t=${golfSwingImpact.atMs}), min required ${MIN_GOLF_SWING_DIFF_PX}px - the swing does not appear to have armed and fired a shot`);
+  }
+  outcomes.push(held("golf-swing", "a swing arms and fires a shot", swingFails, `golf swing: ${swingDiff}px differ between golfReady (t=${golfReady.atMs}) and golfSwingImpact (t=${golfSwingImpact.atMs}), min required ${MIN_GOLF_SWING_DIFF_PX}px`));
+  const golfReturnDiff = diffPixelCount3(grid80.frame, backToGridFromGolf.frame);
+  const golfReturnFails = [];
+  if (golfReturnDiff > MAX_GOLF_RETURN_DIFF_PX) {
+    golfReturnFails.push(`golf grid exactness: backToGridFromGolf (t=${backToGridFromGolf.atMs}) differs from grid80 (t=${grid80.atMs}) by ${golfReturnDiff}px, expected ${MAX_GOLF_RETURN_DIFF_PX} (returning to the grid from GOLF must reproduce it exactly - GOLF's own direct565 mode must be fully undone)`);
+  }
+  outcomes.push(held("golf-grid-exact", "leaving GOLF undoes its direct565 mode and reproduces the grid exactly", golfReturnFails, `golf grid exactness: backToGridFromGolf differs from grid80 by ${golfReturnDiff}px, expected ${MAX_GOLF_RETURN_DIFF_PX}`));
+  const harnessFails = [];
+  const harnessSeen = [];
+  for (const [label, openFrame, backLabel, backFrame] of [
+    ["aimTestOpen", aimTestOpen, "backToGridFromAimTest", backToGridFromAimTest],
+    ["diagOpen", diagOpen, "backToGridFromDiag", backToGridFromDiag]
+  ]) {
+    const openDiff = diffPixelCount3(grid80.frame, openFrame.frame);
+    const backDiff = diffPixelCount3(grid80.frame, backFrame.frame);
+    harnessSeen.push(`${label} ${openDiff}px, ${backLabel} ${backDiff}px`);
+    if (openDiff < MIN_OPEN_DIFF_PX) {
+      harnessFails.push(`${label}: only ${openDiff}px differ from grid80 (t=${grid80.atMs}) at t=${openFrame.atMs}, min required ${MIN_OPEN_DIFF_PX}px - tapping the tile does not appear to open it`);
+    }
+    if (backDiff > MAX_RETURN_DIFF_PX) {
+      harnessFails.push(`${backLabel}: differs from grid80 (t=${grid80.atMs}) by ${backDiff}px at t=${backFrame.atMs}, expected ${MAX_RETURN_DIFF_PX} (returning to the grid must reproduce it exactly)`);
+    }
+  }
+  outcomes.push(held("harness-apps", "AIM TEST and DIAG each open from the grid and return to it exactly", harnessFails, `${harnessSeen.join("; ")} (open min ${MIN_OPEN_DIFF_PX}px, return expected ${MAX_RETURN_DIFF_PX}px)`));
+  return summariseInvariants(outcomes);
+}
+
+// site/attest/checkers.ts
+var INVARIANT_CHECKERS = {
+  "apps/fluidbox/invariants.ts": check,
+  "apps/tinydraw/invariants.ts": check2,
+  "apps/gameos/invariants.ts": check3
+};
+function checkerFor(path) {
+  return INVARIANT_CHECKERS[path] ?? null;
 }
 
 // harness/png.ts
@@ -843,6 +1384,9 @@ function persistentLink(link) {
   return facade;
 }
 async function runAttestation(opts) {
+  return opts.plan.kind === "invariants" ? runInvariantsAttestation({ ...opts, plan: opts.plan }) : runPixelExactAttestation({ ...opts, plan: opts.plan });
+}
+async function runPixelExactAttestation(opts) {
   const { plan, link } = opts;
   const report = opts.report ?? (() => {});
   const loadFrame = opts.loadFrame ?? fetchFramePNG;
@@ -893,7 +1437,65 @@ async function runAttestation(opts) {
     percent: 100,
     message: verdict === "match" ? `${points.length}/${points.length} frames matched, pixel for pixel.` : `${points.filter((p) => !p.match).length}/${points.length} frames diverged.`
   });
-  return { verdict, points };
+  return { kind: "pixel-exact", verdict, points, invariants: [], incomplete: false };
+}
+async function runInvariantsAttestation(opts) {
+  const { plan, link } = opts;
+  const report = opts.report ?? (() => {});
+  const check4 = checkerFor(plan.checker);
+  if (!check4) {
+    throw new Error(`this page carries no bundled checker for ${plan.checker}, so ${plan.app}'s own invariants cannot be run here. ` + `site/attest/checkers.ts is the list, and site/build.ts refuses to emit a plan that is not in it.`);
+  }
+  const totalPoints = plan.traces.reduce((n, t) => n + t.captureAt.length, 0);
+  if (totalPoints === 0) {
+    throw new Error(`${plan.combo}'s bundle states no capture points, so there is nothing for its invariants to read`);
+  }
+  const frames = [];
+  let donePoints = 0;
+  report({ phase: "connecting", percent: 0, message: "Opening the board's devlink port…" });
+  await link.connect();
+  try {
+    for (const trace of plan.traces) {
+      report({
+        phase: "replaying",
+        percent: Math.round(donePoints / totalPoints * 100),
+        message: `Replaying ${trace.name} on the board (${trace.events.length} events)…`
+      });
+      const replay = await replayHardware(persistentLink(link), trace.events, trace.captureAt);
+      for (const atMs of trace.captureAt) {
+        const captured = replay.frames.find((f) => f.atMs === atMs);
+        if (!captured) {
+          throw new Error(`the board never produced a capture at ${atMs}ms of ${trace.name}, so this port's invariants cannot be checked on it`);
+        }
+        frames.push({ atMs: captured.atMs, frame: captured.frame });
+        donePoints++;
+      }
+    }
+  } finally {
+    await link.disconnect();
+  }
+  const panel = plan.device.panel;
+  const wrong = frames.find((f) => f.frame.width !== panel.w || f.frame.height !== panel.h);
+  if (wrong) {
+    throw new Error(`the board captured ${wrong.frame.width}x${wrong.frame.height} frames, but ${plan.pack} declares a ${panel.w}x${panel.h} panel. ` + `This port's invariants are pixel counts against that panel, so the run is void rather than divergent.`);
+  }
+  report({ phase: "checking", percent: 100, message: `Running ${plan.app}'s own invariants on ${frames.length} captured frame(s)…` });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const result = check4(frames, { device: plan.device });
+  const outcomes = result.invariants ?? [];
+  if (outcomes.length === 0) {
+    throw new Error(`${plan.checker} reported no per-invariant outcomes, so this page cannot say which invariant held and which did not. ` + `A checker must return them (harness/invariantTypes.ts's summariseInvariants).`);
+  }
+  const invariants = outcomes.map((o) => ({ id: o.id, name: o.name, status: o.status, message: o.message }));
+  const failed = invariants.filter((i) => i.status === "fail").length;
+  const unanswered = invariants.filter((i) => i.status === "unevaluable");
+  const verdict = failed === 0 ? "match" : "diverge";
+  report({
+    phase: "done",
+    percent: 100,
+    message: unanswered.length > 0 ? `${unanswered.length} invariant(s) could not be answered by this board.` : verdict === "match" ? `${invariants.filter((i) => i.status === "pass").length} invariant(s) held on this board.` : `${failed} invariant(s) failed on this board.`
+  });
+  return { kind: "invariants", verdict, points: [], invariants, incomplete: unanswered.length > 0 };
 }
 async function sha256Hex(bytes) {
   if (typeof crypto === "undefined" || !crypto.subtle) {
@@ -919,22 +1521,30 @@ function hide(node) {
   if (node)
     node.hidden = true;
 }
-function renderPoints(list, result) {
+function row(mark, markClass, label, detail) {
+  const li = document.createElement("li");
+  li.className = `attest-point ${markClass}`;
+  const markEl = document.createElement("span");
+  markEl.className = "attest-point-mark";
+  markEl.textContent = mark;
+  const labelEl = document.createElement("span");
+  labelEl.className = "attest-point-label";
+  labelEl.textContent = label;
+  const detailEl = document.createElement("span");
+  detailEl.className = "attest-point-detail";
+  detailEl.textContent = detail;
+  li.append(markEl, labelEl, detailEl);
+  return li;
+}
+function renderChecks(list, result) {
   list.textContent = "";
   for (const point of result.points) {
-    const li = document.createElement("li");
-    li.className = point.match ? "attest-point attest-point-match" : "attest-point attest-point-diverge";
-    const mark = document.createElement("span");
-    mark.className = "attest-point-mark";
-    mark.textContent = point.match ? "MATCH" : "DIVERGE";
-    const label = document.createElement("span");
-    label.className = "attest-point-label";
-    label.textContent = `${point.trace} at ${point.atMs}ms`;
-    const detail = document.createElement("span");
-    detail.className = "attest-point-detail";
-    detail.textContent = point.match ? `${point.totalPixels} pixels identical` : `${point.diffPixels}/${point.totalPixels} pixels differ`;
-    li.append(mark, label, detail);
-    list.appendChild(li);
+    list.appendChild(row(point.match ? "MATCH" : "DIVERGE", point.match ? "attest-point-match" : "attest-point-diverge", `${point.trace} at ${point.atMs}ms`, point.match ? `${point.totalPixels} pixels identical` : `${point.diffPixels}/${point.totalPixels} pixels differ`));
+  }
+  for (const inv of result.invariants) {
+    const mark = inv.status === "pass" ? "PASS" : inv.status === "fail" ? "FAIL" : inv.status === "skip" ? "N/A" : "UNANSWERED";
+    const cls = inv.status === "pass" ? "attest-point-match" : inv.status === "fail" ? "attest-point-diverge" : inv.status === "skip" ? "attest-point-skip" : "attest-point-unevaluable";
+    list.appendChild(row(mark, cls, inv.name, inv.message));
   }
   list.hidden = false;
 }
@@ -956,6 +1566,19 @@ async function fetchArtifactSha(planUrl, artifact) {
 }
 function resolveFramesBase(planUrl, framesBase) {
   return new URL(framesBase, new URL(planUrl, window.location.href)).href;
+}
+function verdictSentence(result) {
+  if (result.kind === "pixel-exact") {
+    const matched = result.points.filter((p) => p.match).length;
+    return result.verdict === "match" ? `✓ Runs on this board: ${matched}/${result.points.length} frames matched the recorded ones, pixel for pixel.` : `This board drew something else: ${result.points.length - matched}/${result.points.length} frames diverged. That is a result worth posting too.`;
+  }
+  const held2 = result.invariants.filter((i) => i.status === "pass").length;
+  const failed = result.invariants.filter((i) => i.status === "fail");
+  if (result.incomplete) {
+    const unanswered = result.invariants.filter((i) => i.status === "unevaluable");
+    return `This run is incomplete: ${unanswered.map((i) => i.name).join(", ")} cannot be answered by a board, only by the emulator. ` + `Nothing is posted, because a verdict that counted an unanswered check as a passed one would be a claim this run cannot support.`;
+  }
+  return result.verdict === "match" ? `✓ Runs on this board: all ${held2} of this port's own invariants held on the frames it drew.` : `This board behaves differently: ${failed.length} of this port's own invariants failed (${failed.map((i) => i.name).join(", ")}). That is a result worth posting too.`;
 }
 function wireAttestSection(section) {
   const planUrl = section.dataset.attestPlan;
@@ -982,38 +1605,40 @@ function wireAttestSection(section) {
     pending = null;
     runBtn.disabled = true;
     show(progressEl);
-    statusEl.textContent = "Loading this port's recorded frames…";
+    statusEl.textContent = "Loading this port's own trace…";
     try {
       if (!navigator.serial) {
         throw new Error("Web Serial isn't available in this browser, so a board can't be driven from this page. Use Chrome or Edge on desktop.");
       }
-      const plan = await loadPlan(planUrl);
-      const framesBase = resolveFramesBase(planUrl, plan.framesBase);
+      const loaded = await loadPlan(planUrl);
+      const plan = loaded.kind === "pixel-exact" ? { ...loaded, framesBase: resolveFramesBase(planUrl, loaded.framesBase) } : loaded;
       const link = new WebSerialLink({
         dataTerminalReady: plan.dataTerminalReady,
         appIndex: plan.appIndex
       });
       const result = await runAttestation({
-        plan: { ...plan, framesBase },
+        plan,
         link,
         report: (p) => {
           statusEl.textContent = p.message;
         }
       });
-      renderPoints(pointsEl, result);
-      const matched = result.points.filter((p) => p.match).length;
-      verdictEl.className = result.verdict === "match" ? "attest-verdict attest-verdict-match" : "attest-verdict attest-verdict-diverge";
-      show(verdictEl, result.verdict === "match" ? `✓ Runs on this board: ${matched}/${result.points.length} frames matched the recorded ones, pixel for pixel.` : `This board drew something else: ${result.points.length - matched}/${result.points.length} frames diverged. That is a result worth posting too.`);
+      renderChecks(pointsEl, result);
+      verdictEl.className = result.incomplete ? "attest-verdict attest-verdict-incomplete" : result.verdict === "match" ? "attest-verdict attest-verdict-match" : "attest-verdict attest-verdict-diverge";
+      show(verdictEl, verdictSentence(result));
       hide(progressEl);
+      if (result.incomplete)
+        return;
       const portSha = await fetchArtifactSha(planUrl, plan.artifact);
       pending = {
         app: plan.app,
         pack: plan.pack,
         portSha,
+        kind: result.kind,
         verdict: result.verdict,
-        points: result.points,
         boardFamily: plan.boardFamily,
-        date: todayISO()
+        date: todayISO(),
+        ...result.kind === "pixel-exact" ? { points: result.points } : { invariants: result.invariants }
       };
       show(postWrap);
     } catch (err) {

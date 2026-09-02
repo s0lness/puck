@@ -62,7 +62,14 @@
 // now ship, so "faithful means they appear and open" needs a real check,
 // not just a claim in a README.
 
-import type { TimedFrame, InvariantMeta, InvariantResult } from "../../harness/invariantRun";
+// The types and the two small helpers come from harness/invariantTypes.ts,
+// not from harness/invariantRun.ts: this file is now ALSO bundled into a
+// browser page (site/attest/checkers.ts), where the same check runs over
+// the frames a real board drew, and invariantRun.ts opens files. Nothing
+// here touches a file, a socket or the DOM - it is a pure function of
+// {frames, meta} and always was.
+import { held, summariseInvariants } from "../../harness/invariantTypes";
+import type { InvariantMeta, InvariantOutcome, InvariantResult, TimedFrame } from "../../harness/invariantTypes";
 
 function diffPixelCount(a: TimedFrame["frame"], b: TimedFrame["frame"]): number {
   let diff = 0;
@@ -194,14 +201,19 @@ const MAX_GOLF_RETURN_DIFF_PX = 0;
 const MIN_OPEN_DIFF_PX = 50000;
 
 export function check(frames: TimedFrame[], meta: InvariantMeta): InvariantResult {
-  const failures: string[] = [];
-
+  void meta; // every check here reads pixels; nothing here needs the device
   if (frames.length !== 12 && frames.length !== 21) {
-    return {
-      pass: false,
-      failures: [`expected exactly 12 (rp2350 port, its own bespoke picker) or 21 (esp32 port, the real donor shell) captures per this trace's own contract, got ${frames.length}`],
-    };
+    return summariseInvariants([
+      {
+        id: "capture-contract",
+        name: "one of this checker's two known capture-point shapes arrived",
+        status: "fail",
+        message: `expected exactly 12 (rp2350 port, its own bespoke picker) or 21 (esp32 port, the real donor shell) captures per this trace's own contract, got ${frames.length}`,
+      },
+    ]);
   }
+
+  const outcomes: InvariantOutcome[] = [];
 
   if (frames.length === 12) {
     // The rp2350 port's own bespoke launcher.c never claimed to be the
@@ -211,6 +223,8 @@ export function check(frames: TimedFrame[], meta: InvariantMeta): InvariantResul
     // "the bundle owns its checks" contract assumes one checker per app,
     // not one per port).
     const [launcher16, launcher48, launcher80, briefing, missionStart, firing, wave, backToLauncher, idle, midSpin, landed, win] = frames;
+    const contentFails: string[] = [];
+    const brights: string[] = [];
     for (const [label, f] of [["launcher16", launcher16], ["launcher48", launcher48], ["launcher80", launcher80]] as const) {
       const bright = (() => {
         const { width, height, rgb } = f!.frame;
@@ -221,25 +235,44 @@ export function check(frames: TimedFrame[], meta: InvariantMeta): InvariantResul
         }
         return n;
       })();
-      if (bright < 1500) failures.push(`launcher content: only ${bright}px bright(>200) at ${label} (t=${f!.atMs}), min required 1500px`);
+      brights.push(`${label} ${bright}px`);
+      if (bright < 1500) contentFails.push(`launcher content: only ${bright}px bright(>200) at ${label} (t=${f!.atMs}), min required 1500px`);
     }
+    outcomes.push(held("launcher", "the launcher draws its cards, not a blank field", contentFails, `launcher content: bright(>200) ${brights.join(", ")}, min required 1500px`));
+
     const launchDiff = diffPixelCount(launcher80!.frame, briefing!.frame);
-    if (launchDiff < 50000) failures.push(`launch transition: only ${launchDiff}px differ between launcher80 and briefing, min required 50000px`);
+    const launchFails: string[] = [];
+    if (launchDiff < 50000) launchFails.push(`launch transition: only ${launchDiff}px differ between launcher80 and briefing, min required 50000px`);
+    outcomes.push(held("launch", "tapping a card launches its game", launchFails, `launch transition: ${launchDiff}px differ between launcher80 and briefing, min required 50000px`));
+
     const ticks: [string, TimedFrame, TimedFrame][] = [
       ["briefing->missionStart", briefing!, missionStart!], ["missionStart->firing", missionStart!, firing!], ["firing->wave", firing!, wave!],
       ["idle->midSpin", idle!, midSpin!], ["midSpin->landed", midSpin!, landed!], ["landed->win", landed!, win!],
     ];
+    const simFails: string[] = [];
+    const simSeen: string[] = [];
     for (const [label, a, b] of ticks) {
       const d = diffPixelCount(a.frame, b.frame);
-      if (d < 5000) failures.push(`simulation alive: only ${d}px differ across ${label}, min required 5000px`);
+      simSeen.push(`${label} ${d}px`);
+      if (d < 5000) simFails.push(`simulation alive: only ${d}px differ across ${label}, min required 5000px`);
     }
+    outcomes.push(held("sim", "each game's own simulation keeps advancing", simFails, `simulation alive: ${simSeen.join(", ")}, min required 5000px each`));
+
+    const goldFails: string[] = [];
+    const goldSeen: string[] = [];
     for (const [label, f] of [["briefing", briefing], ["missionStart", missionStart], ["firing", firing], ["wave", wave]] as const) {
       const gold = countGold(f!.frame);
-      if (gold > 0) failures.push(`gunship palette: ${gold}px read as gold/amber at ${label}, max allowed 0px`);
+      goldSeen.push(`${label} ${gold}px`);
+      if (gold > 0) goldFails.push(`gunship palette: ${gold}px read as gold/amber at ${label}, max allowed 0px`);
     }
+    outcomes.push(held("palette", "GUNSHIP's thermal palette holds during play", goldFails, `gunship palette: gold/amber ${goldSeen.join(", ")}, max allowed 0px`));
+
     const returnDiff = diffPixelCount(launcher80!.frame, backToLauncher!.frame);
-    if (returnDiff > 0) failures.push(`launcher exactness: backToLauncher differs from launcher80 by ${returnDiff}px, expected 0`);
-    return { pass: failures.length === 0, failures };
+    const returnFails: string[] = [];
+    if (returnDiff > 0) returnFails.push(`launcher exactness: backToLauncher differs from launcher80 by ${returnDiff}px, expected 0`);
+    outcomes.push(held("launcher-exact", "leaving a game reproduces the launcher exactly", returnFails, `launcher exactness: backToLauncher differs from launcher80 by ${returnDiff}px, expected 0`));
+
+    return summariseInvariants(outcomes);
   }
 
   const [
@@ -252,22 +285,42 @@ export function check(frames: TimedFrame[], meta: InvariantMeta): InvariantResul
   ] = frames;
 
   // (1) grid draws real content, at every one of the three boot captures
+  const gridFails: string[] = [];
+  const gridSeen: string[] = [];
   for (const [label, f] of [["grid16", grid16], ["grid48", grid48], ["grid80", grid80]] as const) {
     const dark = countDark(f!.frame, 100);
     const cyan = countCyan(f!.frame);
+    gridSeen.push(`${label} ${dark}px dark / ${cyan}px cyan`);
     if (dark < MIN_GRID_DARK_PX) {
-      failures.push(`grid content: only ${dark}px dark(<100) at ${label} (t=${f!.atMs}), min required ${MIN_GRID_DARK_PX}px - grid reads as a blank field`);
+      gridFails.push(`grid content: only ${dark}px dark(<100) at ${label} (t=${f!.atMs}), min required ${MIN_GRID_DARK_PX}px - grid reads as a blank field`);
     }
     if (cyan < MIN_GRID_CYAN_PX) {
-      failures.push(`grid content: only ${cyan}px cyan (tile icons) at ${label} (t=${f!.atMs}), min required ${MIN_GRID_CYAN_PX}px - tile icons missing`);
+      gridFails.push(`grid content: only ${cyan}px cyan (tile icons) at ${label} (t=${f!.atMs}), min required ${MIN_GRID_CYAN_PX}px - tile icons missing`);
     }
   }
+  outcomes.push(
+    held(
+      "grid",
+      "the grid draws its five tiles, borders and title, not a flat field",
+      gridFails,
+      `grid content: ${gridSeen.join(", ")}, min required ${MIN_GRID_DARK_PX}px dark and ${MIN_GRID_CYAN_PX}px cyan`
+    )
+  );
 
   // (2) tap launches: grid -> GUNSHIP is a real, substantial screen change
   const launchDiff = diffPixelCount(grid80!.frame, briefing!.frame);
+  const launchFails: string[] = [];
   if (launchDiff < MIN_LAUNCH_DIFF_PX) {
-    failures.push(`launch transition: only ${launchDiff}px differ between grid80 (t=${grid80!.atMs}) and briefing (t=${briefing!.atMs}), min required ${MIN_LAUNCH_DIFF_PX}px - tapping the GUNSHIP tile does not appear to launch it`);
+    launchFails.push(`launch transition: only ${launchDiff}px differ between grid80 (t=${grid80!.atMs}) and briefing (t=${briefing!.atMs}), min required ${MIN_LAUNCH_DIFF_PX}px - tapping the GUNSHIP tile does not appear to launch it`);
   }
+  outcomes.push(
+    held(
+      "launch",
+      "tapping a tile launches its game",
+      launchFails,
+      `launch transition: ${launchDiff}px differ between grid80 (t=${grid80!.atMs}) and briefing (t=${briefing!.atMs}), min required ${MIN_LAUNCH_DIFF_PX}px`
+    )
+  );
 
   // (3) simulation keeps advancing: six consecutive in-game transitions
   const ticks: [string, TimedFrame, TimedFrame][] = [
@@ -278,58 +331,99 @@ export function check(frames: TimedFrame[], meta: InvariantMeta): InvariantResul
     ["midSpin->landed", midSpin!, landed!],
     ["landed->win", landed!, win!],
   ];
+  const simFails: string[] = [];
+  const simSeen: string[] = [];
   for (const [label, a, b] of ticks) {
     const d = diffPixelCount(a.frame, b.frame);
+    simSeen.push(`${label} ${d}px`);
     if (d < MIN_TICK_DIFF_PX) {
-      failures.push(`simulation alive: only ${d}px differ across ${label} (t=${a.atMs}->t=${b.atMs}), min required ${MIN_TICK_DIFF_PX}px - looks frozen`);
+      simFails.push(`simulation alive: only ${d}px differ across ${label} (t=${a.atMs}->t=${b.atMs}), min required ${MIN_TICK_DIFF_PX}px - looks frozen`);
     }
   }
+  outcomes.push(held("sim", "each game's own simulation keeps advancing", simFails, `simulation alive: ${simSeen.join(", ")}, min required ${MIN_TICK_DIFF_PX}px each`));
 
   // (4) GUNSHIP's thermal palette holds during play: no gold/amber leakage
+  const goldFails: string[] = [];
+  const goldSeen: string[] = [];
   for (const [label, f] of [["briefing", briefing], ["missionStart", missionStart], ["firing", firing], ["wave", wave]] as const) {
     const gold = countGold(f!.frame);
+    goldSeen.push(`${label} ${gold}px`);
     if (gold > MAX_GUNSHIP_GOLD_PX) {
-      failures.push(`gunship palette: ${gold}px read as gold/amber at ${label} (t=${f!.atMs}), max allowed ${MAX_GUNSHIP_GOLD_PX}px - the thermal ramp is not holding during play`);
+      goldFails.push(`gunship palette: ${gold}px read as gold/amber at ${label} (t=${f!.atMs}), max allowed ${MAX_GUNSHIP_GOLD_PX}px - the thermal ramp is not holding during play`);
     }
   }
+  outcomes.push(held("palette", "GUNSHIP's thermal palette holds during play", goldFails, `gunship palette: gold/amber ${goldSeen.join(", ")}, max allowed ${MAX_GUNSHIP_GOLD_PX}px`));
 
   // (5) exiting GUNSHIP or LUCKY 7 (swipe to pause, QUIT in the real
   // shell's own overlay) reproduces the exact prior grid screen
+  const returnFails: string[] = [];
+  const returnSeen: string[] = [];
   for (const [label, f] of [["backToGrid", backToGrid], ["backToGridFromLucky7", backToGridFromLucky7]] as const) {
     const d = diffPixelCount(grid80!.frame, f!.frame);
+    returnSeen.push(`${label} ${d}px`);
     if (d > MAX_RETURN_DIFF_PX) {
-      failures.push(`grid exactness: ${label} (t=${f!.atMs}) differs from grid80 (t=${grid80!.atMs}) by ${d}px, expected ${MAX_RETURN_DIFF_PX} (returning to the grid must reproduce it exactly)`);
+      returnFails.push(`grid exactness: ${label} (t=${f!.atMs}) differs from grid80 (t=${grid80!.atMs}) by ${d}px, expected ${MAX_RETURN_DIFF_PX} (returning to the grid must reproduce it exactly)`);
     }
   }
+  outcomes.push(held("grid-exact", "leaving a game reproduces the grid exactly", returnFails, `grid exactness: ${returnSeen.join(", ")} against grid80, expected ${MAX_RETURN_DIFF_PX}`));
 
   // (6) a swing (synthetic raw-accel samples) causes a real ball-state change
   const swingDiff = diffPixelCount(golfReady!.frame, golfSwingImpact!.frame);
+  const swingFails: string[] = [];
   if (swingDiff < MIN_GOLF_SWING_DIFF_PX) {
-    failures.push(`golf swing: only ${swingDiff}px differ between golfReady (t=${golfReady!.atMs}) and golfSwingImpact (t=${golfSwingImpact!.atMs}), min required ${MIN_GOLF_SWING_DIFF_PX}px - the swing does not appear to have armed and fired a shot`);
+    swingFails.push(`golf swing: only ${swingDiff}px differ between golfReady (t=${golfReady!.atMs}) and golfSwingImpact (t=${golfSwingImpact!.atMs}), min required ${MIN_GOLF_SWING_DIFF_PX}px - the swing does not appear to have armed and fired a shot`);
   }
+  outcomes.push(
+    held(
+      "golf-swing",
+      "a swing arms and fires a shot",
+      swingFails,
+      `golf swing: ${swingDiff}px differ between golfReady (t=${golfReady!.atMs}) and golfSwingImpact (t=${golfSwingImpact!.atMs}), min required ${MIN_GOLF_SWING_DIFF_PX}px`
+    )
+  );
 
   // (7) exiting GOLF reproduces the exact prior grid screen
   const golfReturnDiff = diffPixelCount(grid80!.frame, backToGridFromGolf!.frame);
+  const golfReturnFails: string[] = [];
   if (golfReturnDiff > MAX_GOLF_RETURN_DIFF_PX) {
-    failures.push(`golf grid exactness: backToGridFromGolf (t=${backToGridFromGolf!.atMs}) differs from grid80 (t=${grid80!.atMs}) by ${golfReturnDiff}px, expected ${MAX_GOLF_RETURN_DIFF_PX} (returning to the grid from GOLF must reproduce it exactly - GOLF's own direct565 mode must be fully undone)`);
+    golfReturnFails.push(`golf grid exactness: backToGridFromGolf (t=${backToGridFromGolf!.atMs}) differs from grid80 (t=${grid80!.atMs}) by ${golfReturnDiff}px, expected ${MAX_GOLF_RETURN_DIFF_PX} (returning to the grid from GOLF must reproduce it exactly - GOLF's own direct565 mode must be fully undone)`);
   }
+  outcomes.push(
+    held(
+      "golf-grid-exact",
+      "leaving GOLF undoes its direct565 mode and reproduces the grid exactly",
+      golfReturnFails,
+      `golf grid exactness: backToGridFromGolf differs from grid80 by ${golfReturnDiff}px, expected ${MAX_GOLF_RETURN_DIFF_PX}`
+    )
+  );
 
   // (8) AIM TEST and DIAG each open (a real screen change from the grid)
   // and exit back to it exactly - the donor's own harness apps, now
   // faithfully part of this port (NOTICE.md).
+  const harnessFails: string[] = [];
+  const harnessSeen: string[] = [];
   for (const [label, openFrame, backLabel, backFrame] of [
     ["aimTestOpen", aimTestOpen, "backToGridFromAimTest", backToGridFromAimTest],
     ["diagOpen", diagOpen, "backToGridFromDiag", backToGridFromDiag],
   ] as const) {
     const openDiff = diffPixelCount(grid80!.frame, openFrame!.frame);
-    if (openDiff < MIN_OPEN_DIFF_PX) {
-      failures.push(`${label}: only ${openDiff}px differ from grid80 (t=${grid80!.atMs}) at t=${openFrame!.atMs}, min required ${MIN_OPEN_DIFF_PX}px - tapping the tile does not appear to open it`);
-    }
     const backDiff = diffPixelCount(grid80!.frame, backFrame!.frame);
+    harnessSeen.push(`${label} ${openDiff}px, ${backLabel} ${backDiff}px`);
+    if (openDiff < MIN_OPEN_DIFF_PX) {
+      harnessFails.push(`${label}: only ${openDiff}px differ from grid80 (t=${grid80!.atMs}) at t=${openFrame!.atMs}, min required ${MIN_OPEN_DIFF_PX}px - tapping the tile does not appear to open it`);
+    }
     if (backDiff > MAX_RETURN_DIFF_PX) {
-      failures.push(`${backLabel}: differs from grid80 (t=${grid80!.atMs}) by ${backDiff}px at t=${backFrame!.atMs}, expected ${MAX_RETURN_DIFF_PX} (returning to the grid must reproduce it exactly)`);
+      harnessFails.push(`${backLabel}: differs from grid80 (t=${grid80!.atMs}) by ${backDiff}px at t=${backFrame!.atMs}, expected ${MAX_RETURN_DIFF_PX} (returning to the grid must reproduce it exactly)`);
     }
   }
+  outcomes.push(
+    held(
+      "harness-apps",
+      "AIM TEST and DIAG each open from the grid and return to it exactly",
+      harnessFails,
+      `${harnessSeen.join("; ")} (open min ${MIN_OPEN_DIFF_PX}px, return expected ${MAX_RETURN_DIFF_PX}px)`
+    )
+  );
 
   // pauseOverlay is captured for this bundle's own donor-comparison
   // material (apps/gameos/ports/esp32-s3-touch-amoled-18/README.md) but is
@@ -339,5 +433,5 @@ export function check(frames: TimedFrame[], meta: InvariantMeta): InvariantResul
   // bundle's own reproduction log.
   void pauseOverlay;
 
-  return { pass: failures.length === 0, failures };
+  return summariseInvariants(outcomes);
 }

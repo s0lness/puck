@@ -25,6 +25,17 @@
 //                     The POST body is captured and asserted against the
 //                     documented shape (site/attest/plan.ts's AttestPost).
 //
+// BOTH KINDS OF CHECK, and the invariants half is scripted the same honest
+// way the pixel-exact half is. Its frames are not drawn here: they come
+// from replaying that port's own trace against that port's own built module
+// (site/dist/modules/<combo>.wasm) and converting each captured frame to
+// the greyscale bytes a devlink SHOT carries, exactly as the pixel-exact
+// half converts a recorded PNG. So a PASS here means fluidbox's own
+// thresholds held on frames that survived the round trip through the page's
+// RLE decode and grey-to-RGB expansion - which is a real fact about this
+// port worth knowing, since a board answers SHOT in GREY and a checker that
+// read colour would have nothing to read.
+//
 // WHAT THIS CANNOT PROVE, said here rather than discovered later: that a real
 // board answers devlink the way this stub does. That is the bench's job, and
 // packs/rp2350-touch-amoled-18/AGENTS.md says so. What it proves is
@@ -43,6 +54,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { serveDist } from "./staticSite";
 import { closeBrowser } from "./browserClose";
 import { decodeRGBPNG } from "../harness/png";
+import { replayEmulator } from "../harness/emulatorSide";
 
 const ROOT = join(import.meta.dir, "..");
 const DIST = join(ROOT, "site", "dist");
@@ -88,16 +100,24 @@ interface PlanShape {
   combo: string;
   app: string;
   pack: string;
+  kind: "pixel-exact" | "invariants";
   boardFamily: string;
   artifact: string;
-  framesBase: string;
+  framesBase?: string;
+  checker?: string;
+  device?: { name?: string; panel: { w: number; h: number } };
   dataTerminalReady: boolean;
-  traces: { name: string; events: unknown[]; points: { atMs: number; frame: string }[] }[];
+  traces: { name: string; events: unknown[]; points?: { atMs: number; frame: string }[]; captureAt?: number[] }[];
 }
 
-const planPath = join(DIST, "attest", `${COMBO}.json`);
-if (!existsSync(planPath)) fail(`site/dist/attest/${COMBO}.json is missing: site/build.ts did not emit an attestation plan.`);
-const plan = JSON.parse(readFileSync(planPath, "utf8")) as PlanShape;
+function readPlan(combo: string): PlanShape {
+  const path = join(DIST, "attest", `${combo}.json`);
+  if (!existsSync(path)) fail(`site/dist/attest/${combo}.json is missing: site/build.ts did not emit an attestation plan for it.`);
+  return JSON.parse(readFileSync(path, "utf8")) as PlanShape;
+}
+
+const plan = readPlan(COMBO);
+if (plan.kind !== "pixel-exact") fail(`${COMBO}'s plan is ${plan.kind}, but this scenario is the pixel-exact one`);
 
 function greyFromRecordedFrame(file: string): { width: number; height: number; grey: number[] } {
   const png = decodeRGBPNG(new Uint8Array(readFileSync(join(DIST, "attest", COMBO, file))));
@@ -115,14 +135,46 @@ function greyFromRecordedFrame(file: string): { width: number; height: number; g
 // proves for free - a page that captured in the wrong order, or captured
 // one screen four times, would come back with three divergences rather
 // than a green run.
-const frameFiles = plan.traces.flatMap((t) => t.points.map((p) => p.frame));
+const frameFiles = plan.traces.flatMap((t) => t.points!.map((p) => p.frame));
 const frames = frameFiles.map(greyFromRecordedFrame);
-const board = { width: frames[0]!.width, height: frames[0]!.height, greys: frames.map((f) => f.grey) };
+const board = { width: frames[0]!.width, height: frames[0]!.height, greys: frames.map((f) => f.grey), appName: "chrono" };
 console.log(
   `scripted board will show, in order: ${frameFiles.join(", ")} (${board.width}x${board.height}), each decoded from the bundle's own recorded frame`
 );
 
-const totalPoints = plan.traces.reduce((n, t) => n + t.points.length, 0);
+const totalPoints = plan.traces.reduce((n, t) => n + t.points!.length, 0);
+
+// ---- and what an INVARIANTS board will show ----------------------------
+//
+// The same trick pointed at a port with no recorded frames: replay that
+// port's own trace against that port's own built module, capture at the
+// bundle's own captureAt, and hand the page the grey bytes a SHOT would
+// carry. This is not the emulator standing in for a board - the page still
+// has to decode, expand and check them itself, and the checker it runs is
+// the bundle's, not this file's.
+async function invariantsBoard(planned: PlanShape): Promise<{ width: number; height: number; greys: number[][]; appName: string }> {
+  const tracePath = join(ROOT, "apps", planned.app, "traces");
+  void tracePath;
+  const modulePath = join(DIST, "modules", `${planned.combo}.wasm`);
+  if (!existsSync(modulePath)) fail(`site/dist/modules/${planned.combo}.wasm is missing: run \`bun run site:build\` first.`);
+  const greys: number[][] = [];
+  let width = 0;
+  let height = 0;
+  for (const trace of planned.traces) {
+    const replay = await replayEmulator(modulePath, trace.events as never, trace.captureAt!, {});
+    for (const atMs of trace.captureAt!) {
+      const captured = replay.frames.find((f) => f.atMs === atMs);
+      if (!captured) fail(`${planned.combo}: the emulator produced no frame at ${atMs}ms, so this scenario has nothing to script the board with`);
+      const { width: w, height: h, rgb } = captured!.frame;
+      width = w;
+      height = h;
+      const grey: number[] = [];
+      for (let i = 0; i < w * h; i++) grey.push((rgb[i * 3 + 1]! >> 2) << 2);
+      greys.push(grey);
+    }
+  }
+  return { width, height, greys, appName: planned.app };
+}
 
 // ---------------------------------------------------------------------
 
@@ -140,12 +192,29 @@ interface ScenarioResult {
   counterText: string | null;
 }
 
+/** One board, one page, one press of the button. */
+interface Scenario {
+  combo: string;
+  app: string;
+  pack: string;
+  board: { width: number; height: number; greys: number[][]; appName: string };
+  /** Nudge this frame by one grey level (the smallest thing tolerance zero must catch). -1 for none. */
+  shiftFrame: number;
+  /** Serve an EARLIER frame in place of this one, which is how a behavioural invariant is broken without inventing a picture. */
+  substitute?: { at: number; with: number };
+  /** Bytes per enqueue on the scripted port. Small values put the page's line reassembly under test; a fluid frame RLEs to megabytes of base64 and does not need it done a second time. */
+  chunkBytes: number;
+  /** Press "Post this result" when the run offers it. False when the point of the scenario is that nothing is posted. */
+  postIt: boolean;
+}
+
 const server = serveDist(DIST, PORT);
 
 try {
   const browser = await puppeteer.launch({ executablePath: CHROME, headless: true });
   try {
-    async function runScenario(shiftPixel: boolean): Promise<ScenarioResult> {
+    async function runScenario(scenario: Scenario): Promise<ScenarioResult> {
+      const { combo, app: scenarioApp, pack: scenarioPack, board: scenarioBoard } = scenario;
       const page = await browser.newPage();
       const pageErrors: string[] = [];
       page.on("pageerror", (e) => pageErrors.push(String(e)));
@@ -175,16 +244,21 @@ try {
         getCount++;
         // The first GET is the page load, before anything has been posted;
         // once a run lands, the counter has to move. Both are asserted.
+        const postedKind = (posted as { kind?: string } | null)?.kind === "invariants" ? "invariants" : "pixel-exact";
         const counts =
           posted === null
             ? {}
             : {
-                [`${plan.app}:${plan.pack}`]: {
-                  app: plan.app,
-                  pack: plan.pack,
+                [`${scenarioApp}:${scenarioPack}`]: {
+                  app: scenarioApp,
+                  pack: scenarioPack,
                   confirmations: 1,
                   diverged: 0,
                   lastConfirmedAt: new Date().toISOString().slice(0, 10),
+                  kinds: {
+                    "pixel-exact": { confirmations: postedKind === "pixel-exact" ? 1 : 0, diverged: 0 },
+                    invariants: { confirmations: postedKind === "invariants" ? 1 : 0, diverged: 0 },
+                  },
                 },
               };
         void req.respond({ status: 200, contentType: "application/json", body: JSON.stringify({ counts }) });
@@ -192,14 +266,29 @@ try {
 
       // ---- the scripted board over navigator.serial --------------------
       await page.evaluateOnNewDocument(
-        (greys: number[][], width: number, height: number, shiftFrame: number) => {
+        (
+          greys: number[][],
+          width: number,
+          height: number,
+          shiftFrame: number,
+          appName: string,
+          chunkBytes: number,
+          substitute: { at: number; with: number } | null
+        ) => {
           const log: string[] = [];
           const sent: string[] = [];
           Object.defineProperty(window, "__boardLog", { value: log, configurable: true });
           Object.defineProperty(window, "__boardSent", { value: sent, configurable: true });
 
           const screens = greys.map((g, index) => {
-            const pixels = new Uint8Array(g);
+            // A behavioural invariant is broken by showing the board a
+            // screen it should not be showing at that moment, not by
+            // inventing a picture: serving the "settled" frame again where
+            // "right after the shake" belongs is exactly the failure
+            // "a shake visibly agitates the fluid" exists to catch, and it
+            // leaves every other invariant reading the same numbers.
+            const source = substitute && index === substitute.at ? greys[substitute.with]! : g;
+            const pixels = new Uint8Array(source);
             if (index === shiftFrame) {
               // ONE pixel, ONE grey level, on ONE of four frames: the
               // smallest thing a tolerance-zero comparison must still
@@ -250,7 +339,7 @@ try {
             return { rleLength: rle.length, bodyLines };
           });
 
-          let app = { index: 0, name: "chrono" };
+          let app = { index: 0, name: appName };
           let served = 0;
           let shotIndex = 0;
 
@@ -266,7 +355,7 @@ try {
             if (word === "PING") out.push(`OK devlink 1 ${width} ${height}`);
             else if (word === "APP") out.push(`APP ${app.index} ${app.name}`);
             else if (word === "SWITCH") {
-              app = { index: Number(cmd.split(/\s+/)[1]) || 0, name: "chrono" };
+              app = { index: Number(cmd.split(/\s+/)[1]) || 0, name: appName };
               out.push("OK");
             } else if (word === "SHOT") {
               const shot = shots[Math.min(shotIndex, shots.length - 1)]!;
@@ -307,7 +396,7 @@ try {
                       const bytes = encoder.encode(r + "\r\n");
                       // Chopped, so the page's line reassembly is actually
                       // under test rather than assumed.
-                      for (let i = 0; i < bytes.length; i += 13) controller?.enqueue(bytes.slice(i, i + 13));
+                      for (let i = 0; i < bytes.length; i += chunkBytes) controller?.enqueue(bytes.slice(i, i + chunkBytes));
                     }
                   }
                 },
@@ -346,20 +435,23 @@ try {
             },
           });
         },
-        board.greys,
-        board.width,
-        board.height,
+        scenarioBoard.greys,
+        scenarioBoard.width,
+        scenarioBoard.height,
         // -1 shifts nothing; 1 puts the single wrong pixel on the SECOND
         // capture point, so a passing DIVERGE run has to name that one and
         // leave the other three reading MATCH.
-        shiftPixel ? 1 : -1
+        scenario.shiftFrame,
+        scenarioBoard.appName,
+        scenario.chunkBytes,
+        scenario.substitute ?? null
       );
 
-      await page.goto(`http://127.0.0.1:${PORT}/run/${COMBO}.html`, { waitUntil: "domcontentloaded" });
+      await page.goto(`http://127.0.0.1:${PORT}/run/${combo}.html`, { waitUntil: "domcontentloaded" });
       await new Promise((r) => setTimeout(r, 500));
 
       const hasSection = await page.evaluate(() => !!document.querySelector(".attest-section[data-attest-plan]"));
-      if (!hasSection) fail(`run/${COMBO}.html has no .attest-section[data-attest-plan]: the attest section did not render`);
+      if (!hasSection) fail(`run/${combo}.html has no .attest-section[data-attest-plan]: the attest section did not render`);
 
       await page.evaluate(() => {
         const w = window as unknown as { __statusLog: string[] };
@@ -383,13 +475,25 @@ try {
       // hashed after it renders, and only then does the post button appear.
       // Waiting on the verdict alone raced that and read postVisible=false
       // every time.
+      // THE END OF THE RUN IS THE BUTTON COMING BACK, not the verdict and not
+      // the post offer. The three endings look different - a finished run
+      // offers a post, a broken one shows an error, one with an unanswered
+      // invariant shows its verdict and stops - and only the button is
+      // common to all three, because attestOnce() re-enables it in its own
+      // finally, after everything else it is going to do.
+      //
+      // Waiting on the verdict instead was a real hole, found by mutation:
+      // an incomplete run renders its verdict and only THEN would fetch and
+      // hash the artifact, so a build that had lost the "do not post an
+      // incomplete run" guard still read postVisible=false here, and the
+      // scenario that exists to catch exactly that passed. The button is
+      // last, so it cannot race what comes before it.
       await page.waitForFunction(
         () => {
-          const post = document.querySelector<HTMLElement>(".attest-post");
-          const e = document.querySelector<HTMLElement>(".attest-error");
-          return (post && !post.hidden) || (e && !e.hidden);
+          const btn = document.querySelector<HTMLButtonElement>(".attest-btn");
+          return !!btn && !btn.disabled;
         },
-        { timeout: 60000 }
+        { timeout: 120000 }
       );
 
       const beforePost = await page.evaluate(() => {
@@ -413,7 +517,7 @@ try {
 
       // The post button only appears once a run finished; a failed run has
       // nothing to post and this returns without pressing anything.
-      if (beforePost.postVisible) {
+      if (beforePost.postVisible && scenario.postIt) {
         await page.evaluate(() => document.querySelector<HTMLButtonElement>(".attest-post-btn")?.click());
         // The confirmation line shows before the counter repaints (the
         // repaint is a second round trip), so waiting on the confirmation
@@ -450,7 +554,8 @@ try {
 
     // ---- 1. the board agrees: MATCH, then posted -----------------------
     console.log(`\n1. a board drawing exactly what the bundle recorded`);
-    const good = await runScenario(false);
+    const chronoScenario = { combo: COMBO, app: plan.app, pack: plan.pack, board, chunkBytes: 13, postIt: true };
+    const good = await runScenario({ ...chronoScenario, shiftFrame: -1 });
     if (good.pageErrors.length > 0) fail(`the attest run threw: ${good.pageErrors.join(" | ")}`);
     if (good.errorHidden !== true) fail(`the attest run surfaced an error: ${JSON.stringify(good.errorText)}`);
     if (good.points.length !== totalPoints) {
@@ -477,12 +582,13 @@ try {
     // ---- the POST body shape -------------------------------------------
     const body = good.posted as Record<string, unknown> | null;
     if (!body) fail("nothing was posted to /api/attest after a successful run");
-    const expectedKeys = ["app", "pack", "portSha", "verdict", "points", "boardFamily", "date"].sort();
+    const expectedKeys = ["app", "pack", "portSha", "kind", "verdict", "points", "boardFamily", "date"].sort();
     const actualKeys = Object.keys(body).sort();
     if (actualKeys.join(",") !== expectedKeys.join(",")) {
       fail(`the POST body's fields are ${JSON.stringify(actualKeys)}, not the documented ${JSON.stringify(expectedKeys)}`);
     }
     if (body.app !== plan.app || body.pack !== plan.pack) fail(`the POST names ${body.app}:${body.pack}, not ${plan.app}:${plan.pack}`);
+    if (body.kind !== "pixel-exact") fail(`the POST carries kind ${JSON.stringify(body.kind)} for a port verified by recorded frames`);
     if (body.verdict !== "match") fail(`the POST carries verdict ${JSON.stringify(body.verdict)} after an all-matching run`);
     if (body.boardFamily !== plan.boardFamily) fail(`the POST carries boardFamily ${JSON.stringify(body.boardFamily)}, not ${plan.boardFamily}`);
     if (typeof body.portSha !== "string" || !/^[0-9a-f]{64}$/.test(body.portSha)) {
@@ -521,7 +627,7 @@ try {
 
     // ---- 2. the board disagrees: DIVERGE -------------------------------
     console.log(`\n2. a board one pixel off the recorded frame, on one capture point only`);
-    const bad = await runScenario(true);
+    const bad = await runScenario({ ...chronoScenario, shiftFrame: 1 });
     if (bad.pageErrors.length > 0) fail(`the diverging run threw instead of reporting a divergence: ${bad.pageErrors.join(" | ")}`);
     if (bad.errorHidden !== true) fail(`the diverging run surfaced an error rather than a verdict: ${JSON.stringify(bad.errorText)}`);
     const badMarks = bad.points.map((p) => p.mark);
@@ -621,6 +727,181 @@ try {
       console.log(`  unsupported-browser message shown: "${espError}"`);
       await espPage.close();
     }
+
+    // ---- 4. the other KIND of check: an invariants port -----------------
+    // fluidbox is verified by its own bundle's invariants.ts rather than by
+    // recorded frames, and this is the whole point of that file being a
+    // pure function of {frames, meta}: the page runs the SAME function over
+    // what the board drew. The board here is scripted from that port's own
+    // module, replayed at that bundle's own captureAt and converted to the
+    // grey bytes a SHOT carries - so a PASS means fluidbox's own thresholds
+    // held on frames that went through the page's decode, not on frames
+    // this file handed it in the shape it wanted.
+    console.log("\n4. an invariants port: the board's frames through the bundle's own checker");
+    const fluidPlan = readPlan("fluidbox-esp32");
+    if (fluidPlan.kind !== "invariants") fail(`fluidbox-esp32's plan is ${fluidPlan.kind}, so nothing here is testing the invariants path`);
+    if (fluidPlan.checker !== "apps/fluidbox/invariants.ts") {
+      fail(`fluidbox-esp32's plan names the checker ${JSON.stringify(fluidPlan.checker)}, not the bundle's own`);
+    }
+    if (!fluidPlan.device || fluidPlan.device.name !== "ESP32-S3-Touch-AMOLED-1.8") {
+      fail(`fluidbox-esp32's plan carries no device for the checker to read, or the wrong one: ${JSON.stringify(fluidPlan.device?.name)}`);
+    }
+    const fluidBoard = await invariantsBoard(fluidPlan);
+    console.log(
+      `  scripted board will show ${fluidBoard.greys.length} frames (${fluidBoard.width}x${fluidBoard.height}) replayed from site/dist/modules/fluidbox-esp32.wasm, as SHOT greys`
+    );
+    // 512 rather than the chrono run's 13: a fluid frame RLEs to hundreds of
+    // kilobytes of base64 and the page's line reassembly is already proven
+    // byte by byte one scenario up.
+    const fluidScenario = {
+      combo: "fluidbox-esp32",
+      app: fluidPlan.app,
+      pack: fluidPlan.pack,
+      board: fluidBoard,
+      shiftFrame: -1,
+      chunkBytes: 512,
+      postIt: true,
+    };
+    const held = await runScenario(fluidScenario);
+    if (held.pageErrors.length > 0) fail(`the invariants run threw: ${held.pageErrors.join(" | ")}`);
+    if (held.errorHidden !== true) fail(`the invariants run surfaced an error: ${JSON.stringify(held.errorText)}`);
+    if (held.points.length !== 5) {
+      fail(`expected one row per invariant fluidbox declares (5), got ${held.points.length}: ${JSON.stringify(held.points)}`);
+    }
+    const marks4 = held.points.map((p) => p.mark);
+    if (marks4.includes("FAIL") || marks4.includes("UNANSWERED")) {
+      fail(`a board drawing what the emulator draws should hold every invariant, got ${JSON.stringify(held.points)}`);
+    }
+    // Every row carries the invariant's OWN sentence with its OWN numbers,
+    // which is what makes the list a result rather than five green ticks.
+    const shakeRow = held.points.find((p) => /shake visibly agitates/i.test(p.label));
+    if (!shakeRow) fail(`no row named the shake invariant: ${JSON.stringify(held.points.map((p) => p.label))}`);
+    if (!/\d+px differ/.test(shakeRow!.detail)) fail(`the shake invariant's row prints no measured number: ${JSON.stringify(shakeRow!.detail)}`);
+    // The device-scoped one reads N/A here and must not read as a hole: the
+    // RP2350's panel-push bound was never about this board.
+    const pushRow = held.points.find((p) => /pushes the whole panel/i.test(p.label));
+    if (!pushRow || pushRow.mark !== "N/A") {
+      fail(`fluidbox's rp2350-scoped push bound should read N/A on an esp32 board, got ${JSON.stringify(pushRow)}`);
+    }
+    console.log(`  ${marks4.filter((m) => m === "PASS").length} invariants PASS, 1 N/A, each with its own measured numbers`);
+    console.log(`    e.g. "${shakeRow!.label}" - ${shakeRow!.detail}`);
+    if (!held.verdictText || !/runs on this board/i.test(held.verdictText)) {
+      fail(`expected a "runs on this board" verdict for a held invariants run, got: ${JSON.stringify(held.verdictText)}`);
+    }
+    if (!held.verdictClass || !/attest-verdict-match/.test(held.verdictClass)) {
+      fail(`the held invariants verdict is not styled as a match (class ${JSON.stringify(held.verdictClass)})`);
+    }
+    console.log(`  verdict: "${held.verdictText}"`);
+    if (!held.statusLog.some((s) => /Running fluidbox's own invariants/i.test(s))) {
+      fail(`the status line never said it was running the bundle's own invariants: ${JSON.stringify(held.statusLog)}`);
+    }
+
+    const fluidBody = held.posted as Record<string, unknown> | null;
+    if (!fluidBody) fail("nothing was posted to /api/attest after a held invariants run");
+    const fluidKeys = Object.keys(fluidBody!).sort();
+    const expectedFluidKeys = ["app", "pack", "portSha", "kind", "verdict", "invariants", "boardFamily", "date"].sort();
+    if (fluidKeys.join(",") !== expectedFluidKeys.join(",")) {
+      fail(`the invariants POST body's fields are ${JSON.stringify(fluidKeys)}, not the documented ${JSON.stringify(expectedFluidKeys)}`);
+    }
+    if (fluidBody!.kind !== "invariants") fail(`the POST carries kind ${JSON.stringify(fluidBody!.kind)} for an invariants port`);
+    if (fluidBody!.verdict !== "match") fail(`the POST carries verdict ${JSON.stringify(fluidBody!.verdict)} after a run where every invariant held`);
+    const postedInvariants = fluidBody!.invariants as { id: string; status: string }[];
+    if (!Array.isArray(postedInvariants) || postedInvariants.length !== 5) {
+      fail(`the POST carries ${JSON.stringify(fluidBody!.invariants)} rather than five invariant outcomes`);
+    }
+    if (postedInvariants.some((i) => i.status === "unevaluable")) {
+      fail(`the POST carries an unanswered invariant, which the endpoint refuses by name`);
+    }
+    const fluidForbidden = ["ip", "ua", "userAgent", "user_agent", "id", "sessionId", "session", "fingerprint", "cookie", "email", "name"];
+    const fluidPresent = fluidForbidden.filter((k) => k in fluidBody!);
+    if (fluidPresent.length > 0) fail(`the invariants POST body carries identifying fields it must not: ${JSON.stringify(fluidPresent)}`);
+    console.log(`  POST body shape is exactly {${fluidKeys.join(", ")}}, kind invariants, ${postedInvariants.length} outcomes`);
+    if (!held.postedText || !/posted/i.test(held.postedText)) fail(`the page did not confirm the post, got: ${JSON.stringify(held.postedText)}`);
+    if (!held.counterText || !/1 confirmation/i.test(held.counterText)) {
+      fail(`the counter did not repaint after posting an invariants run, got: ${JSON.stringify(held.counterText)}`);
+    }
+    console.log(`  posted, and the counter repainted: "${held.counterText}"`);
+
+    // ---- 5. an invariant that does not hold ----------------------------
+    // Broken the way a real regression would break it, not by drawing a
+    // wrong picture: the board is made to show the SETTLED screen again
+    // where "right after the shake" belongs, which is exactly what a shake
+    // that did nothing looks like. Every other invariant reads the same
+    // numbers it read above, so the run has to name this one and only this
+    // one.
+    console.log("\n5. an invariants port where one invariant does not hold");
+    const broken = await runScenario({ ...fluidScenario, substitute: { at: 1, with: 0 }, postIt: false });
+    if (broken.pageErrors.length > 0) fail(`the failing-invariant run threw instead of reporting it: ${broken.pageErrors.join(" | ")}`);
+    if (broken.errorHidden !== true) fail(`the failing-invariant run surfaced an error rather than a verdict: ${JSON.stringify(broken.errorText)}`);
+    const failing = broken.points.filter((p) => p.mark === "FAIL");
+    if (failing.length !== 1) {
+      fail(`exactly one invariant was broken, but ${failing.length} read FAIL: ${JSON.stringify(broken.points.map((p) => `${p.mark} ${p.label}`))}`);
+    }
+    if (!/shake visibly agitates/i.test(failing[0]!.label)) {
+      fail(`the failing invariant is not named by the check that was broken: ${JSON.stringify(failing[0]!.label)}`);
+    }
+    if (!/min required 1500px/.test(failing[0]!.detail)) {
+      fail(`the failing invariant does not print its own threshold and measurement: ${JSON.stringify(failing[0]!.detail)}`);
+    }
+    console.log(`  1/${broken.points.length} invariants FAIL, by name: "${failing[0]!.label}" - ${failing[0]!.detail}`);
+    if (!broken.verdictText || !/behaves differently/i.test(broken.verdictText)) {
+      fail(`expected a behavioural-divergence verdict, got: ${JSON.stringify(broken.verdictText)}`);
+    }
+    if (!broken.verdictClass || !/attest-verdict-diverge/.test(broken.verdictClass)) {
+      fail(`the invariants divergence is not styled as one (class ${JSON.stringify(broken.verdictClass)})`);
+    }
+    console.log(`  verdict: "${broken.verdictText}"`);
+    // Nothing left this page. A divergence is still OFFERED for posting -
+    // docs/decisions/0011: "an attestation system that only recorded
+    // agreement would be an applause meter" - but the run itself posts
+    // nothing, and this scenario never presses the button.
+    if (broken.posted !== null) fail(`the run posted by itself, without the button being pressed: ${JSON.stringify(broken.posted)}`);
+    if (!broken.postVisible) fail(`a behavioural divergence was not offered for posting: a result that only records agreement is worth nothing`);
+    console.log(`  nothing was posted by the run itself, and the divergence stays offerable`);
+
+    // ---- 6. an invariant a board cannot answer at all -------------------
+    // The same app on the OTHER board, where its panel-push bound stops
+    // being "not about this device" and becomes "about this device, and
+    // unanswerable from what a board reports". This is the case
+    // docs/decisions/0011's addendum is about: the section shows it, says
+    // the run is incomplete, and offers no post button at all.
+    console.log("\n6. an invariant this board cannot answer: shown, and not posted");
+    const rpPlan = readPlan("fluidbox-rp2350");
+    if (rpPlan.kind !== "invariants") fail(`fluidbox-rp2350's plan is ${rpPlan.kind}`);
+    const rpBoard = await invariantsBoard(rpPlan);
+    const incomplete = await runScenario({
+      combo: "fluidbox-rp2350",
+      app: rpPlan.app,
+      pack: rpPlan.pack,
+      board: rpBoard,
+      shiftFrame: -1,
+      chunkBytes: 512,
+      postIt: true, // pressed if offered, which is the point: it must not be
+    });
+    if (incomplete.pageErrors.length > 0) fail(`the incomplete run threw: ${incomplete.pageErrors.join(" | ")}`);
+    if (incomplete.errorHidden !== true) fail(`the incomplete run surfaced an error rather than saying what it could not answer: ${JSON.stringify(incomplete.errorText)}`);
+    const unanswered = incomplete.points.filter((p) => p.mark === "UNANSWERED");
+    if (unanswered.length !== 1 || !/pushes the whole panel/i.test(unanswered[0]!.label)) {
+      fail(`expected exactly the panel-push bound to read UNANSWERED, got ${JSON.stringify(incomplete.points.map((p) => `${p.mark} ${p.label}`))}`);
+    }
+    if (!/cannot be answered/i.test(unanswered[0]!.detail)) {
+      fail(`the unanswered invariant does not say why it could not be answered: ${JSON.stringify(unanswered[0]!.detail)}`);
+    }
+    if (incomplete.points.filter((p) => p.mark === "PASS").length !== 4) {
+      fail(`the four invariants a board CAN answer should still be shown as held: ${JSON.stringify(incomplete.points.map((p) => p.mark))}`);
+    }
+    console.log(`  4 invariants PASS and 1 reads UNANSWERED: "${unanswered[0]!.label}"`);
+    console.log(`    ${unanswered[0]!.detail}`);
+    if (!incomplete.verdictText || !/incomplete/i.test(incomplete.verdictText)) {
+      fail(`the section does not say the run is incomplete, it says: ${JSON.stringify(incomplete.verdictText)}`);
+    }
+    if (!incomplete.verdictClass || !/attest-verdict-incomplete/.test(incomplete.verdictClass)) {
+      fail(`an incomplete run is styled as a verdict it is not (class ${JSON.stringify(incomplete.verdictClass)})`);
+    }
+    console.log(`  verdict: "${incomplete.verdictText}"`);
+    if (incomplete.postVisible) fail(`an incomplete run offered a post button: a confirmation with an unanswered check inside it is exactly the claim 0011 refuses`);
+    if (incomplete.posted !== null) fail(`an incomplete run posted anyway: ${JSON.stringify(incomplete.posted)}`);
+    console.log(`  no post button, and nothing reached /api/attest`);
 
     console.log("\nOK: attestation UI verified, end to end, with no board and no Cloudflare.");
   } finally {
