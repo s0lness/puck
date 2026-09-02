@@ -33,6 +33,11 @@
 //               or CRASHED (one did, and the replay through it did not
 //               finish). "not run" and why, for a target with no host
 //               build to make.
+//   blind       whether an agent with no session context has ported this app
+//               to this pack from the folder alone, read out of the
+//               hand-maintained blind-ports.json (the roadmap's workstream
+//               4). Refilled on every run rather than cached with the rest
+//               of the cell, because it is a lookup and not a build.
 //   silicon     a key and nothing else. Only a real board can answer this
 //               one, and only a person holding it can make it: the count
 //               arrives at page load from GET /api/attest, which keys on
@@ -92,6 +97,7 @@ function findChrome(): string {
 
 export type EmulatorMark = "PASS" | "FAIL" | "ERROR" | "no port";
 export type HostMark = "MATCH" | "DIVERGE" | "SANITIZER" | "BUILD_FAILED" | "CRASHED" | "not run";
+export type BlindMark = "PASS" | "FAIL" | "not attempted";
 
 export interface LedgerVerdict {
   verdict: "go" | "degraded" | "refuse";
@@ -127,6 +133,16 @@ export interface LedgerCell {
    * asks the endpoint at load.
    */
   silicon: { key: string };
+  /**
+   * The roadmap's workstream 4: an agent with no session context, handed one
+   * pack folder and one app bundle, told to port. Read straight out of
+   * blind-ports.json, which is hand-maintained today, and REFILLED ON EVERY
+   * RUN rather than cached with the rest of the cell: it costs one lookup
+   * and nothing builds, so a line typed into that file appears on the next
+   * `bun run ledger` without forcing an hour of rebuilds for the marks that
+   * did not change.
+   */
+  blind: { mark: BlindMark; reason: string; date: string | null; model: string | null };
   silhouette: {
     mark: SilhouetteMark | "not applicable";
     reason: string;
@@ -433,6 +449,71 @@ function shortSha(sha: string): string {
   return sha.slice(0, 7);
 }
 
+// ---- the blind port record ------------------------------------------------
+// blind-ports.json, at the repository root, hand-maintained (see its own
+// note). One entry per run somebody actually performed: an agent with no
+// session context, given one pack folder, one app bundle and the convention
+// docs, told to port. This reads it; it never writes it, and it never
+// invents an entry for a pair nobody has tried.
+
+interface BlindRun {
+  app: string;
+  pack: string;
+  date: string;
+  model: string;
+  result: "pass" | "fail";
+  attempts?: number;
+  minutes?: number;
+  given?: string;
+  how?: string;
+}
+interface BlindPortsFile {
+  convention: string;
+  note?: string;
+  runs: BlindRun[];
+}
+
+const BLIND_PATH = join(REPO_ROOT, "blind-ports.json");
+
+function loadBlindRuns(): Map<string, BlindRun> {
+  const byPair = new Map<string, BlindRun>();
+  if (!existsSync(BLIND_PATH)) return byPair;
+  const file = readJson<BlindPortsFile>(BLIND_PATH);
+  for (const run of file.runs ?? []) byPair.set(`${run.app}:${run.pack}`, run);
+  return byPair;
+}
+
+/**
+ * The mark for one cell, and the sentence behind it. A pair with no entry is
+ * "not attempted", stated as a plain fact rather than as an absence: the
+ * whole point of the column is that forty-four of these are untried and one
+ * is not.
+ */
+function blindMarkFor(app: string, target: LedgerTarget, run: BlindRun | undefined): LedgerCell["blind"] {
+  if (target.kind !== "pack") {
+    return {
+      mark: "not attempted",
+      reason:
+        target.kind === "silhouette"
+          ? "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target"
+          : `"${target.name}" is a pack carried by its own author, and a blind port here would be their run to make, not this repository's`,
+      date: null,
+      model: null,
+    };
+  }
+  if (!run) {
+    return { mark: "not attempted", reason: `no blind port of ${app} onto ${target.name} has been run, so blind-ports.json has no entry for it`, date: null, model: null };
+  }
+  const parts = [
+    `${run.model} ported ${run.app} to ${run.pack} on ${run.date} with no session context`,
+    run.given ? `given ${run.given}` : null,
+    run.how ?? null,
+    run.attempts !== undefined ? `${run.attempts} attempt${run.attempts === 1 ? "" : "s"}` : null,
+    run.minutes !== undefined ? `about ${run.minutes} minutes` : null,
+  ].filter(Boolean);
+  return { mark: run.result === "pass" ? "PASS" : "FAIL", reason: `${parts.join("; ")}. Recorded by hand in blind-ports.json, not computed here.`, date: run.date, model: run.model };
+}
+
 // ---- the silhouette source an app is compiled from ------------------------
 // Data-driven, never a table here: an app's own bundle.json says which file
 // is its web-pack port, and packs/web vendored the RP2350 pack's app
@@ -477,6 +558,7 @@ async function main(): Promise<void> {
   const webPackSha = treeHash(join(REPO_ROOT, "packs", "web"));
 
   const previous: Ledger | null = existsSync(LEDGER_PATH) ? readJson<Ledger>(LEDGER_PATH) : null;
+  const blindRuns = loadBlindRuns();
 
   // ---- targets ----------------------------------------------------------
   const targets: LedgerTarget[] = [];
@@ -796,6 +878,7 @@ async function main(): Promise<void> {
       emulator,
       host,
       silicon: { key: `${app.name}:${target.name}` },
+      blind: blindMarkFor(app.name, target, blindRuns.get(`${app.name}:${target.name}`)),
       silhouette,
       inputs,
       computedAt: day,
@@ -803,6 +886,17 @@ async function main(): Promise<void> {
   }
 
   for (const dir of cleanups) rmSync(dir, { recursive: true, force: true });
+
+  // Refilled across EVERY cell, reused ones included: the blind mark is a
+  // lookup in a file somebody edits by hand, not a build, so it has no
+  // business waiting for an input sha to move. This is also what keeps a
+  // cell reused from a previous ledger from carrying a stale entry, or none
+  // at all when the field is newer than the cell.
+  for (const cell of Object.values(cells)) {
+    const target = targets.find((t) => t.name === cell.target);
+    if (!target) continue;
+    cell.blind = blindMarkFor(cell.app, target, blindRuns.get(`${cell.app}:${cell.target}`));
+  }
 
   // ---- write ------------------------------------------------------------
   const ordered: Record<string, LedgerCell> = {};
@@ -837,7 +931,7 @@ async function main(): Promise<void> {
 // ---- the table -----------------------------------------------------------
 
 function printTable(ledger: Ledger): void {
-  const rows: string[][] = [["APP", "TARGET", "VERDICT", "EMULATOR", "HOST", "SILHOUETTE"]];
+  const rows: string[][] = [["APP", "TARGET", "VERDICT", "EMULATOR", "HOST", "BLIND", "SILHOUETTE"]];
   for (const target of ledger.targets) {
     for (const app of ledger.apps) {
       const cell = ledger.cells[`${app.name}:${target.name}`];
@@ -848,6 +942,7 @@ function printTable(ledger: Ledger): void {
         cell.verdict ? cell.verdict.verdict : "-",
         cell.emulator.mark,
         cell.host.mark,
+        cell.blind.mark === "not attempted" ? "-" : cell.blind.mark,
         cell.silhouette.mark === "not applicable" ? "-" : cell.silhouette.mark,
       ]);
     }

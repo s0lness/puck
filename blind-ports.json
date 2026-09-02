@@ -1,0 +1,17 @@
+{
+  "convention": "0.1",
+  "note": "Hand-maintained, on purpose and for now. The roadmap's workstream 4 asks whether an LLM with no session context can port an app from a pack folder alone, and the only honest way to answer that is to run one and write down what happened. Nothing automates it yet, so this file is a record somebody typed, and tools/ledger.ts reads it into a cell's blind mark rather than pretending to have computed it. Every entry names what the agent was given, because \"ported blind\" means nothing without that list. When this becomes a job, the job writes this file and this note goes away.",
+  "runs": [
+    {
+      "app": "tinydraw",
+      "pack": "esp32-s3-touch-amoled-18",
+      "date": "2026-09-02",
+      "model": "claude-sonnet",
+      "result": "pass",
+      "attempts": 1,
+      "minutes": 50,
+      "given": "the pack folder, the app bundle, and docs/convention/ - no session context and no sibling port to copy from",
+      "how": "bun run verify-bundle went green on the first run, with no correction from a person"
+    }
+  ]
+}
