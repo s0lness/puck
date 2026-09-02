@@ -19,6 +19,198 @@ golden image. Adapted here to a general ABI instead of one company's SDK:
 4. **diff them**, and report where and when they diverge
    (`harness/diff.ts`, `harness/compare.ts`)
 
+## The three marks
+
+Every proof this document describes lands on one of three marks, and it
+matters which, because each catches a different class of bug and none of
+them subsumes another:
+
+| mark | runs the firmware as | catches | never catches |
+| --- | --- | --- | --- |
+| **emulator** | wasm32-freestanding, in the browser or headless (`harness/emulatorSide.ts`) | application-logic bugs: wrong pixels, wrong state transitions, wrong layout | timing, bus load, real input-device defects, anything wasm's memory-safe-by-construction sandbox hides (see "host", below) |
+| **host** | a native executable on THIS machine, with `-fsanitize=undefined` (and `address` where it links) - `harness/hostSide.ts` | the COMPILER CLASS of defect wasm hides entirely: an out-of-bounds write, a signed overflow, an unaligned access - anything that corrupts memory on real hardware but is unreachable inside wasm's own sandboxed linear memory | timing, bus load, real input-device defects, floating-point rounding differences between this machine's own libm/FPU codegen and either wasm's or the real target's (a `DIVERGE` on a float-heavy app like `apps/fluidbox` may be exactly this, not a real bug - report the pixel counts honestly, per `bun run hostdiff`'s own output, rather than raising `--tolerance` to make it disappear), and - like the emulator mark - whether the wasm/host builds agree with the SHIPPED cross-compiled binary in every codegen and integer-width detail (`docs/decisions/0002-two-compilers-not-one.md`, extended by one more compiler) |
+| **silicon** | the real board, over your own transport (`harness/hardwareSide.ts`, `harness/diff.ts`) | everything the other two cannot: real timing, real bus load, whatever the real input-device chip actually delivers, real codegen for the real target | this is the only mark with no "never catches" column - it IS the real thing, at the cost of needing real hardware, being unrepeatable byte-for-byte run to run (see "Against the real board" below), and never running on CI |
+
+**Why a third mark, when two already exist.** The emulator mark answers "does
+my application logic work". The silicon mark answers "does the real board
+agree", at the cost of needing a board on a desk. Neither answers "would
+this C corrupt memory on real hardware" without deploying to that hardware
+and hoping a fuzzer or a user finds it - wasm32's linear memory is
+sandboxed by construction, so an out-of-bounds write that would smash a
+neighboring stack variable or heap block on ARM/Xtensa simply writes inside
+the wasm module's own memory (or traps cleanly) and the emulator mark never
+sees it. The host mark closes exactly that gap, on every commit, with no
+board required: the same real C, a DIFFERENT compiler and target (the
+machine this harness runs on) than either the wasm module or the shipped
+firmware, instrumented to abort loudly the instant it does something C
+declares undefined.
+
+### Building and running the host mark
+
+`harness/hostSide.ts` builds `harness/host/driver.c` (a tiny, generic
+native replay driver - it knows nothing about any one device, the same
+rule `src/` and the rest of `harness/` already follow) plus a pack's own
+real firmware sources (the SAME sources that pack's `wasm/build.ts`
+compiles - see e.g. `packs/rp2350-touch-amoled-18/wasm/host.ts`) into one
+sanitized executable, then feeds it a trace over a small line protocol on
+stdin and reads captured frames (raw RGB, same shape as every other mark)
+back on stdout - see `harness/host/driver.c`'s own header comment for the
+protocol and for the pointer-width problem a native 64-bit host raises
+that wasm32 never does (`emu_fb()`/`emu_device()` truncate a pointer to
+`int` for wasm's sake; a native process's own data commonly sits above
+4GB, so every host-buildable pack's `emu_shim.c` carries two small,
+additive, `EMU_HOST_NATIVE`-guarded accessors at full pointer width just
+for this driver).
+
+```
+bun run hostdiff <app> <pack>
+```
+
+replays that app bundle's own traces through BOTH the wasm build and the
+host build and diffs the frames, printing one of three outcomes per
+capture point:
+
+- **MATCH** - both builds drew the same pixels (within `--tolerance`,
+  default 0)
+- **DIVERGE** - they drew different pixels; reported the same way
+  `harness/portdiff.ts` reports one, with the exact pixel count
+- **SANITIZER** - the host build's own run aborted (non-zero exit, a
+  sanitizer report on stderr) - `-fno-sanitize-recover=undefined` means
+  this is always exactly ONE finding, naming one file and line, never a
+  second unrelated report stomping the first. This is never treated as a
+  frame diff: a divergence means both sides ran and disagreed, SANITIZER
+  means the host side did not finish running at all.
+
+A build failure (the native compile or link itself did not produce an
+executable) is a fourth, distinct outcome - `hostdiff` exits `2` and
+prints `BUILD_FAILED` with the compiler's own error text, never silently
+skipped and never confused with a divergence or a sanitizer report.
+
+`bun run test:host` is this mark's own negative control, the same "red
+before green" this repository asks of every check
+(`feedback_test_negative_control` - a fixture the host driver's own
+compiler flags must catch, not just one it happens to pass): three tiny,
+self-contained firmwares under `test/host/fixtures/`, none belonging to
+any pack. `clean.c` must MATCH between a wasm build and a host build.
+`oob.c` (a real out-of-bounds array write) and `overflow.c` (a real signed
+integer overflow) must each report SANITIZER, naming their own file and
+line - and, unmodified, both compile and run perfectly clean when built to
+wasm, which is the entire argument for this mark existing at all.
+
+### A real environment finding, not a hypothetical caveat
+
+This task's own brief anticipated needing to test whether AddressSanitizer
+links on Windows ARM64 via zig and fall back to UBSan alone if not. What
+was actually found, on the machine this was written on (Windows 11 ARM64,
+zig 0.16.0), is a real bug one level below that, in the LINK step
+specifically (not the wasm32-freestanding compile path this repository's
+`AGENTS.md` already documents at "roughly one run in three"): a native
+COFF/PE link (`zig cc`'s own driver, or `zig build-exe`, pure Zig, no C
+frontend involved; every target triple tried -
+`aarch64-windows-gnu`/`-msvc`, `x86_64-windows-gnu`) crashes with an access
+violation and no diagnostic text FAR more often than the documented
+one-in-three - reproduced back to back with a one-line
+`int main(void){return 0;}`, 12+ failures in a row at times, on a machine
+that was, at the same moment, running roughly three dozen other Claude
+Code processes (`Get-Process | Where claude`) - this repository's own
+`AGENTS.md` states plainly that the flake rate "is far worse under
+concurrent build load," and this is that statement at its worst measured
+extreme, not a new failure mode. **It is not, however, permanently
+broken**: retried enough times (`harness/hostSide.ts`'s own
+`MAX_ATTEMPTS`, 8, matching every pack's `wasm/build.ts`, was insufficient
+during the heaviest contention observed here; a one-off diagnostic run at
+40 attempts got through every time it was tried), a link on this exact
+machine DOES succeed - see the real proof below, run on this machine, not
+assumed. This matches, and slightly corrects, an independent finding
+already in this repository from unrelated work
+(`apps/gameos/reference/esp32-gameos/donor-shell-comparison/hostsim/README.md`),
+written on what appears to be the same class of machine and under the same
+"nothing links" impression before a wider retry budget was tried there.
+
+**`harness/hostSide.ts` ships with `MAX_ATTEMPTS = 8`**, matching every
+other build script in this repository rather than over-fitting to one
+session's extreme contention; a machine under similarly heavy concurrent
+load may need to set a higher local retry budget (there is no env var for
+this today - a real gap, not a design choice, left for whoever hits it
+next). Whatever the budget, exhausting it is reported as `BUILD_FAILED`
+with the compiler's own error text, never a hang, never a false MATCH,
+never an unexplained crash - this is the behaviour that was actually
+exercised most, across many runs, while writing this.
+
+**The proof that actually matters ran clean on this machine**, with the
+higher one-off budget: `bun run test:host` - PASS. `clean.c` built to both
+wasm and a native ASan+UBSan executable and MATCHed pixel-for-pixel (64/64
+identical). `oob.c`'s deliberate out-of-bounds write reported SANITIZER,
+naming `test/host/fixtures/oob.c:48` exactly (zig bundles its OWN UBSan
+runtime rather than LLVM's compiler-rt, found by reading a real report
+instead of assumed: `thread N panic: index 69 out of bounds for type
+'uint16_t[64]'`, not compiler-rt's familiar `runtime error: ...` wording -
+same information, different phrasing). `overflow.c`'s deliberate signed
+overflow reported SANITIZER naming `test/host/fixtures/overflow.c:44`:
+`signed integer overflow: 2147483647 + 1 cannot be represented in type
+'int'`. Both negative controls were caught; the positive control matched.
+
+Against real pack firmware, also run on this machine (again with the
+higher one-off budget - see above):
+
+- `bun run hostdiff chrono rp2350-touch-amoled-18`: **PASS, 4/4 points
+  matched.** `chrono-idle` at t=1008ms and `chrono-startstop` at
+  t=1808/1888/2080ms all MATCH pixel-for-pixel between the wasm build and
+  the native, ASan+UBSan-instrumented host build - the same real
+  `chrono.c`, `digits.c`, `runtime_core.c` and `gfx.c` this pack ships,
+  compiled twice by two different compilers to two different targets,
+  agreeing exactly on every pixel this bundle checks.
+- `bun run hostdiff fluidbox rp2350-touch-amoled-18`: **FAIL, 0/3 points
+  matched** - `t=4000ms` 7,696/164,864px (4.67%), `t=4016ms`
+  8,345/164,864px (5.06%), `t=9024ms` 8,142/164,864px (4.94%), max channel
+  delta 255 at all three. Reported exactly, at tolerance 0, per this
+  task's own instruction not to loosen it silently: `apps/fluidbox`'s port
+  for this pack is a fluid simulation carrying float state across hundreds
+  of ticks (566 events replayed here), and a 255-delta max says this is
+  not sub-pixel rounding noise but a real divergence in the simulation's
+  own trajectory - plausible and, for a chaotic iterative system, close to
+  expected: wasm32's float32 codegen (V8/JSC) and this host's own (zig's
+  native float32 codegen) can each be individually IEEE-754-correct at
+  every single operation and still accumulate a different rounding choice
+  somewhere in 566 ticks' worth of multiply-accumulates, which a fluid sim
+  amplifies exactly the way chaotic systems do. This is precisely the
+  bounded, honestly-reported case `docs/harness.md`'s "host" mark row
+  above describes, not a bug in this harness - and not a case for raising
+  `--tolerance` until it disappears.
+
+**One real, load-bearing bug found and fixed while producing the chrono
+proof above, worth keeping as its own gotcha**: `harness/host/driver.c`'s
+own frame-header write originally used bare `printf()`, and
+`apps/chrono/`'s real `chrono.c` also calls `printf()` directly for its
+own debug logging (`"chrono: entered, stopped at 00:00:00\r\n"`). Every
+pack's `emu_shim.c` defines its OWN global `int printf(const char *fmt,
+...)` (a tiny format-subset logger ending in `rt_log()`/`js_log()` - see
+e.g. `packs/rp2350-touch-amoled-18/wasm/emu_shim.c`'s own "printf"
+section), so linking a pack's firmware together with this driver puts TWO
+external definitions of the symbol `printf` into one program. Empirically
+(inspected by redirecting the built executable's stdout and stderr
+separately and reading both, not guessed at) the driver's OWN `printf()`
+call bound to the pack's custom one (silently rerouting the FRAME header
+to stderr), while `chrono.c`'s `printf()` call bound to the real host
+libc (writing to real stdout) - two call sites of the identically-named
+function, resolved to two different definitions by this toolchain's
+linker, for reasons not fully root-caused (a COFF/PE duplicate-symbol
+resolution quirk, most likely, given a hard "multiple definition" error
+would have been the C-standard-compliant response and did not happen).
+Switching the driver's own header write to `fprintf(stdout, ...)` (never
+redefined by any pack) fixed HALF the problem; the other half -
+`harness/hostSide.ts`'s `parseFrames()` treating any non-`FRAME` line as a
+hard error - was the wrong fix to reach for, because firmware calling
+`printf()` directly is real, legitimate behaviour this driver must run
+unmodified, not something to suppress. The actual fix: `parseFrames()` now
+SKIPS a stdout line that isn't a `FRAME` header instead of erroring on it,
+which cannot misread a frame's own binary payload (fixed-length, consumed
+in one piece the instant its header is found) as a stray text line. Kept
+here rather than only in a commit message because the next person adding
+a device-agnostic instrument file that shares a process with real
+firmware C will hit some version of this the moment that firmware logs
+anything.
+
 ## Run it
 
 ```
