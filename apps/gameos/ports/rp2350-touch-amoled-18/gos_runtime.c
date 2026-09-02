@@ -694,28 +694,73 @@ bool gosrt_swipe_exit(const app_frame_t *f) {
     return exitNow;
 }
 
-// Present: 2x nearest upscale of the 184x224 indexed buffer into the panel's
-// own 368x448 RGB565 framebuffer through the current palette LUT (every 3rd
-// output row darkened when scanlines are on, exactly gos_core/gfx.c's own
-// hal_display_present() row rule), then one full-panel gfx_push - this
-// matches the Demands section's "full-screen redraw every frame" honestly:
-// there is no dirty-rectangle tracking here because gos.h's own contract is
-// immediate-mode full redraw, same as the donor.
+// Present: nearest-neighbour fit of the 184x224 indexed buffer (W x H,
+// fixed - GOS_SCREEN_W/H, the donor's own resolution, gos.h) into the
+// panel's own PANEL_W x PANEL_H RGB565 framebuffer through the current
+// palette LUT (every 3rd output row darkened when scanlines are on, exactly
+// gos_core/gfx.c's own hal_display_present() row rule), then one gfx_push
+// over exactly the region written - this matches the Demands section's
+// "full-screen redraw every frame" honestly: there is no dirty-rectangle
+// tracking here because gos.h's own contract is immediate-mode full redraw,
+// same as the donor.
+//
+// SCALED, NOT HARDCODED. This used to be a literal "2x nearest upscale into
+// a 368x448 write" (this pack's own reference panel, and the only panel a
+// --app build ever compiled against before silhouette packs existed,
+// docs/convention/device-pack.md). PANEL_W/PANEL_H are already guarded,
+// build-time constants everywhere else in this pack (runtime/gfx.h) -
+// this function is the one place that used to spell the reference panel's
+// numbers out anyway, so a silhouette build with a smaller PANEL_W/PANEL_H
+// (packs/web/wasm/build.ts --silhouette, tools/ledger.ts's silhouette
+// source picking this file, docs/convention/device-pack.md) either wrote
+// past the actual (correctly-sized) gfx_fb allocation - a trap - or wrote
+// inside it at the wrong rows/columns - a blank frame. See
+// docs/roadmap.md's workstream 3 for the three boards this was caught on.
+//
+// The fit: the largest DW x DH that preserves the 184x224 canvas's own
+// aspect ratio and stays inside PANEL_W x PANEL_H (scaled UP when the panel
+// is bigger, DOWN when it is smaller - a Watchy's 200x200 needs both axes
+// shrunk), centred with letterbox bars on whichever axis has slack left
+// over. Every destination pixel this loop touches is inside
+// [ox0, ox0+dw) x [oy0, oy0+dh), which is itself inside [0, PANEL_W) x
+// [0, PANEL_H) by construction, so there is no bounds check needed and no
+// way to write outside the framebuffer.
+//
+// IDENTITY AT THE REFERENCE PANEL. At PANEL_W=368, PANEL_H=448: dw=368,
+// dh=368*224/184=448 (exactly, no rounding), so ox0=oy0=0 and every
+// destination pixel's nearest-neighbour source index (oy*224/448,
+// ox*184/368) reduces to floor(oy/2), floor(ox/2) - the same source row/
+// column the old 2x-nearest code read for output rows/cols {2k, 2k+1}. The
+// scanline dimming decision is made per ABSOLUTE output row exactly as
+// before (oy%3==2, oy0 being 0 here). So this port's own two targets
+// (rp2350-touch-amoled-18, and this file included unmodified by
+// gameos_port.c) render byte-identical frames to what this function always
+// produced - proven by re-running bun run verify-bundle apps/gameos, not
+// by this comment.
 void gosrt_present(void) {
-    for (int sy = 0; sy < H; sy++) {
-        int oy = sy * 2;
-        bool dim0 = s_scanlines && ((oy % 3) == 2);
-        bool dim1 = s_scanlines && (((oy + 1) % 3) == 2);
-        const uint16_t *lut0 = dim0 ? s_lut_dim : s_lut;
-        const uint16_t *lut1 = dim1 ? s_lut_dim : s_lut;
-        uint16_t *row0 = gfx_fb + oy * PANEL_W;
-        uint16_t *row1 = row0 + PANEL_W;
+    int dw = PANEL_W;
+    int dh = (PANEL_W * H) / W;
+    if (dh > PANEL_H) {
+        dh = PANEL_H;
+        dw = (PANEL_H * W) / H;
+    }
+    if (dw < 1) dw = 1;
+    if (dh < 1) dh = 1;
+    const int ox0 = (PANEL_W - dw) / 2;
+    const int oy0 = (PANEL_H - dh) / 2;
+
+    for (int oy = 0; oy < dh; oy++) {
+        int sy = (oy * H) / dh;
+        if (sy >= H) sy = H - 1;
+        bool dim = s_scanlines && (((oy0 + oy) % 3) == 2);
+        const uint16_t *lut = dim ? s_lut_dim : s_lut;
         const uint8_t *srow = s_ifb + sy * W;
-        for (int sx = 0; sx < W; sx++) {
-            int ox = sx * 2;
-            row0[ox] = row0[ox + 1] = lut0[srow[sx]];
-            row1[ox] = row1[ox + 1] = lut1[srow[sx]];
+        uint16_t *row = gfx_fb + (oy0 + oy) * PANEL_W + ox0;
+        for (int ox = 0; ox < dw; ox++) {
+            int sx = (ox * W) / dw;
+            if (sx >= W) sx = W - 1;
+            row[ox] = lut[srow[sx]];
         }
     }
-    gfx_push(0, 0, PANEL_W - 1, PANEL_H - 1);
+    gfx_push(ox0, oy0, ox0 + dw - 1, oy0 + dh - 1);
 }
