@@ -237,7 +237,7 @@
       },
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
-        "packSha": "71997abbc23eae96",
+        "packSha": "e93be7327da732c5",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -280,7 +280,7 @@
       },
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
-        "packSha": "a687c77e26084384-bb5526c8eb7e931d",
+        "packSha": "a687c77e26084384-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -323,7 +323,7 @@
       },
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
-        "packSha": "3f454c635bf96bef-bb5526c8eb7e931d",
+        "packSha": "3f454c635bf96bef-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -366,7 +366,7 @@
       },
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
-        "packSha": "9e433abab6fdae06-bb5526c8eb7e931d",
+        "packSha": "325c20d0b6f85a7e-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -409,7 +409,7 @@
       },
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
-        "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
+        "packSha": "5542e3db22589e2e-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -452,7 +452,7 @@
       },
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
-        "packSha": "c857ff15659b6891-bb5526c8eb7e931d",
+        "packSha": "c857ff15659b6891-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -492,7 +492,7 @@
       },
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
-        "packSha": "5f7b37d2127fbf77",
+        "packSha": "9010b30ac68f51de",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -512,8 +512,8 @@
         "provenance": "built by aliceisjustplaying/tinydraw@000de0a, its own command: ./scripts/build-puck-wasm"
       },
       "emulator": {
-        "mark": "ERROR",
-        "reason": "build command exited 1 for https://github.com/aliceisjustplaying/tinydraw.git@000de0aa74: ./scripts/build-puck-wasm\nunsupported Puck build host: MINGW64_NT-10.0-26200-ARM64 x86_64"
+        "mark": "PASS",
+        "reason": "28/28 frame(s) matched"
       },
       "host": {
         "mark": "not run",
@@ -582,7 +582,7 @@
       },
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
-        "packSha": "7060628f4adbd72f-bb5526c8eb7e931d",
+        "packSha": "7060628f4adbd72f-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -625,7 +625,7 @@
       },
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
-        "packSha": "07f8c704ae3d7c18-bb5526c8eb7e931d",
+        "packSha": "780228cbd542ade3-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -665,7 +665,7 @@
       },
       "inputs": {
         "bundleSha": "0c0b2d980d30505c",
-        "packSha": "bb5526c8eb7e931d",
+        "packSha": "04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -748,7 +748,7 @@
       },
       "inputs": {
         "bundleSha": "d0f5358bc5eaf2e6",
-        "packSha": "71997abbc23eae96",
+        "packSha": "e93be7327da732c5",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -829,7 +829,7 @@
       },
       "inputs": {
         "bundleSha": "d0f5358bc5eaf2e6",
-        "packSha": "a687c77e26084384-bb5526c8eb7e931d",
+        "packSha": "a687c77e26084384-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -910,7 +910,7 @@
       },
       "inputs": {
         "bundleSha": "d0f5358bc5eaf2e6",
-        "packSha": "3f454c635bf96bef-bb5526c8eb7e931d",
+        "packSha": "3f454c635bf96bef-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -991,7 +991,7 @@
       },
       "inputs": {
         "bundleSha": "d0f5358bc5eaf2e6",
-        "packSha": "9e433abab6fdae06-bb5526c8eb7e931d",
+        "packSha": "325c20d0b6f85a7e-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -1072,7 +1072,7 @@
       },
       "inputs": {
         "bundleSha": "d0f5358bc5eaf2e6",
-        "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
+        "packSha": "5542e3db22589e2e-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -1153,7 +1153,7 @@
       },
       "inputs": {
         "bundleSha": "d0f5358bc5eaf2e6",
-        "packSha": "c857ff15659b6891-bb5526c8eb7e931d",
+        "packSha": "c857ff15659b6891-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -1236,7 +1236,7 @@
       },
       "inputs": {
         "bundleSha": "d0f5358bc5eaf2e6",
-        "packSha": "5f7b37d2127fbf77",
+        "packSha": "9010b30ac68f51de",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -1357,7 +1357,7 @@
       },
       "inputs": {
         "bundleSha": "d0f5358bc5eaf2e6",
-        "packSha": "7060628f4adbd72f-bb5526c8eb7e931d",
+        "packSha": "7060628f4adbd72f-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -1438,7 +1438,7 @@
       },
       "inputs": {
         "bundleSha": "d0f5358bc5eaf2e6",
-        "packSha": "07f8c704ae3d7c18-bb5526c8eb7e931d",
+        "packSha": "780228cbd542ade3-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -1521,7 +1521,7 @@
       },
       "inputs": {
         "bundleSha": "d0f5358bc5eaf2e6",
-        "packSha": "bb5526c8eb7e931d",
+        "packSha": "04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -1589,8 +1589,8 @@
         "reason": "all invariants held over 3 frame(s)"
       },
       "host": {
-        "mark": "DIVERGE",
-        "reason": "3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)"
+        "mark": "MATCH",
+        "reason": "3/3 capture point(s) identical to the wasm build, sanitizers address, undefined"
       },
       "silicon": {
         "key": "fluidbox:esp32-s3-touch-amoled-18"
@@ -1612,7 +1612,7 @@
       },
       "inputs": {
         "bundleSha": "73c107ea4fe90235",
-        "packSha": "71997abbc23eae96",
+        "packSha": "e93be7327da732c5",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -1701,7 +1701,7 @@
       },
       "inputs": {
         "bundleSha": "73c107ea4fe90235",
-        "packSha": "a687c77e26084384-bb5526c8eb7e931d",
+        "packSha": "a687c77e26084384-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -1790,7 +1790,7 @@
       },
       "inputs": {
         "bundleSha": "73c107ea4fe90235",
-        "packSha": "3f454c635bf96bef-bb5526c8eb7e931d",
+        "packSha": "3f454c635bf96bef-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -1879,7 +1879,7 @@
       },
       "inputs": {
         "bundleSha": "73c107ea4fe90235",
-        "packSha": "9e433abab6fdae06-bb5526c8eb7e931d",
+        "packSha": "325c20d0b6f85a7e-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -1968,7 +1968,7 @@
       },
       "inputs": {
         "bundleSha": "73c107ea4fe90235",
-        "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
+        "packSha": "5542e3db22589e2e-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -2057,7 +2057,7 @@
       },
       "inputs": {
         "bundleSha": "73c107ea4fe90235",
-        "packSha": "c857ff15659b6891-bb5526c8eb7e931d",
+        "packSha": "c857ff15659b6891-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -2125,8 +2125,8 @@
         "reason": "all invariants held over 3 frame(s)"
       },
       "host": {
-        "mark": "DIVERGE",
-        "reason": "3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)"
+        "mark": "MATCH",
+        "reason": "3/3 capture point(s) identical to the wasm build, sanitizers address, undefined"
       },
       "silicon": {
         "key": "fluidbox:rp2350-touch-amoled-18"
@@ -2148,7 +2148,7 @@
       },
       "inputs": {
         "bundleSha": "73c107ea4fe90235",
-        "packSha": "5f7b37d2127fbf77",
+        "packSha": "9010b30ac68f51de",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -2277,7 +2277,7 @@
       },
       "inputs": {
         "bundleSha": "73c107ea4fe90235",
-        "packSha": "7060628f4adbd72f-bb5526c8eb7e931d",
+        "packSha": "7060628f4adbd72f-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -2366,7 +2366,7 @@
       },
       "inputs": {
         "bundleSha": "73c107ea4fe90235",
-        "packSha": "07f8c704ae3d7c18-bb5526c8eb7e931d",
+        "packSha": "780228cbd542ade3-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -2434,8 +2434,8 @@
         "reason": "all invariants held over 3 frame(s)"
       },
       "host": {
-        "mark": "DIVERGE",
-        "reason": "3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)"
+        "mark": "MATCH",
+        "reason": "3/3 capture point(s) identical to the wasm build, sanitizers address, undefined"
       },
       "silicon": {
         "key": "fluidbox:web"
@@ -2457,7 +2457,7 @@
       },
       "inputs": {
         "bundleSha": "73c107ea4fe90235",
-        "packSha": "bb5526c8eb7e931d",
+        "packSha": "04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -2517,8 +2517,8 @@
         "reason": "all invariants held over 21 frame(s)"
       },
       "host": {
-        "mark": "CRASHED",
-        "reason": "harness/hostdiff.ts: unexpected error: EOF: end of file, write Error: EOF: end of file, write     at async replayHost (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a8c3679ce402d6b36\\harness\\hostSide.ts:330:20)     at async main (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a8c3679ce402d6b36\\harness\\hostdiff.ts:280:30)"
+        "mark": "SANITIZER",
+        "reason": "the sanitized host build trapped on gameos-demo-esp32 (address, undefined): signed integer overflow: 1499045572 + 668265263 cannot be represented in type 'int'"
       },
       "silicon": {
         "key": "gameos:esp32-s3-touch-amoled-18"
@@ -2539,7 +2539,7 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "5b8112c06c7f3adc",
+        "bundleSha": "ab2620371cfc6073",
         "packSha": "e93be7327da732c5",
         "verdictToolSha": "ef1a841369f9a5af"
       },
@@ -2618,8 +2618,8 @@
         }
       },
       "inputs": {
-        "bundleSha": "5b8112c06c7f3adc",
-        "packSha": "a687c77e26084384-bb5526c8eb7e931d",
+        "bundleSha": "ab2620371cfc6073",
+        "packSha": "a687c77e26084384-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -2697,8 +2697,8 @@
         }
       },
       "inputs": {
-        "bundleSha": "5b8112c06c7f3adc",
-        "packSha": "3f454c635bf96bef-bb5526c8eb7e931d",
+        "bundleSha": "ab2620371cfc6073",
+        "packSha": "3f454c635bf96bef-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -2765,7 +2765,7 @@
       },
       "silhouette": {
         "mark": "runs",
-        "reason": "the module's own emu_device() declares M5Stack CoreS3: 320x240, buttons pwr, a, b, c; the painted canvas is 320x240 device pixels, one per panel pixel; a synthetic tap changed the panel: 59.44% of pixels differ from before it, over the 0.5% floor",
+        "reason": "the module's own emu_device() declares M5Stack CoreS3: 320x240, buttons pwr, a, b, c; the painted canvas is 320x240 device pixels, one per panel pixel; a synthetic tap changed the panel: 59.43% of pixels differ from before it, over the 0.5% floor",
         "proof": "packs/silhouettes/m5stack-cores3/proof/gameos-stroke.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
@@ -2776,8 +2776,8 @@
         }
       },
       "inputs": {
-        "bundleSha": "5b8112c06c7f3adc",
-        "packSha": "9e433abab6fdae06-bb5526c8eb7e931d",
+        "bundleSha": "ab2620371cfc6073",
+        "packSha": "325c20d0b6f85a7e-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -2855,8 +2855,8 @@
         }
       },
       "inputs": {
-        "bundleSha": "5b8112c06c7f3adc",
-        "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
+        "bundleSha": "ab2620371cfc6073",
+        "packSha": "5542e3db22589e2e-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -2934,8 +2934,8 @@
         }
       },
       "inputs": {
-        "bundleSha": "5b8112c06c7f3adc",
-        "packSha": "c857ff15659b6891-bb5526c8eb7e931d",
+        "bundleSha": "ab2620371cfc6073",
+        "packSha": "c857ff15659b6891-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -2995,8 +2995,8 @@
         "reason": "all invariants held over 12 frame(s)"
       },
       "host": {
-        "mark": "DIVERGE",
-        "reason": "3/12 capture point(s) differ from the wasm build, first gameos-demo t=304ms at 376/164864px (0.23%)"
+        "mark": "MATCH",
+        "reason": "12/12 capture point(s) identical to the wasm build, sanitizers address, undefined"
       },
       "silicon": {
         "key": "gameos:rp2350-touch-amoled-18"
@@ -3017,7 +3017,7 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "5b8112c06c7f3adc",
+        "bundleSha": "ab2620371cfc6073",
         "packSha": "9010b30ac68f51de",
         "verdictToolSha": "ef1a841369f9a5af"
       },
@@ -3057,7 +3057,7 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "5b8112c06c7f3adc",
+        "bundleSha": "ab2620371cfc6073",
         "packSha": "000de0aa746108d2",
         "verdictToolSha": "ef1a841369f9a5af"
       },
@@ -3136,8 +3136,8 @@
         }
       },
       "inputs": {
-        "bundleSha": "5b8112c06c7f3adc",
-        "packSha": "7060628f4adbd72f-bb5526c8eb7e931d",
+        "bundleSha": "ab2620371cfc6073",
+        "packSha": "7060628f4adbd72f-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -3204,7 +3204,7 @@
       },
       "silhouette": {
         "mark": "runs",
-        "reason": "the module's own emu_device() declares Waveshare ESP32-S3-Touch-LCD-2.8: 240x320, buttons boot, pwr; the painted canvas is 240x320 device pixels, one per panel pixel; a synthetic tap changed the panel: 88.04% of pixels differ from before it, over the 0.5% floor",
+        "reason": "the module's own emu_device() declares Waveshare ESP32-S3-Touch-LCD-2.8: 240x320, buttons boot, pwr; the painted canvas is 240x320 device pixels, one per panel pixel; a synthetic tap changed the panel: 87.91% of pixels differ from before it, over the 0.5% floor",
         "proof": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/proof/gameos-stroke.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
@@ -3215,8 +3215,8 @@
         }
       },
       "inputs": {
-        "bundleSha": "5b8112c06c7f3adc",
-        "packSha": "07f8c704ae3d7c18-bb5526c8eb7e931d",
+        "bundleSha": "ab2620371cfc6073",
+        "packSha": "780228cbd542ade3-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -3291,8 +3291,8 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "5b8112c06c7f3adc",
-        "packSha": "bb5526c8eb7e931d",
+        "bundleSha": "ab2620371cfc6073",
+        "packSha": "04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -3454,7 +3454,7 @@
       },
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
-        "packSha": "a687c77e26084384-bb5526c8eb7e931d",
+        "packSha": "a687c77e26084384-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -3533,7 +3533,7 @@
       },
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
-        "packSha": "3f454c635bf96bef-bb5526c8eb7e931d",
+        "packSha": "3f454c635bf96bef-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -3600,7 +3600,7 @@
       },
       "silhouette": {
         "mark": "runs",
-        "reason": "the module's own emu_device() declares M5Stack CoreS3: 320x240, buttons pwr, a, b, c; the painted canvas is 320x240 device pixels, one per panel pixel; a dragged stroke changed the panel: 4.77% of pixels differ from before the drag, over the 0.5% floor",
+        "reason": "the module's own emu_device() declares M5Stack CoreS3: 320x240, buttons pwr, a, b, c; the painted canvas is 320x240 device pixels, one per panel pixel; a synthetic drag changed the panel: 4.70% of pixels differ from before it, over the 0.5% floor",
         "proof": "packs/silhouettes/m5stack-cores3/proof/tinydraw-stroke.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
@@ -3612,7 +3612,7 @@
       },
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
-        "packSha": "9e433abab6fdae06-bb5526c8eb7e931d",
+        "packSha": "325c20d0b6f85a7e-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -3691,7 +3691,7 @@
       },
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
-        "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
+        "packSha": "5542e3db22589e2e-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -3770,7 +3770,7 @@
       },
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
-        "packSha": "c857ff15659b6891-bb5526c8eb7e931d",
+        "packSha": "c857ff15659b6891-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -3972,7 +3972,7 @@
       },
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
-        "packSha": "7060628f4adbd72f-bb5526c8eb7e931d",
+        "packSha": "7060628f4adbd72f-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -4039,7 +4039,7 @@
       },
       "silhouette": {
         "mark": "runs",
-        "reason": "the module's own emu_device() declares Waveshare ESP32-S3-Touch-LCD-2.8: 240x320, buttons boot, pwr; the painted canvas is 240x320 device pixels, one per panel pixel; a dragged stroke changed the panel: 4.62% of pixels differ from before the drag, over the 0.5% floor",
+        "reason": "the module's own emu_device() declares Waveshare ESP32-S3-Touch-LCD-2.8: 240x320, buttons boot, pwr; the painted canvas is 240x320 device pixels, one per panel pixel; a synthetic drag changed the panel: 4.51% of pixels differ from before it, over the 0.5% floor",
         "proof": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/proof/tinydraw-stroke.png",
         "source": "apps/tinydraw/ports/web/tinydraw.c",
         "via": "web",
@@ -4051,7 +4051,7 @@
       },
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
-        "packSha": "07f8c704ae3d7c18-bb5526c8eb7e931d",
+        "packSha": "780228cbd542ade3-04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"
@@ -4134,7 +4134,7 @@
       },
       "inputs": {
         "bundleSha": "9f643682cdf2a62a",
-        "packSha": "bb5526c8eb7e931d",
+        "packSha": "04d742c72596c8fd",
         "verdictToolSha": "ef1a841369f9a5af"
       },
       "computedAt": "2026-09-02"

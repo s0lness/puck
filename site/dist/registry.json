@@ -34,6 +34,14 @@
     {
       "name": "watchy",
       "path": "packs/silhouettes/watchy"
+    },
+    {
+      "name": "m5stack-cores3",
+      "path": "packs/silhouettes/m5stack-cores3"
+    },
+    {
+      "name": "waveshare-esp32-s3-touch-lcd-2.8",
+      "path": "packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8"
     }
   ],
   "apps": [
