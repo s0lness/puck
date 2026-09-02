@@ -537,6 +537,21 @@ export class DevlinkSession {
     return shot;
   }
 
+  // PUSHSTATS: pushes and pixels the board has pushed to the panel since
+  // the last SHOT (tools/README-devlink.md's own section, rp2350 pack
+  // only). null on ERR - a build too old to wire push_stats_get, or the
+  // esp32-s3 pack's own devlink.c, which never declares this command at
+  // all (that pack's push-load story is a different memory model
+  // entirely, see apps/fluidbox/invariants.ts's own scoping comment).
+  // Never thrown: a caller wanting to know whether a board supports this
+  // reads the return value, not a catch block.
+  async pushStats(): Promise<{ pushes: number; pixels: number } | null> {
+    const reply = await this.expect(/^(PUSHSTATS \d+ \d+|ERR .*)$/, 3000, "PUSHSTATS reply", "PUSHSTATS");
+    const m = /^PUSHSTATS (\d+) (\d+)$/.exec(reply);
+    if (!m) return null;
+    return { pushes: Number(m[1]), pixels: Number(m[2]) };
+  }
+
   async readApp(): Promise<{ index: number; name: string }> {
     const reply = await this.expect(/^(APP -?\d+ \S+|ERR .*)$/, 3000, "APP reply", "APP");
     const m = /^APP (-?\d+) (\S+)$/.exec(reply);

@@ -124,6 +124,22 @@ typedef struct {
     // client can be told what really took effect, not just echo back what
     // it asked for.
     bool (*tune_set)(const char *name, float value, float *outApplied);
+
+    // PUSHSTATS: how many gfx_push()/gfx_push_all() calls have reached the
+    // panel, and how many pixels they touched, since the last SHOT (see
+    // devlink_send_shot(), which resets these before it does anything
+    // else). This is what lets apps/fluidbox/invariants.ts's panel-push
+    // invariant be answered from a real board instead of only from the
+    // emulator's own emu_push_count()/emu_push_w()/emu_push_h() replay -
+    // see gfx.h's own header comment on gfx_push_stats_get/reset for the
+    // full argument. Wired straight to those two functions by runtime.c;
+    // their signatures already match, the same reason tune_get/tune_set
+    // above need no adapter either. NULL on a build that never wires this
+    // (an older tree, or a pack whose gfx does not track pushes at all),
+    // in which case PUSHSTATS answers "ERR unknown PUSHSTATS" rather than
+    // crashing - the same policy every other optional hook here gets.
+    void (*push_stats_get)(uint32_t *pushes, uint32_t *pixels);
+    void (*push_stats_reset)(void);
 } devlink_hooks_t;
 
 // Copies *hooks by value. Call once, after hooks->fb has been allocated and

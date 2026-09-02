@@ -79,4 +79,14 @@ export interface HardwareLink {
   // point the harness was told to stop at (see harness/diff.ts's --at /
   // --every).
   screenshot(): Promise<CapturedFrame>;
+
+  // Optional: panel-push load (pushes, and pixels touched) since the last
+  // screenshot, when your board can answer that (the rp2350 pack's own
+  // devlink PUSHSTATS command - tools/README-devlink.md). null means the
+  // board was asked and said it does not track this (an older firmware,
+  // or a different pack's devlink that never declares the command);
+  // omitting the method entirely means "never ask". Either way, a checker
+  // that needs this and does not get it reports "unevaluable" rather than
+  // passing silently - see harness/invariantTypes.ts's InvariantMeta.
+  pushStats?(): Promise<{ pushes: number; pixels: number } | null>;
 }

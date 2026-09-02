@@ -265,6 +265,10 @@ export class WebSerialLink implements HardwareLink {
     return this.requireSession().readApp();
   }
 
+  async pushStats(): Promise<{ pushes: number; pixels: number } | null> {
+    return this.requireSession().pushStats();
+  }
+
   /** Idempotent, and safe to call from a failure path. Locks first, port second. */
   async release(): Promise<void> {
     if (this.released) return;

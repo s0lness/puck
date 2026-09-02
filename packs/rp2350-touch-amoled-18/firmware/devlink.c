@@ -230,6 +230,13 @@ static void devlink_send_shot(void) {
         return;
     }
 
+    // Marks the start of the next PUSHSTATS accounting window ("since the
+    // last SHOT" - see devlink.h's push_stats_reset comment): reset here,
+    // before anything else, so a push that happens to land while this
+    // reply is still being written counts toward the NEXT window rather
+    // than being lost or double-counted.
+    if (g_hooks.push_stats_reset) g_hooks.push_stats_reset();
+
     uint32_t rleBytes = 0;
     devlink_rle_walk(devlink_rle_count_cb, &rleBytes);
 
@@ -655,6 +662,11 @@ static void devlink_dispatch(char *line) {
         printf(ok ? "OK\r\n" : "ERR range\r\n");
     } else if (strcmp(cmd, "TILT") == 0) {
         devlink_tilt();
+    } else if (strcmp(cmd, "PUSHSTATS") == 0) {
+        if (!g_hooks.push_stats_get) { printf("ERR unknown PUSHSTATS\r\n"); return; }
+        uint32_t pushes = 0, pixels = 0;
+        g_hooks.push_stats_get(&pushes, &pixels);
+        printf("PUSHSTATS %lu %lu\r\n", (unsigned long)pushes, (unsigned long)pixels);
     } else if (strcmp(cmd, "TUNE") == 0) {
         devlink_dispatch_tune(args);
     } else {
