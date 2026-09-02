@@ -188,6 +188,12 @@
       "silicon": {
         "key": "aliceisjustplaying/tinydraw:esp32-s3-touch-amoled-18"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "no blind port of aliceisjustplaying/tinydraw onto esp32-s3-touch-amoled-18 has been run, so blind-ports.json has no entry for it",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
@@ -199,8 +205,8 @@
       },
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
-        "packSha": "aac6db2fe963317f",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "71997abbc23eae96",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -222,6 +228,12 @@
       "silicon": {
         "key": "aliceisjustplaying/tinydraw:feather-esp32s2-tft"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "build-failed",
         "reason": "aliceisjustplaying/tinydraw's bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from",
@@ -236,8 +248,8 @@
       },
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
-        "packSha": "a687c77e26084384-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "a687c77e26084384-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -259,6 +271,12 @@
       "silicon": {
         "key": "aliceisjustplaying/tinydraw:lilygo-t-display-s3"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "build-failed",
         "reason": "aliceisjustplaying/tinydraw's bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from",
@@ -273,8 +291,8 @@
       },
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
-        "packSha": "3f454c635bf96bef-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "7c0e947cb1c4b2c6-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -296,6 +314,12 @@
       "silicon": {
         "key": "aliceisjustplaying/tinydraw:m5stickc-plus2"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "build-failed",
         "reason": "aliceisjustplaying/tinydraw's bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from",
@@ -310,8 +334,8 @@
       },
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
-        "packSha": "5542e3db22589e2e-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -333,6 +357,12 @@
       "silicon": {
         "key": "aliceisjustplaying/tinydraw:pico-display-pack-2"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "build-failed",
         "reason": "aliceisjustplaying/tinydraw's bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from",
@@ -347,8 +377,8 @@
       },
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
-        "packSha": "c857ff15659b6891-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "46b334fd2ff469f3-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -370,6 +400,12 @@
       "silicon": {
         "key": "aliceisjustplaying/tinydraw:rp2350-touch-amoled-18"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "no blind port of aliceisjustplaying/tinydraw onto rp2350-touch-amoled-18 has been run, so blind-ports.json has no entry for it",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
@@ -381,8 +417,8 @@
       },
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
-        "packSha": "e82df6f6811123c3",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "5f7b37d2127fbf77",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -411,6 +447,12 @@
       "silicon": {
         "key": "aliceisjustplaying/tinydraw:tinydraw-esp32-s3-touch-amoled-18"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "\"tinydraw-esp32-s3-touch-amoled-18\" is a pack carried by its own author, and a blind port here would be their run to make, not this repository's",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this is a pack carried by its own author, not a silhouette",
@@ -423,7 +465,7 @@
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -445,6 +487,12 @@
       "silicon": {
         "key": "aliceisjustplaying/tinydraw:watchy"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "build-failed",
         "reason": "aliceisjustplaying/tinydraw's bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from",
@@ -459,8 +507,8 @@
       },
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
-        "packSha": "7060628f4adbd72f-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "c0b72b040bcac6b0-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -482,6 +530,12 @@
       "silicon": {
         "key": "aliceisjustplaying/tinydraw:web"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "no blind port of aliceisjustplaying/tinydraw onto web has been run, so blind-ports.json has no entry for it",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
@@ -493,8 +547,8 @@
       },
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
-        "packSha": "ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -559,6 +613,12 @@
       "silicon": {
         "key": "chrono:esp32-s3-touch-amoled-18"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "no blind port of chrono onto esp32-s3-touch-amoled-18 has been run, so blind-ports.json has no entry for it",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
@@ -570,8 +630,8 @@
       },
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
-        "packSha": "aac6db2fe963317f",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "71997abbc23eae96",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -629,6 +689,12 @@
       "silicon": {
         "key": "chrono:feather-esp32s2-tft"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "135x240 (this panel's 240x135, presented a quarter turn round), 14.4% of the panel painted, ghost buttons d0, and this panel is already landscape, so the host's own quarter turn puts the app across the device's short side rather than along it",
@@ -645,8 +711,8 @@
       },
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
-        "packSha": "a687c77e26084384-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "a687c77e26084384-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -704,6 +770,12 @@
       "silicon": {
         "key": "chrono:lilygo-t-display-s3"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "320x170 (this panel's 170x320, presented a quarter turn round), 16.4% of the panel painted, ghost buttons boot, io14",
@@ -720,8 +792,8 @@
       },
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
-        "packSha": "3f454c635bf96bef-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "7c0e947cb1c4b2c6-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -779,6 +851,12 @@
       "silicon": {
         "key": "chrono:m5stickc-plus2"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "240x135 (this panel's 135x240, presented a quarter turn round), 16.7% of the panel painted, ghost buttons a, b, pwr",
@@ -795,8 +873,8 @@
       },
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
-        "packSha": "5542e3db22589e2e-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -854,6 +932,12 @@
       "silicon": {
         "key": "chrono:pico-display-pack-2"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "240x320 (this panel's 320x240, presented a quarter turn round), 16.0% of the panel painted, ghost buttons a, b, x, y, and this panel is already landscape, so the host's own quarter turn puts the app across the device's short side rather than along it",
@@ -870,8 +954,8 @@
       },
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
-        "packSha": "c857ff15659b6891-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "46b334fd2ff469f3-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -936,6 +1020,12 @@
       "silicon": {
         "key": "chrono:rp2350-touch-amoled-18"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "no blind port of chrono onto rp2350-touch-amoled-18 has been run, so blind-ports.json has no entry for it",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
@@ -947,8 +1037,8 @@
       },
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
-        "packSha": "e82df6f6811123c3",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "5f7b37d2127fbf77",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -970,6 +1060,12 @@
       "silicon": {
         "key": "chrono:tinydraw-esp32-s3-touch-amoled-18"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "\"tinydraw-esp32-s3-touch-amoled-18\" is a pack carried by its own author, and a blind port here would be their run to make, not this repository's",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this is a pack carried by its own author, not a silhouette",
@@ -982,7 +1078,7 @@
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -1040,6 +1136,12 @@
       "silicon": {
         "key": "chrono:watchy"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "200x200 (this panel's 200x200, presented a quarter turn round), 15.4% of the panel painted, ghost buttons up, down, menu, back",
@@ -1056,8 +1158,8 @@
       },
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
-        "packSha": "7060628f4adbd72f-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "c0b72b040bcac6b0-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -1122,6 +1224,12 @@
       "silicon": {
         "key": "chrono:web"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "no blind port of chrono onto web has been run, so blind-ports.json has no entry for it",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
@@ -1133,8 +1241,8 @@
       },
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
-        "packSha": "ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "packSha": "bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -1207,6 +1315,12 @@
       "silicon": {
         "key": "fluidbox:esp32-s3-touch-amoled-18"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "no blind port of fluidbox onto esp32-s3-touch-amoled-18 has been run, so blind-ports.json has no entry for it",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
@@ -1217,9 +1331,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "8ac38b912117863b",
-        "packSha": "aac6db2fe963317f",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "e3575ddc0cfcd1d7",
+        "packSha": "71997abbc23eae96",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -1285,6 +1399,12 @@
       "silicon": {
         "key": "fluidbox:feather-esp32s2-tft"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "240x135, 3.8% of the panel painted, ghost buttons d0",
@@ -1300,9 +1420,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "8ac38b912117863b",
-        "packSha": "a687c77e26084384-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "e3575ddc0cfcd1d7",
+        "packSha": "a687c77e26084384-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -1368,6 +1488,12 @@
       "silicon": {
         "key": "fluidbox:lilygo-t-display-s3"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "170x320, 3.8% of the panel painted, ghost buttons boot, io14",
@@ -1383,9 +1509,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "8ac38b912117863b",
-        "packSha": "3f454c635bf96bef-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "e3575ddc0cfcd1d7",
+        "packSha": "7c0e947cb1c4b2c6-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -1451,6 +1577,12 @@
       "silicon": {
         "key": "fluidbox:m5stickc-plus2"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "135x240, 3.8% of the panel painted, ghost buttons a, b, pwr",
@@ -1466,9 +1598,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "8ac38b912117863b",
-        "packSha": "5542e3db22589e2e-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "e3575ddc0cfcd1d7",
+        "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -1534,6 +1666,12 @@
       "silicon": {
         "key": "fluidbox:pico-display-pack-2"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "320x240, 3.8% of the panel painted, ghost buttons a, b, x, y",
@@ -1549,9 +1687,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "8ac38b912117863b",
-        "packSha": "c857ff15659b6891-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "e3575ddc0cfcd1d7",
+        "packSha": "46b334fd2ff469f3-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -1624,6 +1762,12 @@
       "silicon": {
         "key": "fluidbox:rp2350-touch-amoled-18"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "no blind port of fluidbox onto rp2350-touch-amoled-18 has been run, so blind-ports.json has no entry for it",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
@@ -1634,9 +1778,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "8ac38b912117863b",
-        "packSha": "e82df6f6811123c3",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "e3575ddc0cfcd1d7",
+        "packSha": "5f7b37d2127fbf77",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -1658,6 +1802,12 @@
       "silicon": {
         "key": "fluidbox:tinydraw-esp32-s3-touch-amoled-18"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "\"tinydraw-esp32-s3-touch-amoled-18\" is a pack carried by its own author, and a blind port here would be their run to make, not this repository's",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this is a pack carried by its own author, not a silhouette",
@@ -1668,9 +1818,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "8ac38b912117863b",
+        "bundleSha": "e3575ddc0cfcd1d7",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -1736,6 +1886,12 @@
       "silicon": {
         "key": "fluidbox:watchy"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "200x200, 3.8% of the panel painted, ghost buttons up, down, menu, back",
@@ -1751,9 +1907,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "8ac38b912117863b",
-        "packSha": "7060628f4adbd72f-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "e3575ddc0cfcd1d7",
+        "packSha": "c0b72b040bcac6b0-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -1826,6 +1982,12 @@
       "silicon": {
         "key": "fluidbox:web"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "no blind port of fluidbox onto web has been run, so blind-ports.json has no entry for it",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
@@ -1836,9 +1998,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "8ac38b912117863b",
-        "packSha": "ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "e3575ddc0cfcd1d7",
+        "packSha": "bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -1898,10 +2060,16 @@
       },
       "host": {
         "mark": "CRASHED",
-        "reason": "harness/hostdiff.ts: unexpected error: EOF: end of file, write Error: EOF: end of file, write     at async replayHost (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-ae4fe6c9aeb91908b\\harness\\hostSide.ts:387:20)     at async main (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-ae4fe6c9aeb91908b\\harness\\hostdiff.ts:280:30)"
+        "reason": "harness/hostdiff.ts: unexpected error: EOF: end of file, write Error: EOF: end of file, write     at async replayHost (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a1a475c9ac10a10f5\\harness\\hostSide.ts:313:20)     at async main (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a1a475c9ac10a10f5\\harness\\hostdiff.ts:280:30)"
       },
       "silicon": {
         "key": "gameos:esp32-s3-touch-amoled-18"
+      },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "no blind port of gameos onto esp32-s3-touch-amoled-18 has been run, so blind-ports.json has no entry for it",
+        "date": null,
+        "model": null
       },
       "silhouette": {
         "mark": "not applicable",
@@ -1913,9 +2081,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "366fd82e12d844f9",
-        "packSha": "aac6db2fe963317f",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "5b8112c06c7f3adc",
+        "packSha": "71997abbc23eae96",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -1973,6 +2141,12 @@
       "silicon": {
         "key": "gameos:feather-esp32s2-tft"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "240x135, 44.6% of the panel painted, ghost buttons d0",
@@ -1986,9 +2160,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "366fd82e12d844f9",
-        "packSha": "a687c77e26084384-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "5b8112c06c7f3adc",
+        "packSha": "a687c77e26084384-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2046,6 +2220,12 @@
       "silicon": {
         "key": "gameos:lilygo-t-display-s3"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "170x320, 62.8% of the panel painted, ghost buttons boot, io14",
@@ -2059,9 +2239,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "366fd82e12d844f9",
-        "packSha": "3f454c635bf96bef-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "5b8112c06c7f3adc",
+        "packSha": "7c0e947cb1c4b2c6-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2119,6 +2299,12 @@
       "silicon": {
         "key": "gameos:m5stickc-plus2"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "135x240, 66.1% of the panel painted, ghost buttons a, b, pwr",
@@ -2132,9 +2318,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "366fd82e12d844f9",
-        "packSha": "5542e3db22589e2e-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "5b8112c06c7f3adc",
+        "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2192,6 +2378,12 @@
       "silicon": {
         "key": "gameos:pico-display-pack-2"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "320x240, 59.9% of the panel painted, ghost buttons a, b, x, y",
@@ -2205,9 +2397,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "366fd82e12d844f9",
-        "packSha": "c857ff15659b6891-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "5b8112c06c7f3adc",
+        "packSha": "46b334fd2ff469f3-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2272,6 +2464,12 @@
       "silicon": {
         "key": "gameos:rp2350-touch-amoled-18"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "no blind port of gameos onto rp2350-touch-amoled-18 has been run, so blind-ports.json has no entry for it",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
@@ -2282,9 +2480,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "366fd82e12d844f9",
-        "packSha": "e82df6f6811123c3",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "5b8112c06c7f3adc",
+        "packSha": "5f7b37d2127fbf77",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2306,6 +2504,12 @@
       "silicon": {
         "key": "gameos:tinydraw-esp32-s3-touch-amoled-18"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "\"tinydraw-esp32-s3-touch-amoled-18\" is a pack carried by its own author, and a blind port here would be their run to make, not this repository's",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this is a pack carried by its own author, not a silhouette",
@@ -2316,9 +2520,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "366fd82e12d844f9",
+        "bundleSha": "5b8112c06c7f3adc",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2376,6 +2580,12 @@
       "silicon": {
         "key": "gameos:watchy"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "runs",
         "reason": "200x200, 60.0% of the panel painted, ghost buttons up, down, menu, back",
@@ -2389,9 +2599,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "366fd82e12d844f9",
-        "packSha": "7060628f4adbd72f-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "5b8112c06c7f3adc",
+        "packSha": "c0b72b040bcac6b0-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2449,6 +2659,12 @@
       "silicon": {
         "key": "gameos:web"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "no blind port of gameos onto web has been run, so blind-ports.json has no entry for it",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
@@ -2459,9 +2675,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "366fd82e12d844f9",
-        "packSha": "ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "5b8112c06c7f3adc",
+        "packSha": "bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2526,6 +2742,12 @@
       "silicon": {
         "key": "tinydraw:esp32-s3-touch-amoled-18"
       },
+      "blind": {
+        "mark": "PASS",
+        "reason": "claude-sonnet ported tinydraw to esp32-s3-touch-amoled-18 on 2026-09-02 with no session context; given the pack folder, the app bundle, and docs/convention/ - no session context and no sibling port to copy from; bun run verify-bundle went green on the first run, with no correction from a person; 1 attempt; about 50 minutes. Recorded by hand in blind-ports.json, not computed here.",
+        "date": "2026-09-02",
+        "model": "claude-sonnet"
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
@@ -2536,9 +2758,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "74cf0b699a80cf7b",
-        "packSha": "aac6db2fe963317f",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "9f643682cdf2a62a",
+        "packSha": "71997abbc23eae96",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2596,6 +2818,12 @@
       "silicon": {
         "key": "tinydraw:feather-esp32s2-tft"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "blank",
         "reason": "the app compiled, instantiated and painted this 240x135 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
@@ -2609,9 +2837,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "74cf0b699a80cf7b",
-        "packSha": "a687c77e26084384-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "9f643682cdf2a62a",
+        "packSha": "a687c77e26084384-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2669,6 +2897,12 @@
       "silicon": {
         "key": "tinydraw:lilygo-t-display-s3"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "blank",
         "reason": "the app compiled, instantiated and painted this 170x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
@@ -2682,9 +2916,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "74cf0b699a80cf7b",
-        "packSha": "3f454c635bf96bef-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "9f643682cdf2a62a",
+        "packSha": "7c0e947cb1c4b2c6-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2742,6 +2976,12 @@
       "silicon": {
         "key": "tinydraw:m5stickc-plus2"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "blank",
         "reason": "the app compiled, instantiated and painted this 135x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
@@ -2755,9 +2995,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "74cf0b699a80cf7b",
-        "packSha": "5542e3db22589e2e-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "9f643682cdf2a62a",
+        "packSha": "5542e3db22589e2e-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2815,6 +3055,12 @@
       "silicon": {
         "key": "tinydraw:pico-display-pack-2"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "blank",
         "reason": "the app compiled, instantiated and painted this 320x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
@@ -2828,9 +3074,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "74cf0b699a80cf7b",
-        "packSha": "c857ff15659b6891-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "9f643682cdf2a62a",
+        "packSha": "46b334fd2ff469f3-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2895,6 +3141,12 @@
       "silicon": {
         "key": "tinydraw:rp2350-touch-amoled-18"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "no blind port of tinydraw onto rp2350-touch-amoled-18 has been run, so blind-ports.json has no entry for it",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this target has firmware of its own, so it is proven by the emulator and host marks rather than by a silhouette run",
@@ -2905,9 +3157,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "74cf0b699a80cf7b",
-        "packSha": "e82df6f6811123c3",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "9f643682cdf2a62a",
+        "packSha": "5f7b37d2127fbf77",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2929,6 +3181,12 @@
       "silicon": {
         "key": "tinydraw:tinydraw-esp32-s3-touch-amoled-18"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "\"tinydraw-esp32-s3-touch-amoled-18\" is a pack carried by its own author, and a blind port here would be their run to make, not this repository's",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "not applicable",
         "reason": "this is a pack carried by its own author, not a silhouette",
@@ -2939,9 +3197,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "74cf0b699a80cf7b",
+        "bundleSha": "9f643682cdf2a62a",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -2999,6 +3257,12 @@
       "silicon": {
         "key": "tinydraw:watchy"
       },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "there is nothing to port to: a silhouette has no firmware, so an agent handed this folder would find one device.json and no pack to target",
+        "date": null,
+        "model": null
+      },
       "silhouette": {
         "mark": "blank",
         "reason": "the app compiled, instantiated and painted this 200x200 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
@@ -3012,9 +3276,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "74cf0b699a80cf7b",
-        "packSha": "7060628f4adbd72f-ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "9f643682cdf2a62a",
+        "packSha": "c0b72b040bcac6b0-bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     },
@@ -3073,11 +3337,17 @@
         "reason": "all invariants held over 4 frame(s)"
       },
       "host": {
-        "mark": "MATCH",
-        "reason": "4/4 capture point(s) identical to the wasm build, sanitizers address, undefined"
+        "mark": "BUILD_FAILED",
+        "reason": "zig cc exited 5 compiling C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a1a475c9ac10a10f5\\harness\\host\\driver.c on all 8 attempts with no diagnostic text (see AGENTS.md's toolchain notes) (on all 3 attempts, backing off 5s then 20s)"
       },
       "silicon": {
         "key": "tinydraw:web"
+      },
+      "blind": {
+        "mark": "not attempted",
+        "reason": "no blind port of tinydraw onto web has been run, so blind-ports.json has no entry for it",
+        "date": null,
+        "model": null
       },
       "silhouette": {
         "mark": "not applicable",
@@ -3089,9 +3359,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "74cf0b699a80cf7b",
-        "packSha": "ad516184dd0f8afa",
-        "verdictToolSha": "0faa82bc62b8facb"
+        "bundleSha": "9f643682cdf2a62a",
+        "packSha": "bb5526c8eb7e931d",
+        "verdictToolSha": "beeade31b86b1c0e"
       },
       "computedAt": "2026-09-02"
     }
