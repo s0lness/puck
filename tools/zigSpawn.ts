@@ -149,6 +149,53 @@
 // deterministic shape the fifth failure mode's own fix targets, and not
 // fixed by anything cache-related either. Left red and reported as such
 // rather than papered over: whatever this is remains unexplained.
+//
+// The hypothesis tried next, directly, was that `Bun.spawnSync` ITSELF is
+// the culprit on this Windows-on-ARM64 machine - corrupting argv or a
+// stdio handle under load, since a previous worker had once seen zig
+// report a garbled flag (`-uarget-feature`) and a garbled path
+// (`C:]Users`). Measured by running one hostile fixture's exact command
+// line (button_trap.c, 13 export flags, absolute paths) 20x solo,
+// sequentially, from each of four launchers, judging by the artifact on
+// disk: `Bun.spawnSync` direct, 18 ok (many "exit 5 but the artifact is
+// fine" lies) + 2 other (bare exit 9, empty stderr, nothing written);
+// `Bun.spawnSync` of `cmd.exe /c <same line>`, 20/20 clean; Node's
+// `child_process.spawnSync` (via `node --experimental-strip-types`),
+// 20/20 clean; a PowerShell loop calling zig directly (`Start-Process`),
+// only 15/20 - 5 access-violation crashes (0xC0000005), WORSE than
+// `Bun.spawnSync` direct, not better. That rules the hypothesis OUT: if
+// this were Bun corrupting the call, the launcher with no Bun anywhere
+// in it should have been the cleanest, and instead it was the worst.
+// Confirmed a second way on a subset of the `Bun.spawnSync` runs: adding
+// `-###` (clang's own dry-run flag, prints the exact command it received)
+// and diffing that printed line against what was passed showed no
+// corruption at all, argv matched byte for byte, every time. Two more
+// things this same investigation tried, per the plan for "all launchers
+// fail alike": `-c` (compile only, no link) on the same fixture, 20x -
+// 16 ok, 4 silent exit-5, the SAME rate as the full compile+link, which
+// rules out "too many `-Wl,--export=` flags" as this particular flake's
+// mechanism (that one is real, see the fifth failure mode above, but it
+// is not this); and the exact `test:regression` v1-then-v2 sequence
+// (the one that had just failed for real, 8/8 attempts, building
+// regress_v2) replayed directly against `runZigCc` under a wiped cache,
+// an already-warm cache from a prior successful build of that exact
+// fixture, and a brand-new never-touched temp cache dir - 0 to 6 silent
+// failures out of an 8-attempt budget, no ordering to it, cache state
+// explaining none of the variance. So: not Bun (the non-Bun launcher was
+// the worst, not the best), not the export-flag/path-length mechanism
+// (compile-only fails at the same rate), not cache poisoning or cache
+// coldness (warm, cold, and brand-new all misfire). Left unexplained,
+// same as test:hostile above - now the same conclusion for both suites,
+// reached the same way: try to blame a mechanism, measure it, and report
+// the negative result rather than shipping a fix for a cause that was
+// not there. The one change this investigation DID make, because the
+// budget it was testing against had just been exhausted for real: attempt
+// budget for every runZigCc call. `DEFAULT_MAX_ATTEMPTS` below moved
+// from 8 to 16 - not a fix for the flake (nothing above explains it well
+// enough to fix), just enough more room, measured against a flake that
+// used 6 of its 8 attempts more than once in this same investigation, to
+// stop occasionally running out of retries for a build that a later
+// attempt was going to succeed at anyway.
 import { readFileSync, rmSync, statSync } from "node:fs";
 import { resolve, join, isAbsolute, relative } from "node:path";
 import { sanitizedEnv } from "./env";
@@ -193,7 +240,7 @@ export interface SpawnRetryOptions {
   onSilentFailure?: (wasTimeoutKill: boolean) => void;
 }
 
-export const DEFAULT_MAX_ATTEMPTS = 8;
+export const DEFAULT_MAX_ATTEMPTS = 16;
 export const DEFAULT_TIMEOUT_MS = 120_000;
 const RETRY_PAUSE_START_MS = 400;
 const RETRY_PAUSE_CAP_MS = 10_000;

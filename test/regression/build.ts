@@ -75,7 +75,7 @@ export function buildRegressionFixture(name: string, changed: boolean): FixtureB
   // guess at blind: piped stdio means a genuine compile error is captured
   // and reported immediately instead of retried, and the artifact at
   // `out` is checked directly rather than trusted to zig's own exit code).
-  // maxAttempts left at tools/zigSpawn.ts's default (8, same as every
+  // maxAttempts left at tools/zigSpawn.ts's default (16, same as every
   // pack's own build.ts) - see test/hostile/build.ts's equivalent comment
   // for why the previous 5-attempt, flat-300ms-pause budget measurably
   // was not enough under today's real concurrent load.
