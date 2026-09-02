@@ -141,8 +141,29 @@ if(DEFINED PUCK_SINGLE_APP_ROSTER)
     target_include_directories(main BEFORE PRIVATE ${PUCK_SINGLE_APP_ROSTER})
     # So a port file outside firmware/apps/ can #include a private helper
     # header of its own - the same allowance wasm/build.ts's --app gives it.
+    # SCOPED TO THE APP'S OWN TRANSLATION UNIT ONLY, via the source file's
+    # own INCLUDE_DIRECTORIES property, not target_include_directories:
+    # that call adds the directory to every source main compiles, and a
+    # port's own helper header can carry the same name as a real one -
+    # apps/gameos/ports/rp2350-touch-amoled-18/string.h exists purely as a
+    # freestanding-wasm32 stand-in (that file's own header comment: zig's
+    # wasm32-freestanding target ships no <string.h> at all), declaring only
+    # memset()/memcpy(). Added target-wide, it silently shadowed the real
+    # newlib <string.h> for devlink.c too - a PACK file, not app-owned,
+    # unrelated to any single app and needing the real strchr/strlen/strcmp
+    # PUSHSTATS and TUNE FREEZE both call - and broke the native build with
+    # "implicit declaration of function 'strchr'" the first time an app
+    # bringing its own string.h shim (gameos) was built natively rather than
+    # to wasm (where devlink.c is never compiled at all - see AGENTS.md's
+    # "WebAssembly" section - so the collision could not show up there).
+    # Scoping the include to the app's own .c file is exactly what
+    # wasm/build.ts's --app already does (one zig cc invocation per file,
+    # inherently unable to leak into another translation unit); this makes
+    # the native build agree instead of being the first consumer to notice
+    # the gap.
     get_filename_component(PUCK_SINGLE_APP_DIR ${PUCK_SINGLE_APP_SOURCE} DIRECTORY)
-    target_include_directories(main PRIVATE ${PUCK_SINGLE_APP_DIR})
+    set_source_files_properties(${PUCK_SINGLE_APP_SOURCE} PROPERTIES
+        INCLUDE_DIRECTORIES ${PUCK_SINGLE_APP_DIR})
 else()
     target_sources(main PRIVATE
         apps/menu.c
