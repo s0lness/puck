@@ -131,6 +131,10 @@ Four rules the verifier enforces, each for one reason:
 
 **Listing a bundle with a `build` command means running that repository's build on your own machine.** That is a deliberate choice, not an oversight; the reasoning, and what the pinned commit does and does not buy, is in [`../decisions/0005-external-ports-are-reproduced.md`](../decisions/0005-external-ports-are-reproduced.md).
 
+### Host toolchain hints
+
+A `build.command` can need a toolchain this host does not have on PATH: a WASI clang++ at a specific path, a `cmake`/`ninja` install under some SDK's own tools directory. That is not something to fix by editing the bundle: `build.command` is the author's own repository, committed and shared, and where a toolchain happens to sit is a fact about ONE machine, not a portable one. `toolchains.local.json`, at this repository's root and gitignored, is where a host says that instead: an `"env"` object of variable name to path (filled in only when the build's own environment does not already set that variable, so it is a fallback, never an override) and a `"path"` array of directories prepended to PATH before the build command runs. `toolchains.example.json`, committed, documents the shape without naming a real path. Both apply to every external build this process performs, not to one bundle; `tools/externalBuild.ts`'s own header comment carries the implementation detail.
+
 This schema fixes a specific bug in 0.1: the exact pixel-exact capture points and the invariants capture-at times used to live only in a port's own `README.md`, prose a verifier cannot read. `bundle.json` now carries everything `verify-bundle` needs on its own.
 
 apps/chrono/bundle.json and apps/fluidbox/bundle.json are the reference 0.2 bundles: chrono ports `native` (the reference pack) and `faithful` (a second pack), both pixel-exact; fluidbox ports `adaptation`, verified by invariants.
