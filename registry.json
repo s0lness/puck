@@ -22,6 +22,18 @@
     {
       "name": "feather-esp32s2-tft",
       "path": "packs/silhouettes/feather-esp32s2-tft"
+    },
+    {
+      "name": "lilygo-t-display-s3",
+      "path": "packs/silhouettes/lilygo-t-display-s3"
+    },
+    {
+      "name": "pico-display-pack-2",
+      "path": "packs/silhouettes/pico-display-pack-2"
+    },
+    {
+      "name": "watchy",
+      "path": "packs/silhouettes/watchy"
     }
   ],
   "apps": [

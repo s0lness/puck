@@ -1,0 +1,63 @@
+{
+  "convention": "0.2",
+  "name": "Watchy",
+  "panel": {
+    "w": 200,
+    "h": 200,
+    "format": "mono1"
+  },
+  "buttons": [
+    {
+      "id": "up",
+      "label": "UP",
+      "edge": "left",
+      "at": 0.25,
+      "role": "click"
+    },
+    {
+      "id": "down",
+      "label": "DOWN",
+      "edge": "left",
+      "at": 0.75,
+      "role": "click"
+    },
+    {
+      "id": "menu",
+      "label": "MENU",
+      "edge": "right",
+      "at": 0.25,
+      "role": "click"
+    },
+    {
+      "id": "back",
+      "label": "BACK",
+      "edge": "right",
+      "at": 0.75,
+      "role": "click"
+    }
+  ],
+  "touch": {
+    "points": 0
+  },
+  "sensors": [
+    {
+      "id": "tilt",
+      "kind": "vector",
+      "unit": "g"
+    }
+  ],
+  "budget": {
+    "ram": {
+      "bytes": 265336,
+      "basis": "520 KB of on-chip SRAM (ESP32-PICO-D4, Espressif's own ESP32-PICO series datasheet, 8 KB of it RTC memory), minus the 5,000-byte full framebuffer (200x200 at one bit), minus a 256 KB reserve for the SDK, its task stacks and the radio stacks. An e-paper panel is the one place a full framebuffer is nearly free, which is most of why this board budgets more app state than the colour silhouettes here do. Derived from the datasheet, never measured on this board."
+    },
+    "framebuffer": "full",
+    "tickBudgetMs": 300,
+    "tickBudgetBasis": "The panel is what sets the frame period, not the CPU. Good Display's own specification for the GDEY0154D67 gives 0.3 s for a partial refresh, 1.5 s for a fast full refresh and 2 s for a full one at 25 degrees, so the fastest this device can present a new frame at all is one every 300 ms and a tick may take that long without missing anything. READ THAT AS A CEILING ON COMPUTE, NOT AS A PROMISE ABOUT MOTION: this convention has a dimension for how long a tick may take and none for how often a frame appears, so an app whose tick fits inside 300 ms still gets three frames a second here, and an app that animates is not going to look like itself no matter what this number says."
+  },
+  "provenance": {
+    "datasheet": "https://watchy.sqfmi.com/docs/hardware/",
+    "verified": false,
+    "note": "unverified against silicon. Panel (200x200 e-paper, Good Display GDEY0154D67 on current boards and GDEH0154D67 on earlier ones, SSD1681 controller), the four buttons (v2 hardware: MENU on GPIO26, BACK on GPIO25, UP on GPIO35, DOWN on GPIO4; v3 moves them to GPIO7/6/0/8), the accelerometer (Bosch BMA423) and the MCU (ESP32-PICO-D4 through v2, ESP32-S3FN8 on v3) are read off SQFMI's own hardware documentation and its firmware's src/config.h. The 520 KB SRAM figure is the ESP32-PICO-D4's, from Espressif, not from SQFMI, and this file describes the v2 board rather than the v3 because that is the one whose numbers are stated in both places. The refresh timings are Good Display's panel specification (https://www.good-display.com/product/388.html); SQFMI publishes no refresh figure of its own, and nothing here has measured one. FOUR THINGS ARE DERIVED RATHER THAN READ. The format is called mono1 because Watchy's own firmware drives this panel one bit per pixel through GxEPD2; the panel itself is specified with some greyscale capability, so this describes how the board is used rather than the outer limit of the glass. All four buttons are declared as plain clicks and none as a key: they are ordinary GPIOs, but the documented behaviour is a momentary press and a level-triggered wake from deep sleep, and nothing SQFMI publishes promises a short-versus-long verdict, so declaring one would be inventing a control. A device with no key at all is a real answer, and an app that wants one is told so rather than handed a substitute. The BMA423 reports a continuous acceleration vector, which is what that part does; SQFMI's own docs do not describe the output in those words. And the button edges and positions here place four corner buttons on two edges for a host to draw, which is a simplification of a square case with one button at each corner."
+  }
+}
