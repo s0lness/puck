@@ -116,13 +116,13 @@ interface RunResult {
 // diagnostic text is a real compile error and is never retried; retrying
 // it would only delay reporting a bug that will not go away.
 const MAX_ATTEMPTS = 8;
-// BACKOFF, NOT A FIXED PAUSE, and the measurement behind it: this flake is
-// a WINDOW, not a coin toss. Measured on the development machine by running
-// a heavy wasm build in another process and then compiling driver.c in a
-// loop, the first three attempts die at exit 5 in about 20ms each having
-// written nothing at all (which is a process that never got to run, not a
-// compiler that tried and failed), and the fourth succeeds - all inside a
-// second and a half. Eight attempts at a flat 400ms cover 3.2 seconds
+// BACKOFF, NOT A FIXED PAUSE, for the attempts that genuinely produced
+// nothing (see producedOutput below for the much more common case, where
+// the compiler did the work and lost its own exit status). Measured on the
+// development machine: a heavy wasm build in another process leaves the
+// next zig invocations dying at exit 5 in about 20ms having written nothing
+// at all, which is a process that never got to run rather than a compiler
+// that tried and failed. Eight attempts at a flat 400ms cover 3.2 seconds
 // total, which is enough on an idle machine and not enough on a busy one:
 // under the load tools/ledger.ts puts on it, every one of the eight landed
 // inside the same window and a perfectly good port came out BUILD_FAILED.
@@ -137,10 +137,38 @@ function looksLikeFlake(result: RunResult): boolean {
   return !result.success && result.stderr.trim().length === 0;
 }
 
-function runZig(args: string[]): RunResult {
+/**
+ * THE OUTPUT FILE IS THE VERDICT, NOT THE EXIT CODE, and that is a
+ * measurement rather than an opinion. Probed on the development machine by
+ * compiling the same source repeatedly right after a wasm build in another
+ * process: some runs exit 5 with completely empty stderr AND a correct,
+ * fully written object file on disk, in the same second as runs that exit 0
+ * with byte-identical output. It happens under every sanitizer group and
+ * with none, so it is not about ASan being unavailable; it is `zig cc` on
+ * this Windows-on-ARM build losing its own exit status after doing the work.
+ *
+ * Retrying that is thirty seconds of nothing: the next attempt is just as
+ * likely to lie. So an attempt that wrote the artifact it was asked for is
+ * accepted, and only an attempt that wrote NOTHING is retried. A run that
+ * printed diagnostic text is still a real compile error and is still never
+ * retried and never accepted, whatever is on disk: a stale object from a
+ * previous attempt must not be mistaken for a successful one, which is why
+ * every caller passes an output path unique to its own attempt-free source.
+ */
+function producedOutput(outPath: string): boolean {
+  try {
+    return statSync(outPath).size > 0;
+  } catch {
+    return false;
+  }
+}
+
+function runZig(args: string[], outPath: string): RunResult {
   const spawnOnce = (): RunResult => {
     const r = Bun.spawnSync([ZIG, ...args], { stdout: "pipe", stderr: "pipe", timeout: ATTEMPT_TIMEOUT_MS });
-    return { success: r.success, stdout: r.stdout ? r.stdout.toString() : "", stderr: r.stderr ? r.stderr.toString() : "", exitCode: r.exitCode };
+    const stderr = r.stderr ? r.stderr.toString() : "";
+    const lied = !r.success && stderr.trim().length === 0 && producedOutput(outPath);
+    return { success: r.success || lied, stdout: r.stdout ? r.stdout.toString() : "", stderr, exitCode: r.exitCode };
   };
   let result = spawnOnce();
   let pause = RETRY_PAUSE_START_MS;
@@ -157,7 +185,7 @@ function runZig(args: string[]): RunResult {
 // exhausting every retry), null on success.
 function compileOne(src: string, includes: string[], defines: string[], sanitizeFlags: string[], outObj: string): string | null {
   const args = ["cc", "-c", "-O1", "-g", ...sanitizeFlags, ...defines, ...includes.flatMap((d) => ["-I", d]), src, "-o", outObj];
-  const result = runZig(args);
+  const result = runZig(args, outObj);
   if (result.success) return null;
   const tail = result.stderr.trim();
   return tail.length > 0
@@ -167,7 +195,7 @@ function compileOne(src: string, includes: string[], defines: string[], sanitize
 
 function linkAll(objs: string[], sanitizeFlags: string[], outExe: string): string | null {
   const args = ["cc", ...sanitizeFlags, ...objs, "-o", outExe];
-  const result = runZig(args);
+  const result = runZig(args, outExe);
   if (result.success) return null;
   const tail = result.stderr.trim();
   return tail.length > 0
