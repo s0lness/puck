@@ -1681,6 +1681,12 @@ const FLASH_ARTIFACTS: Record<string, FlashArtifact> = {
   "fluidbox-rp2350": {
     file: "fluidbox-rp2350.uf2",
   },
+  "tinydraw-rp2350": {
+    file: "tinydraw-rp2350.uf2",
+  },
+  "gameos-rp2350": {
+    file: "gameos-rp2350.uf2",
+  },
 };
 
 // Quoted compactly from packs/rp2350-touch-amoled-18/gotchas.md's own
