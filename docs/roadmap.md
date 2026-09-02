@@ -118,17 +118,29 @@ app's own C or says plainly what is missing.
 - An empty cell says "no port yet", carries the verdict's own reason, and
   links to `/puck-publish/`.
 
-Two things the grid exposed, both visible on the page rather than fixed by
-dropping a cell, and both worth a workstream of their own:
+The grid exposed one thing worth a workstream of its own, closed
+2026-09-02: **gameos's rp2350 port assumed the reference panel.** Its
+`gosrt_present()` (`apps/gameos/ports/rp2350-touch-amoled-18/gos_runtime.c`)
+hardcoded a 2x nearest upscale of the donor's fixed 184x224 indexed canvas
+straight into a 368x448-shaped write, so a smaller silhouette either wrote
+past its own framebuffer (a trap, feather-esp32s2-tft and
+pico-display-pack-2) or landed inside it wrong (a blank frame,
+m5stickc-plus2 and lilygo-t-display-s3). `chrono` and `fluidbox` read
+`PANEL_W`/`PANEL_H` directly and were never affected. Fixed by making
+`gosrt_present()` fit that same fixed 184x224 canvas into whatever
+`PANEL_W`/`PANEL_H` actually are (nearest-neighbour, letterboxed, scaling up
+or down), which is the identity 2x/no-letterbox transform at 368x448 - so
+the rp2350 pack's own port stays byte-identical (`bun run verify-bundle
+apps/gameos` unchanged) while every silhouette now gets a real picture with
+no out-of-bounds write. The launcher grid and both games' playfields needed
+no layout change of their own: they already draw entirely inside that fixed
+184x224 canvas, only the PRESENT step ever assumed the reference panel's
+literal size.
 
-- **gameos's ports assume the reference panel.** On a smaller silhouette
-  its shell draws outside the panel, and on two of them the module traps.
-  `chrono` and `fluidbox` read `PANEL_W`/`PANEL_H` and are correct on all
-  five. Nothing yet stops a port hardcoding a panel except this picture.
-- **`packs/web` wires one `click` and one `key` and no more**, so a board
-  declaring four clicks and no key (Watchy) silently loses that control,
-  while `verdict` reports the friendlier "a click stands in for it". The
-  two disagree, and closing that is a change to the pack.
+A second finding this same grid exposed, **`packs/web` wiring exactly one
+`click` and one `key`**, is also closed (2026-09-02): see
+`packs/web/AGENTS.md`'s "Buttons" section and
+`packs/silhouettes/watchy/AGENTS.md`'s "The seam this board used to expose".
 
 ### 4. The blind port (one day to wire, then it runs on its own)
 

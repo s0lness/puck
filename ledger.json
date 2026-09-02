@@ -200,7 +200,7 @@
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
         "packSha": "aac6db2fe963317f",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -236,8 +236,8 @@
       },
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
-        "packSha": "a687c77e26084384-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "a687c77e26084384-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -273,8 +273,8 @@
       },
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
-        "packSha": "7c0e947cb1c4b2c6-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "3f454c635bf96bef-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -310,8 +310,8 @@
       },
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
-        "packSha": "5542e3db22589e2e-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "5542e3db22589e2e-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -347,8 +347,8 @@
       },
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
-        "packSha": "46b334fd2ff469f3-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "c857ff15659b6891-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -382,7 +382,7 @@
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
         "packSha": "e82df6f6811123c3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -423,7 +423,7 @@
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -459,8 +459,8 @@
       },
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
-        "packSha": "9a6f6a01fc3c730a-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "7060628f4adbd72f-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -493,8 +493,8 @@
       },
       "inputs": {
         "bundleSha": "7a157d44a9da3312",
-        "packSha": "c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -571,7 +571,7 @@
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
         "packSha": "aac6db2fe963317f",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -645,8 +645,8 @@
       },
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
-        "packSha": "a687c77e26084384-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "a687c77e26084384-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -720,8 +720,8 @@
       },
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
-        "packSha": "7c0e947cb1c4b2c6-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "3f454c635bf96bef-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -795,8 +795,8 @@
       },
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
-        "packSha": "5542e3db22589e2e-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "5542e3db22589e2e-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -870,8 +870,8 @@
       },
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
-        "packSha": "46b334fd2ff469f3-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "c857ff15659b6891-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -948,7 +948,7 @@
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
         "packSha": "e82df6f6811123c3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -982,7 +982,7 @@
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -1056,8 +1056,8 @@
       },
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
-        "packSha": "9a6f6a01fc3c730a-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "7060628f4adbd72f-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -1133,8 +1133,8 @@
       },
       "inputs": {
         "bundleSha": "4edb88d374b15fb7",
-        "packSha": "c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -1219,7 +1219,7 @@
       "inputs": {
         "bundleSha": "8ac38b912117863b",
         "packSha": "aac6db2fe963317f",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -1301,8 +1301,8 @@
       },
       "inputs": {
         "bundleSha": "8ac38b912117863b",
-        "packSha": "a687c77e26084384-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "a687c77e26084384-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -1384,8 +1384,8 @@
       },
       "inputs": {
         "bundleSha": "8ac38b912117863b",
-        "packSha": "7c0e947cb1c4b2c6-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "3f454c635bf96bef-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -1467,8 +1467,8 @@
       },
       "inputs": {
         "bundleSha": "8ac38b912117863b",
-        "packSha": "5542e3db22589e2e-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "5542e3db22589e2e-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -1550,8 +1550,8 @@
       },
       "inputs": {
         "bundleSha": "8ac38b912117863b",
-        "packSha": "46b334fd2ff469f3-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "c857ff15659b6891-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -1636,7 +1636,7 @@
       "inputs": {
         "bundleSha": "8ac38b912117863b",
         "packSha": "e82df6f6811123c3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -1670,7 +1670,7 @@
       "inputs": {
         "bundleSha": "8ac38b912117863b",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -1752,8 +1752,8 @@
       },
       "inputs": {
         "bundleSha": "8ac38b912117863b",
-        "packSha": "9a6f6a01fc3c730a-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "7060628f4adbd72f-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -1837,8 +1837,8 @@
       },
       "inputs": {
         "bundleSha": "8ac38b912117863b",
-        "packSha": "c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -1898,7 +1898,7 @@
       },
       "host": {
         "mark": "CRASHED",
-        "reason": "harness/hostdiff.ts: unexpected error: EOF: end of file, write Error: EOF: end of file, write     at async replayHost (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a1a475c9ac10a10f5\\harness\\hostSide.ts:387:20)     at async main (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-a1a475c9ac10a10f5\\harness\\hostdiff.ts:280:30)"
+        "reason": "harness/hostdiff.ts: unexpected error: EOF: end of file, write Error: EOF: end of file, write     at async replayHost (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-ae4fe6c9aeb91908b\\harness\\hostSide.ts:387:20)     at async main (C:\\Users\\sylve\\projects\\puck\\.claude\\worktrees\\agent-ae4fe6c9aeb91908b\\harness\\hostdiff.ts:280:30)"
       },
       "silicon": {
         "key": "gameos:esp32-s3-touch-amoled-18"
@@ -1913,9 +1913,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "1ad93f15fa080728",
+        "bundleSha": "366fd82e12d844f9",
         "packSha": "aac6db2fe963317f",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -1974,8 +1974,8 @@
         "key": "gameos:feather-esp32s2-tft"
       },
       "silhouette": {
-        "mark": "page-error",
-        "reason": "memory access out of bounds",
+        "mark": "runs",
+        "reason": "240x135, 44.6% of the panel painted, ghost buttons d0",
         "proof": "packs/silhouettes/feather-esp32s2-tft/proof/gameos.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
@@ -1986,9 +1986,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "1ad93f15fa080728",
-        "packSha": "a687c77e26084384-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "bundleSha": "366fd82e12d844f9",
+        "packSha": "a687c77e26084384-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -2047,8 +2047,8 @@
         "key": "gameos:lilygo-t-display-s3"
       },
       "silhouette": {
-        "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 170x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "mark": "runs",
+        "reason": "170x320, 62.8% of the panel painted, ghost buttons boot, io14",
         "proof": "packs/silhouettes/lilygo-t-display-s3/proof/gameos.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
@@ -2059,9 +2059,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "1ad93f15fa080728",
-        "packSha": "7c0e947cb1c4b2c6-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "bundleSha": "366fd82e12d844f9",
+        "packSha": "3f454c635bf96bef-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -2120,8 +2120,8 @@
         "key": "gameos:m5stickc-plus2"
       },
       "silhouette": {
-        "mark": "blank",
-        "reason": "the app compiled, instantiated and painted this 135x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart",
+        "mark": "runs",
+        "reason": "135x240, 66.1% of the panel painted, ghost buttons a, b, pwr",
         "proof": "packs/silhouettes/m5stickc-plus2/proof/gameos.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
@@ -2132,9 +2132,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "1ad93f15fa080728",
-        "packSha": "5542e3db22589e2e-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "bundleSha": "366fd82e12d844f9",
+        "packSha": "5542e3db22589e2e-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -2193,8 +2193,8 @@
         "key": "gameos:pico-display-pack-2"
       },
       "silhouette": {
-        "mark": "page-error",
-        "reason": "memory access out of bounds",
+        "mark": "runs",
+        "reason": "320x240, 59.9% of the panel painted, ghost buttons a, b, x, y",
         "proof": "packs/silhouettes/pico-display-pack-2/proof/gameos.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
@@ -2205,9 +2205,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "1ad93f15fa080728",
-        "packSha": "46b334fd2ff469f3-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "bundleSha": "366fd82e12d844f9",
+        "packSha": "c857ff15659b6891-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -2282,9 +2282,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "1ad93f15fa080728",
+        "bundleSha": "366fd82e12d844f9",
         "packSha": "e82df6f6811123c3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -2316,9 +2316,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "1ad93f15fa080728",
+        "bundleSha": "366fd82e12d844f9",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -2377,8 +2377,8 @@
         "key": "gameos:watchy"
       },
       "silhouette": {
-        "mark": "page-error",
-        "reason": "null function",
+        "mark": "runs",
+        "reason": "200x200, 60.0% of the panel painted, ghost buttons up, down, menu, back",
         "proof": "packs/silhouettes/watchy/proof/gameos.png",
         "source": "apps/gameos/ports/rp2350-touch-amoled-18/gameos_port.c",
         "via": "rp2350-touch-amoled-18",
@@ -2389,9 +2389,9 @@
         }
       },
       "inputs": {
-        "bundleSha": "1ad93f15fa080728",
-        "packSha": "9a6f6a01fc3c730a-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "bundleSha": "366fd82e12d844f9",
+        "packSha": "7060628f4adbd72f-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -2459,9 +2459,9 @@
         "panel": null
       },
       "inputs": {
-        "bundleSha": "1ad93f15fa080728",
-        "packSha": "c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "bundleSha": "366fd82e12d844f9",
+        "packSha": "ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -2538,7 +2538,7 @@
       "inputs": {
         "bundleSha": "74cf0b699a80cf7b",
         "packSha": "aac6db2fe963317f",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -2610,8 +2610,8 @@
       },
       "inputs": {
         "bundleSha": "74cf0b699a80cf7b",
-        "packSha": "a687c77e26084384-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "a687c77e26084384-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -2683,8 +2683,8 @@
       },
       "inputs": {
         "bundleSha": "74cf0b699a80cf7b",
-        "packSha": "7c0e947cb1c4b2c6-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "3f454c635bf96bef-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -2756,8 +2756,8 @@
       },
       "inputs": {
         "bundleSha": "74cf0b699a80cf7b",
-        "packSha": "5542e3db22589e2e-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "5542e3db22589e2e-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -2829,8 +2829,8 @@
       },
       "inputs": {
         "bundleSha": "74cf0b699a80cf7b",
-        "packSha": "46b334fd2ff469f3-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "c857ff15659b6891-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -2907,7 +2907,7 @@
       "inputs": {
         "bundleSha": "74cf0b699a80cf7b",
         "packSha": "e82df6f6811123c3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -2941,7 +2941,7 @@
       "inputs": {
         "bundleSha": "74cf0b699a80cf7b",
         "packSha": "000de0aa746108d2",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -3013,8 +3013,8 @@
       },
       "inputs": {
         "bundleSha": "74cf0b699a80cf7b",
-        "packSha": "9a6f6a01fc3c730a-c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "7060628f4adbd72f-ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     },
@@ -3090,8 +3090,8 @@
       },
       "inputs": {
         "bundleSha": "74cf0b699a80cf7b",
-        "packSha": "c6f69d0ee4c941e3",
-        "verdictToolSha": "beeade31b86b1c0e"
+        "packSha": "ad516184dd0f8afa",
+        "verdictToolSha": "0faa82bc62b8facb"
       },
       "computedAt": "2026-09-02"
     }
