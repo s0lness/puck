@@ -107,12 +107,43 @@ export type HostBuildResult = HostBuildOk | HostBuildFail;
 // `isWasm` is left at its default false: no magic-byte check, just
 // non-empty.
 
+// -ffp-contract=off: THE HOST BUILD'S FLOATING-POINT SEMANTICS ARE MADE TO
+// MATCH WASM'S, because otherwise this mark reports a compiler's licence as
+// a firmware divergence. clang defaults to `-ffp-contract=on`, which lets it
+// fuse `a * b + c` into a single fused multiply-add - ONE rounding instead
+// of two, a different (more accurate, still C-legal) result. wasm32 has no
+// FMA instruction at all, so the wasm build always rounds twice; every
+// multiply-accumulate in a float-heavy app therefore lands on a slightly
+// different number on the two sides. Measured here, not assumed
+// (apps/fluidbox x rp2350-touch-amoled-18, its own 566-event trace, capture
+// points added at a ladder of times): with contraction ON the two builds
+// agree exactly through t=512ms, part company at t=1024ms by 84 of 164,864
+// pixels, and are 4.67%/5.06%/4.94% apart by the bundle's own three points -
+// a chaotic SPH solver amplifying a last-bit difference, exactly the way a
+// chaotic system does. With `-ffp-contract=off` the SAME two builds are
+// byte-identical at every one of those eleven points. So the whole 4.7% was
+// contraction, not undefined behaviour and not a bug in anybody's C.
+//
+// This belongs here, on every app and every pack, rather than in one app's
+// bundle: it is a property of the two TARGETS, not of any firmware, and a
+// host mark that only agrees with wasm on integer code would be a much
+// weaker instrument. It does not weaken the mark's actual job - the
+// sanitizers are untouched, and a real out-of-bounds write or signed
+// overflow traps exactly as before (test/host/fixtures/ proves that on
+// every run).
+//
+// Not -ffast-math, in either direction, and not by omission: -ffast-math
+// would go the OTHER way (it turns contraction ON along with reassociation,
+// finite-math assumptions and flush-to-zero), which is strictly further from
+// wasm's own strict IEEE-754 semantics, not closer.
+const FP_FLAGS = ["-ffp-contract=off"];
+
 // Compiles one source to one object file with its own include list.
 // Returns an error string on failure (a real compile error, or the flake
 // exhausting every retry - either way already printed by runZigCc), null
 // on success.
 function compileOne(src: string, includes: string[], defines: string[], sanitizeFlags: string[], outObj: string): string | null {
-  const args = ["cc", "-c", "-O1", "-g", ...sanitizeFlags, ...defines, ...includes.flatMap((d) => ["-I", d]), src, "-o", outObj];
+  const args = ["cc", "-c", "-O1", "-g", ...FP_FLAGS, ...sanitizeFlags, ...defines, ...includes.flatMap((d) => ["-I", d]), src, "-o", outObj];
   // useAmbientCache: true - see tools/zigSpawn.ts's ZigCcOptions comment
   // (the sixth failure mode). This is the sanitized native compile that
   // needs compiler-rt built, measured to fail far more often against a
@@ -179,9 +210,36 @@ export async function buildHostExe(spec: HostSourceSpec, outExe?: string): Promi
 
       // driver.c: only wasm/emu_abi.h's directory on its include path -
       // see this file's header comment for why NOT the pack's own
-      // includes.
+      // includes - but the pack's own DEFINES, which is a different thing
+      // and was missing here.
+      //
+      // WHY THE DEFINES AND NOT THE INCLUDES. A pack's shim/ headers would
+      // shadow the real <stdio.h> driver.c needs (the header comment above
+      // has that measurement). Its `-DEMU_HAS_<NAME>=1` defines are the
+      // opposite: they exist FOR driver.c. harness/host/driver.c guards its
+      // calls to the optional emu_abi.h exports on exactly those macros
+      // (`#ifdef EMU_HAS_EMU_SENSOR_VECTOR`, `#ifdef EMU_HAS_EMU_ACCEL_SAMPLE`
+      // - see that file's "OPTIONAL emu_abi.h EXPORTS" note), and every
+      // pack's wasm/host.ts computes them, so compiling the driver with an
+      // EMPTY define list left every one of those guards false on every
+      // pack. The driver went on parsing a VECTOR or ACCEL line, validating
+      // its arguments, and then dropping it on the floor: no error, no
+      // warning, no protocol violation, just a sensor event the host build
+      // never received and the wasm build did.
+      //
+      // Found by instrumenting apps/gameos x rp2350-touch-amoled-18, whose
+      // trace carries exactly one `vector` event, and printing the published
+      // tilt on both sides: the wasm build's gravity vector moves from
+      // (0,0,1) the tick after that event, the host build's never moved at
+      // all. Downstream, gunship.c's turret slews toward an aim point the
+      // host build never learned about, so its reticle stays centred - which
+      // is the whole of that cell's 376/164,864-pixel DIVERGE (0.23%, a
+      // 38x38 box exactly where the reticle is drawn, appearing at the tick
+      // after the vector event and gone again once that screen is left).
+      // A harness defect reported as a firmware divergence, which is the one
+      // thing a differential mark must never do.
       const driverObj = join(buildDir, "0-driver.o");
-      compileError = compileOne(DRIVER_C, [ABI_DIR], [], sanitizeFlags, driverObj);
+      compileError = compileOne(DRIVER_C, [ABI_DIR], spec.defines, sanitizeFlags, driverObj);
       if (compileError) return { ok: false, error: compileError };
       objs.push(driverObj);
 
@@ -325,9 +383,32 @@ export async function replayHost(exePath: string, events: TraceEvent[], captureP
   const stdoutPromise = new Response(proc.stdout).arrayBuffer();
   const stderrPromise = new Response(proc.stderr).arrayBuffer();
 
+  // WRITING STDIN CAN THROW, AND THAT IS AN EXPECTED OUTCOME HERE, NOT AN
+  // ERROR TO PROPAGATE. A sanitizer trap aborts the child WHERE IT HAPPENS,
+  // in the middle of the replay, with the rest of the protocol still
+  // unwritten - so the pipe this process is still writing into closes under
+  // it and Bun raises `EOF: end of file, write`. Letting that escape turns
+  // the single most valuable thing this mark can produce (a UBSan report
+  // naming a file and a line) into an unhandled exception, which
+  // tools/ledger.ts can only record as CRASHED: an executable was built,
+  // the replay did not finish, and nothing says why. Measured, not
+  // hypothesised - it is exactly what apps/gameos x
+  // esp32-s3-touch-amoled-18 did, on a 6,184-event trace, while the child
+  // had already printed a complete report on stderr that nobody ever read.
+  //
+  // So the write is attempted, its failure is swallowed, and the verdict is
+  // then decided the same way it always was: by the child's exit code and
+  // its stderr, both read below. A child that died for its own reasons ends
+  // up with verdict "sanitizer" and its real report; a child still healthy
+  // never throws here in the first place.
   const protocol = buildProtocol(events, capturePoints);
-  proc.stdin.write(new TextEncoder().encode(protocol));
-  await proc.stdin.end();
+  try {
+    proc.stdin.write(new TextEncoder().encode(protocol));
+    await proc.stdin.end();
+  } catch {
+    // The child closed its end first. Everything that matters about why is
+    // on its stderr and in its exit code.
+  }
 
   const [stdoutBuf, stderrBuf, exitCode] = await Promise.all([stdoutPromise, stderrPromise, proc.exited]);
   const stderrText = new TextDecoder().decode(stderrBuf);

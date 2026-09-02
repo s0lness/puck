@@ -164,7 +164,11 @@ now runs `zig version` once per process (Windows ARM64 only, and only if
 `ZIG_EXE` is actually 0.16.0) and prints a single warning naming this
 paragraph - never a hard failure, since the retry loop above already
 gets a real build through on 0.16.0 too, just with more attempts spent
-than a non-broken version would need. `bun run
+than a non-broken version would need.
+Under heavy concurrent build load the sixteen-attempt default is not
+always enough for the sanitized native link: `PUCK_ZIG_MAX_ATTEMPTS`
+raises it for every zig spawn here, and only for SILENT failures, so a
+real compile error still comes back on the first attempt. `bun run
 pack:esp32:build` does the
 same for `packs/esp32-s3-touch-amoled-18/`, and `bun run pack:web:build`
 for `packs/web/`; `bun run pack:web:host` builds that pack's second mode

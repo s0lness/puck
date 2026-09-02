@@ -46,6 +46,40 @@
 #define MALLOC_CAP_INTERNAL (1u << 1)
 #define MALLOC_CAP_SPIRAM   (1u << 2)
 
+/* THE ARENAS BELOW ARE ALIGNED, AND THE REASON IS A REAL BUG THE HOST MARK
+ * CAUGHT (docs/harness.md's three marks). The real heap_caps_calloc() these
+ * stand in for returns memory suitably aligned for ANY object, the same
+ * promise malloc() makes; a plain `static uint8_t[]` promises alignment 1,
+ * and the compiler is free to place it at any address at all. Every caller
+ * here immediately stores a struct through that pointer - shell.c's
+ * launch() hands it to a game as `ctx->state` and gunship.c's gun_init()
+ * does `gs_t *g = ctx->state; g->rng = &ctx->rng;` on the very next line -
+ * so an odd address makes every one of those member accesses undefined.
+ *
+ * wasm32 hid this completely: unaligned loads and stores are legal there
+ * (the ISA has an alignment HINT, not a requirement), so the emulator mark
+ * ran this port for its whole 6,184-event trace without a murmur. The
+ * sanitized native build did not: `bun run hostdiff gameos
+ * esp32-s3-touch-amoled-18` reported, from inside the replay,
+ *
+ *   member access within misaligned address 0x7ff7de46a64d for type
+ *   'gs_t', which requires 8 byte alignment
+ *     gunship.c:1428 in gun_init  <- shell.c:126 in launch
+ *
+ * an address ending 0x4d, i.e. not even 2-aligned. On the ESP32-S3 this
+ * port is written for, an unaligned 32-bit load is not free either: the
+ * Xtensa core takes an alignment exception the IDF handler has to fix up,
+ * or - for the wider accesses a struct copy compiles into - simply loads
+ * the wrong bytes. So this is a defect that would have reached silicon,
+ * found with no board attached.
+ *
+ * 16, not 8: `long double` and any vector type the compiler may use to copy
+ * a large struct want it, and this is a one-time cost of at most fifteen
+ * bytes of padding in a 4MiB arena. _Alignas is C11, which every compiler
+ * this port is built by (zig cc for both puck targets, xtensa-gcc for the
+ * real IDF build) has had for years. */
+#define _GAMEOS_ARENA_ALIGN 16u
+
 // GOS_PANEL_W * GOS_PANEL_H * 2 (gos.h), spelled as a literal rather than
 // pulled from gos.h here: this header is included by gfx.c BEFORE gos.h's
 // own macros would be back in scope from this translation unit's point of
@@ -54,7 +88,7 @@
 // a macro that quietly changed meaning. Cross-checked against gos.h's
 // GOS_PANEL_W=368/GOS_PANEL_H=448 by grep, not guessed.
 #define _GAMEOS_FB565_BYTES (368u * 448u * 2u)
-static uint8_t s_fb565Backing[_GAMEOS_FB565_BYTES];
+static _Alignas(_GAMEOS_ARENA_ALIGN) uint8_t s_fb565Backing[_GAMEOS_FB565_BYTES];
 static int s_fb565Taken;
 
 // 4 MiB: generous, documented headroom over golf_t's own measured ~3.8MB
@@ -67,7 +101,7 @@ static int s_fb565Taken;
 // (packs/esp32-s3-touch-amoled-18/wasm/build.ts --wasm-memory-mb 8, see
 // this port's README).
 #define _GAMEOS_GAMESTATE_BYTES (4u * 1024u * 1024u)
-static uint8_t s_gameStateBacking[_GAMEOS_GAMESTATE_BYTES];
+static _Alignas(_GAMEOS_ARENA_ALIGN) uint8_t s_gameStateBacking[_GAMEOS_GAMESTATE_BYTES];
 static int s_gameStateTaken;
 
 // calloc semantics (zeroed): the fb565 slot relies on a plain static array

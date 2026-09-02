@@ -240,7 +240,18 @@ export interface SpawnRetryOptions {
   onSilentFailure?: (wasTimeoutKill: boolean) => void;
 }
 
-export const DEFAULT_MAX_ATTEMPTS = 16;
+// 16 by default (measured: 8 was not always enough), and RAISABLE from
+// the environment. docs/harness.md already records that 8 was measured
+// insufficient on this development machine under heavy concurrent build
+// load (a one-off diagnostic run at 40 got through every time), and calls
+// the absence of a knob for it "a real gap, not a design choice, left for
+// whoever hits it next". This is that knob. It raises only how many times a
+// SILENT failure is retried; a diagnosed compile error is still returned on
+// the first attempt, so a real bug never gets slower to report.
+export const DEFAULT_MAX_ATTEMPTS = (() => {
+  const raw = Number(process.env.PUCK_ZIG_MAX_ATTEMPTS ?? "");
+  return Number.isInteger(raw) && raw >= 1 ? raw : 16;
+})();
 export const DEFAULT_TIMEOUT_MS = 120_000;
 const RETRY_PAUSE_START_MS = 400;
 const RETRY_PAUSE_CAP_MS = 10_000;
