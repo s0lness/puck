@@ -87,13 +87,15 @@ A silhouette that is not a real board at all declares `"hypothetical": true` in 
 ]
 ```
 
-There are five, and each one earns its place by a refusal the others cannot make. A silhouette that only ever says yes is a silhouette that proves nothing.
+There are seven, and each one earns its place by a refusal the others cannot make. A silhouette that only ever says yes is a silhouette that proves nothing.
 
 - [`m5stickc-plus2`](../../packs/silhouettes/m5stickc-plus2/): three buttons and an IMU. The one that says yes, and where the first cell was proven.
 - [`feather-esp32s2-tft`](../../packs/silhouettes/feather-esp32s2-tft/): one usable button, no IMU. `bun run verdict chrono feather-esp32s2-tft` says no, and says why.
 - [`lilygo-t-display-s3`](../../packs/silhouettes/lilygo-t-display-s3/): no digitizer and no IMU, so tinydraw is refused for touch and fluidbox for gravity, each in one line.
 - [`pico-display-pack-2`](../../packs/silhouettes/pico-display-pack-2/): the only non-ESP32 target here, four buttons, and the cell that comes out a clean `go`.
 - [`watchy`](../../packs/silhouettes/watchy/): 200x200 e-paper, `mono1`, four buttons and none of them a `key`. The first target that is not a colour screen: it refuses every app whose colour carries information, degrades the ones that ask for a key, and its panel rather than its CPU sets its tick budget.
+- [`m5stack-cores3`](../../packs/silhouettes/m5stack-cores3/): the first target here with a real digitizer, so tinydraw finally has something to bind to. Its "three capacitive buttons" are one confirmed touch zone on the SAME digitizer `touch.points` already declares and two undeclared ones nothing published backs, which is the first silhouette here to state a button with no role at all rather than invent one.
+- [`waveshare-esp32-s3-touch-lcd-2.8`](../../packs/silhouettes/waveshare-esp32-s3-touch-lcd-2.8/): the second digitizer, and the one where both usable buttons are ordinary GPIOs off the touch panel entirely, nothing shared with anything.
 
 ## Running a silhouette cell, and what writes the proof
 

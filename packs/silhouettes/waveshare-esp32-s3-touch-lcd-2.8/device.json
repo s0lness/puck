@@ -1,0 +1,53 @@
+{
+  "convention": "0.2",
+  "name": "Waveshare ESP32-S3-Touch-LCD-2.8",
+  "panel": {
+    "w": 240,
+    "h": 320,
+    "format": "rgb565be"
+  },
+  "buttons": [
+    {
+      "id": "boot",
+      "label": "BOOT",
+      "edge": "bottom",
+      "at": 0.3,
+      "role": "click"
+    },
+    {
+      "id": "pwr",
+      "label": "PWR",
+      "edge": "bottom",
+      "at": 0.7,
+      "role": "key",
+      "longPressMs": 1200
+    }
+  ],
+  "touch": {
+    "points": 5
+  },
+  "sensors": [
+    {
+      "id": "shake",
+      "kind": "event"
+    },
+    {
+      "id": "tilt",
+      "kind": "vector",
+      "unit": "g"
+    }
+  ],
+  "budget": {
+    "ram": {
+      "bytes": 108544,
+      "basis": "512 KB of on-chip SRAM (ESP32-S3R8, Waveshare's and Espressif's own datasheet), minus the 153,600-byte full framebuffer (240x320 at two bytes), minus a 256 KB reserve for the SDK, its task stacks and the radio stacks, the same reserve packs/silhouettes/lilygo-t-display-s3 and packs/silhouettes/m5stack-cores3 take for the same MCU family. Derived from the datasheet, never measured on this board. The 8 MB of PSRAM this board carries is deliberately absent, the same call every ESP32 silhouette here makes about its own PSRAM."
+    },
+    "framebuffer": "full",
+    "tickBudgetMs": 16
+  },
+  "provenance": {
+    "datasheet": "https://docs.waveshare.com/ESP32-S3-Touch-LCD-2.8",
+    "verified": false,
+    "note": "unverified against silicon. Panel (2.8 inch IPS, 240x320, 262K colours, ST7789), touch controller (CST328 on the V1 board, CST3530 on V2, both I2C, both stated as 5-point with interrupt support), IMU (QMI8658, 6-axis accelerometer plus gyroscope, no magnetometer, which is why this file's sensors carry tilt but not the compass a BMM150-equipped board would add), MCU (ESP32-S3R8 at up to 240MHz, 16MB flash, 8MB PSRAM) and the on-board SW6106 battery charge/discharge IC are read off Waveshare's own documentation platform page for this exact board. The 512 KB SRAM figure is the ESP32-S3's, from Espressif's datasheet, not restated on Waveshare's page. The pixel format is ST7789's standard 16-bit RGB565 interface, the same call every other ST7789-panel silhouette here makes; Waveshare's own page does not spell it out in those words. touch.points is 5 because Waveshare's page states the controller's own point count directly, unlike every colour silhouette here so far, where a lower number was chosen out of caution; nothing here has exercised more than one finger on this board. THE BUTTON ROSTER: Waveshare's page lists a BOOT button, a RESET button and a 'Battery Power Control Button (relevant driver program is required)'. BOOT is declared role click, not key, for the same reason packs/silhouettes/lilygo-t-display-s3 gives for its own BOOT: GPIO0 on an ESP32-S3 is sampled by the ROM as a boot strap at power-on, so timing a long press on it during normal operation is asking the board for something it was not wired to promise. RESET is undeclared, the same call every silhouette here makes: it is wired to EN, and a press resets the MCU rather than producing an event any firmware could read. The battery power button is declared role key as pwr: Waveshare's own phrase 'relevant driver program is required' is a claim that firmware reads this line through the SW6106 rather than it being a pure hardware power-on latch, which is the same distinction packs/silhouettes/m5stack-cores3 draws between its own PWR (software-readable, cited) and RESET (not). Nothing Waveshare publishes states a short/long threshold for it, so longPressMs is 1200, this descriptor's own choice, the same kind of undefended number packs/silhouettes/lilygo-t-display-s3's own 800ms is."
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "convention": "0.2",
+  "name": "M5Stack CoreS3",
+  "panel": {
+    "w": 320,
+    "h": 240,
+    "format": "rgb565be"
+  },
+  "buttons": [
+    {
+      "id": "pwr",
+      "label": "PWR",
+      "edge": "left",
+      "at": 0.5,
+      "role": "key",
+      "longPressMs": 500
+    },
+    {
+      "id": "a",
+      "label": "A",
+      "edge": "bottom",
+      "at": 0.2,
+      "role": "click"
+    },
+    {
+      "id": "b",
+      "label": "B",
+      "edge": "bottom",
+      "at": 0.5
+    },
+    {
+      "id": "c",
+      "label": "C",
+      "edge": "bottom",
+      "at": 0.8
+    }
+  ],
+  "touch": {
+    "points": 2
+  },
+  "sensors": [
+    {
+      "id": "shake",
+      "kind": "event"
+    },
+    {
+      "id": "tilt",
+      "kind": "vector",
+      "unit": "g"
+    }
+  ],
+  "budget": {
+    "ram": {
+      "bytes": 108544,
+      "basis": "512 KB of on-chip SRAM (ESP32-S3, Espressif's own datasheet), minus the 153,600-byte full framebuffer (320x240 at two bytes), minus a 256 KB reserve for the SDK, its task stacks and the radio stacks, the same reserve packs/silhouettes/lilygo-t-display-s3 takes for the same MCU family. Derived from the datasheet, never measured on this board. The 8 MB of Quad PSRAM this board carries is deliberately absent, the same call every ESP32 silhouette here makes about its own PSRAM: it exists, it is slower than SRAM, and no firmware here has measured what an app can actually do with it."
+    },
+    "framebuffer": "full",
+    "tickBudgetMs": 16
+  },
+  "provenance": {
+    "datasheet": "https://docs.m5stack.com/en/core/CoreS3",
+    "verified": false,
+    "note": "unverified against silicon. Panel (2.0 inch IPS, 320x240, ILI9342C), touch controller (FT6336U, I2C address 0x38), IMU (BMI270 6-axis) plus a BMM150 magnetometer, MCU (ESP32-S3 at up to 240MHz, 16MB flash, 8MB Quad PSRAM), the AXP2101 PMU and the AW9523B IO expander are read off M5Stack's own product documentation. The 512 KB SRAM figure is the ESP32-S3's, from Espressif's datasheet, not from that page. The pixel format is ILI9342C's standard 16-bit RGB565 interface, the same call the other ST7789-panel silhouettes here make; M5Stack's own page does not spell it out in those words. FT6336U's own datasheet (https://cdn-shop.adafruit.com/product-files/5826/FT6336U-DataSheet-V1.1.pdf) states two simultaneous touch points, which is where touch.points comes from rather than from M5Stack's page. THE BUTTON ROSTER IS THE PART OF THIS FILE THAT NEEDED THE MOST CARE, and every choice on it is named here because none of them is a plain transcription. PWR is declared role key: M5Stack's own Arduino tutorial for this exact board (https://docs.m5stack.com/en/arduino/m5cores3/button) states that M5Unified's BtnPWR.wasClicked() and BtnPWR.wasHold() both work on CoreS3, which is a stronger claim than packs/silhouettes/m5stickc-plus2 could make about its own power button (that vendor page never says software may read the pin at all) - so this is the one silhouette in this set where a power-path button earns role key instead of role power. longPressMs is 500, M5Unified's Button_Class default hold threshold (its own source, not this board's datasheet, and not a number CoreS3's hardware page states). RESET is undeclared, the same call every other silhouette here makes about its own reset: M5Stack's page describes it as a hardware delay circuit (a long press forces download mode by asserting a strap pin after a timer, a short press just resets), which means the ESP32 is rebooting rather than reading a button, so there is nothing for an app to be handed. A, B and C are declared, and NONE OF THEM IS A SEPARATE SWITCH: M5Stack's own hardware page for this board never mentions three bezel buttons at all, and the community's own troubleshooting threads (community.m5stack.com/topic/5809 and /topic/5565) are explicit that A/B/C are a software convention some M5Unified builds layer onto the SAME FT6336U digitizer this file already declares under touch, sensed as three zones across the bottom ~20 pixels of the LCD's own active area, not a printed pad below the glass the way the M5Stack Core2 predecessor built it. Two consequences follow, and both are stated as roles rather than silently averaged out: A is declared role click because it is the one zone the community confirms still resolves in current M5Unified; B and C are declared with NO role at all, the same treatment a reserved power or reset line gets elsewhere in this set, because nothing published says code can rely on them and this file does not get to guess a working control into existence. And because A shares its digitizer with the very touch surface `touch.points` above describes, an app that reads both loses the one guarantee every other silhouette's buttons give for free: that a button press and a touch report can never be the same physical event. A silhouette cannot express 'a button that lives inside the touch panel' in this schema (docs/convention/device-pack.md's buttons sit on an edge, outside the panel, and packs/web draws A's ghost button there too, which is not literally where CoreS3 puts it), so the ghost button's position is a placement of convenience, named as such, and a real port would still have to decide how a stroke ending near the bottom of the panel is told apart from a tap on A."
+  }
+}
