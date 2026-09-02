@@ -298,6 +298,15 @@ behind running someone else's build command on your own machine.
 [`skills/puck-publish/SKILL.md`](skills/puck-publish/SKILL.md) is this
 same flow written step by step for an agent to follow.
 
+A bundle's own `build.command` can need a toolchain this host does not
+carry on PATH (a WASI clang++ at a specific path, a `cmake`/`ninja` under
+some SDK's own tools directory). That is never fixed by editing the
+bundle: `toolchains.local.json`, at the repository root and gitignored,
+is where a host says where its own toolchains live instead, merged into
+every external build's environment; `toolchains.example.json`, committed,
+shows the shape. See `tools/externalBuild.ts`'s header comment and
+`docs/convention/app-bundle.md`'s "Host toolchain hints".
+
 ### The site
 
 `bun run ledger` (`tools/ledger.ts`) is what the gallery is built FROM.

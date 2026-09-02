@@ -76,3 +76,8 @@ packs/*/dist/
 
 # Session-local agent state and worktrees, never committed
 /.claude/
+
+# This machine's own toolchain paths for an external bundle's build command
+# (tools/externalBuild.ts's "host toolchain hints"); toolchains.example.json
+# is the committed, path-free shape.
+/toolchains.local.json

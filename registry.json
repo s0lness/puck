@@ -37,7 +37,7 @@
     }
   ],
   "apps": [
-    {"name": "aliceisjustplaying/tinydraw", "url": "https://github.com/aliceisjustplaying/tinydraw.git", "commit": "7a157d44a9da3312b1ecda2b45b116af2de28e63"},
+    {"name": "aliceisjustplaying/tinydraw", "url": "https://github.com/aliceisjustplaying/tinydraw.git", "commit": "0c0b2d980d30505c11616b90df319b775fbad525"},
     {
       "name": "chrono",
       "path": "apps/chrono"

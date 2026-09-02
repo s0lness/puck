@@ -1,0 +1,10 @@
+{
+  "_comment": "Copy this to toolchains.local.json (gitignored) and fill in real paths for this machine. See tools/externalBuild.ts's own header comment and docs/convention/app-bundle.md's \"External ports\" section for what this is for and how it is merged.",
+  "env": {
+    "WASI_CXX": "C:\\Users\\me\\tools\\wasi-sdk-33\\bin\\clang++.exe"
+  },
+  "path": [
+    "C:\\Users\\me\\.espressif\\tools\\cmake\\3.30.2\\bin",
+    "C:\\Users\\me\\.espressif\\tools\\ninja\\1.12.1"
+  ]
+}

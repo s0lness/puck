@@ -26,10 +26,103 @@
 // literal separator: this runs on Windows (development) and Linux (the
 // zero-secret CI workflow) unmodified.
 
-import { cpSync, existsSync, mkdtempSync, rmSync, statSync, mkdirSync, copyFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, rmSync, statSync, mkdirSync, copyFileSync, readFileSync } from "node:fs";
 import { join, resolve, sep, dirname, isAbsolute } from "node:path";
 import { sanitizedEnv } from "./env";
 import { tmpdir } from "node:os";
+
+// ---- host toolchain hints --------------------------------------------------
+//
+// A bundle's build command can need a toolchain this host does not have on
+// PATH, and that need is not this repository's to fix: tinydraw's own
+// scripts/build-puck-wasm refuses a host it does not recognize unless
+// WASI_CXX already names a WASI clang++, and separately wants cmake and
+// ninja on PATH, neither of which every machine carries. registry.json and
+// a bundle's own build.command are shared, committed facts; where a
+// toolchain happens to sit on any ONE developer's machine is not, and
+// editing someone else's bundle to hardcode this machine's path would be
+// wrong even if it worked.
+//
+// toolchains.local.json, at the repository root, is where a host says that
+// instead:
+//
+//   {
+//     "env": { "WASI_CXX": "C:\\Users\\me\\tools\\wasi-sdk-33\\bin\\clang++.exe" },
+//     "path": ["C:\\Users\\me\\.espressif\\tools\\cmake\\3.30.2\\bin", "C:\\Users\\me\\.espressif\\tools\\ninja\\1.12.1"]
+//   }
+//
+// It is gitignored (a path baked in here is this machine's, not a portable
+// fact, the same reasoning as any other secrets.env file this repository's
+// author uses elsewhere); toolchains.example.json, committed, documents the
+// shape without naming a real path. Every entry under "env" fills in a
+// variable the running environment does not already set (an explicit
+// ZIG_EXE a caller passed, or one already in process.env, is left alone:
+// a hint is a fallback, not an override); every directory under "path" is
+// prepended to PATH before the build command runs. Both apply to every
+// external build this process performs: the whole point is host-wide
+// configuration, not a per-bundle escape hatch.
+const REPO_ROOT = resolve(import.meta.dir, "..");
+const TOOLCHAINS_LOCAL_PATH = join(REPO_ROOT, "toolchains.local.json");
+
+interface HostToolchainHints {
+  env: Record<string, string>;
+  path: string[];
+}
+
+function loadHostToolchainHints(): HostToolchainHints {
+  if (!existsSync(TOOLCHAINS_LOCAL_PATH)) return { env: {}, path: [] };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(TOOLCHAINS_LOCAL_PATH, "utf8"));
+  } catch (err) {
+    throw new ExternalBuildError(`toolchains.local.json is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    throw new ExternalBuildError(`toolchains.local.json must be an object with optional "env" and "path"`);
+  }
+  const obj = raw as Record<string, unknown>;
+  const env: Record<string, string> = {};
+  if (obj.env !== undefined) {
+    if (typeof obj.env !== "object" || obj.env === null || Array.isArray(obj.env)) {
+      throw new ExternalBuildError(`toolchains.local.json's "env" must be an object of string -> string`);
+    }
+    for (const [k, v] of Object.entries(obj.env as Record<string, unknown>)) {
+      if (typeof v !== "string") throw new ExternalBuildError(`toolchains.local.json's "env.${k}" must be a string, got ${JSON.stringify(v)}`);
+      env[k] = v;
+    }
+  }
+  const path: string[] = [];
+  if (obj.path !== undefined) {
+    if (!Array.isArray(obj.path)) throw new ExternalBuildError(`toolchains.local.json's "path" must be an array of directory strings`);
+    for (const p of obj.path) {
+      if (typeof p !== "string") throw new ExternalBuildError(`toolchains.local.json's "path" entries must be strings, got ${JSON.stringify(p)}`);
+      path.push(p);
+    }
+  }
+  return { env, path };
+}
+
+// Applied to an already-sanitized env (tools/env.ts's sanitizedEnv()),
+// which is why this is a separate step rather than folded into that
+// function: sanitizedEnv() is shared by every child process this
+// repository's tooling spawns, most of which have nothing to do with an
+// external bundle's own toolchain. Only an external build command reads
+// toolchains.local.json.
+function applyHostToolchainHints(env: Record<string, string | undefined>): Record<string, string | undefined> {
+  const hints = loadHostToolchainHints();
+  if (Object.keys(hints.env).length === 0 && hints.path.length === 0) return env;
+  const merged: Record<string, string | undefined> = { ...env };
+  for (const [key, value] of Object.entries(hints.env)) {
+    if (merged[key] === undefined) merged[key] = value;
+  }
+  if (hints.path.length > 0) {
+    const pathSep = process.platform === "win32" ? ";" : ":";
+    const existingDirs = (merged.PATH ?? "").split(pathSep).filter((p) => p.length > 0);
+    const hintDirs = hints.path.filter((p) => existsSync(p));
+    merged.PATH = [...hintDirs, ...existingDirs].join(pathSep);
+  }
+  return merged;
+}
 
 // The four fields a bundle port's "build" object carries
 // (docs/convention/app-bundle.md). Named exactly as they appear in JSON.
@@ -292,12 +385,13 @@ export async function buildExternalPort(build: ExternalBuild, options: ExternalB
     // Spawned through a named helper rather than inline, so the return type
     // keeps its literal "pipe" stdio (a `ReturnType<typeof Bun.spawn>`
     // annotation widens it and loses the readable streams below).
+    const buildEnv = applyHostToolchainHints(sanitizedEnv(options.env));
     const startBuild = () =>
       Bun.spawn(["bash", "-c", build.command], {
         cwd: workDir,
         stdout: "pipe",
         stderr: "pipe",
-        env: sanitizedEnv(options.env),
+        env: buildEnv,
       });
 
     // Spawning `bash -c <command>` through this many process layers
