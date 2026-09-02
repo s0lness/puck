@@ -228,12 +228,52 @@ function isUrl(s: string): boolean {
   return /^https?:\/\//.test(s) || /^git@/.test(s);
 }
 
-function cloneBundle(url: string): string {
+// commit, when given, is registry.json's own pin for this external app
+// (registry entry's own "commit" field, next to "url"): a full 40-hex sha,
+// fetched directly and checked, rather than trusting whatever that
+// repository's HEAD happens to be on the day this runs. Without a pin, an
+// external app's own commits under it silently change what gets
+// verified - the exact "reproduction, not a submission" claim
+// docs/convention/app-bundle.md makes for a PORT's own external build
+// (tools/externalBuild.ts, docs/decisions/0005-external-ports-are-
+// reproduced.md) applies just as much to the bundle repository itself.
+function cloneBundle(url: string, commit?: string): string {
   const dir = mkdtempSync(join(tmpdir(), "puck-verify-bundle-clone-"));
-  const result = Bun.spawnSync(["git", "clone", "--depth", "1", url, dir], { stdout: "pipe", stderr: "pipe" });
-  if (!result.success) {
-    const stderr = result.stderr ? result.stderr.toString().trim() : "";
-    throw new Error(`could not clone ${url}${stderr ? `: ${stderr}` : ` (git exited ${result.exitCode})`}`);
+
+  if (!commit) {
+    // Loud and on stderr (not folded into a table cell or --json output
+    // nobody reads until something breaks): an unpinned external app is a
+    // real gap in "listing is a reproduction, not a submission", not a
+    // quiet default worth staying quiet about.
+    console.error(`verify-bundle: WARNING: ${url} has no "commit" pin in registry.json - verifying an unpinned clone of its current HEAD, which nothing here can reproduce later`);
+    const result = Bun.spawnSync(["git", "clone", "--depth", "1", "--", url, dir], { stdout: "pipe", stderr: "pipe" });
+    if (!result.success) {
+      const stderr = result.stderr ? result.stderr.toString().trim() : "";
+      throw new Error(`could not clone ${url}${stderr ? `: ${stderr}` : ` (git exited ${result.exitCode})`}`);
+    }
+    return dir;
+  }
+
+  // Pinned: init + fetch --depth 1 origin <sha> + checkout FETCH_HEAD, then
+  // verify what actually got checked out against the declared pin - the
+  // identical sequence tools/externalBuild.ts's checkout()/
+  // verifyCheckedOutCommit() use for a port's own external build, applied
+  // here to the bundle repository itself rather than duplicated by accident
+  // with a subtly different shape.
+  const run = (args: string[]) => Bun.spawnSync(["git", ...args], { cwd: dir, stdout: "pipe", stderr: "pipe" });
+  const tail = (r: ReturnType<typeof run>) => (r.stderr ? r.stderr.toString().trim() : "");
+  const init = Bun.spawnSync(["git", "init", "--quiet", dir], { stdout: "pipe", stderr: "pipe" });
+  if (!init.success) throw new Error(`could not git init ${dir}: ${tail(init)}`);
+  const remote = run(["remote", "add", "origin", "--", url]);
+  if (!remote.success) throw new Error(`could not add ${url} as a remote: ${tail(remote)}`);
+  const fetch = run(["fetch", "--depth", "1", "origin", commit]);
+  if (!fetch.success) throw new Error(`could not fetch ${commit} from ${url}: ${tail(fetch)}`);
+  const co = run(["checkout", "--quiet", "FETCH_HEAD"]);
+  if (!co.success) throw new Error(`fetched ${commit} from ${url} but could not check it out: ${tail(co)}`);
+  const rev = run(["rev-parse", "HEAD"]);
+  const head = rev.stdout ? rev.stdout.toString().trim() : "";
+  if (!rev.success || head !== commit) {
+    throw new Error(`checked out HEAD=${head || "(unknown)"} from ${url}, which does not match the "commit" pinned in registry.json (${commit})`);
   }
   return dir;
 }
@@ -246,7 +286,12 @@ interface ResolvedBundle {
 
 function resolveBundleJsonPath(target: string): ResolvedBundle {
   if (isUrl(target)) {
-    const cloneRoot = cloneBundle(target);
+    // registry.json is the one place an external app's pin lives (see
+    // above); a target given as a bare URL not found there (someone
+    // running verify-bundle against a URL that isn't registered at all) is
+    // simply unpinned, same as an unregistered app always was.
+    const pinnedCommit = loadRegistry().apps.find((a) => a.url === target)?.commit;
+    const cloneRoot = cloneBundle(target, pinnedCommit);
     const candidate = join(cloneRoot, "bundle.json");
     if (!existsSync(candidate)) throw new Error(`cloned ${target} but found no bundle.json at its root (${candidate})`);
     return { bundleJsonPath: candidate, bundleDir: cloneRoot, cloneRoot };
@@ -300,7 +345,11 @@ interface RegistryPackEntry {
 }
 interface Registry {
   packs: RegistryPackEntry[];
-  apps: { name: string; path?: string; url?: string }[];
+  // commit: an external app's own pin (a full 40-hex sha), next to its
+  // "url" - see cloneBundle()'s own header comment above. Optional so an
+  // in-repo apps/ entry (which only ever has "path") and a not-yet-pinned
+  // external one both still parse.
+  apps: { name: string; path?: string; url?: string; commit?: string }[];
 }
 
 function loadRegistry(): Registry {

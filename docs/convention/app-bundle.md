@@ -95,6 +95,8 @@ Traces record portable input. Expected frames (pixel-exact) or a checker module 
 
 App bundles may live under this repository's `apps/` directory or in an author's own repository. Local apps use a `{"name","path"}` entry in `registry.json`, with a bare name (`"chrono"`). An app or pack published in an author's own repository uses a `{"name","url"}` entry, and its name is author-namespaced, `"author/app"` (the same shape as a GitHub `owner/repo`), so two different authors' `foo` cannot collide in one registry. `registry.json` itself carries no prose explaining this: it is the convention documented here.
 
+A `{"name","url"}` entry may also carry an optional `"commit"`: a full 40-character commit sha pinning exactly which commit of that repository gets verified. When it is present, `verify-bundle` fetches and checks out that exact commit (rather than a plain clone of whatever the repository's `HEAD` currently is) and refuses to proceed if what actually got checked out does not match it - the same clone-pin-verify discipline `build.commit` already applies to a port's own external build (see "External ports" above and [`../decisions/0005-external-ports-are-reproduced.md`](../decisions/0005-external-ports-are-reproduced.md)), applied here to the bundle repository itself, since that repository can also move out from under a listing between one verification and the next. An entry with no `"commit"` still verifies (against `HEAD`, unpinned) but `verify-bundle` warns loudly on stderr when it does: an external app the registry never pinned is a real gap, not a quiet default.
+
 ## Porting flow
 
 1. Read the app descriptor and the target pack.
