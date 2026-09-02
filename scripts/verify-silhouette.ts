@@ -48,13 +48,20 @@
 //   3. TILT MODE: the fluid's centre of mass moves toward the tilt, by
 //      more than its own idle drift over the same window, so the app is
 //      running and reading the sensor rather than holding a first frame.
-//      STROKE MODE: a synthetic pointer drag crosses the panel, and
-//      afterwards the panel differs visibly from what it was before the
-//      drag - by pixel count, not by a fixed starting colour, since this
-//      mode is not tinydraw-only (tools/ledger.ts also runs it for gameos,
-//      whose own first frame is a coloured menu, not a blank canvas). An
-//      app that ignores touch entirely produces no diff and this line says
-//      so; an app that draws, highlights or navigates on a drag all count.
+//      STROKE MODE: TWO gestures are tried, and neither is privileged
+//      over the other, because this mode is not tinydraw-only (tools/
+//      ledger.ts also runs it for gameos): a TAP (pointer down, one RAF
+//      tick, pointer up at the same point, no movement - once near the
+//      panel centre, once on the upper third, since gameos's own cards
+//      sit there) is tried first, and a diagonal DRAG across the panel is
+//      tried second only if the tap changed nothing. Either one changing
+//      a visible fraction of the panel (by pixel count, not by a fixed
+//      starting colour) is a pass, and the JSON payload says which one
+//      did it. An app whose touch handling answers a tap but deliberately
+//      ignores a drag (gameos's own cards: "a contact that scrolled never
+//      launches") passes on the tap; an app that only ever answers a drag
+//      (tinydraw) passes on the second attempt; an app that ignores touch
+//      entirely fails both and this line says so.
 //
 // Exit 0: all three passed. Exit 1: at least one did not, and it is named.
 // Needs zig (unless --no-build) and a local Chrome, like every other
@@ -313,7 +320,37 @@ async function drawSyntheticStroke(page: Page, canvasRect: { x: number; y: numbe
   await page.mouse.up();
 }
 
+// A drag is the wrong gesture for an app that tells a tap from a scroll on
+// purpose (apps/gameos/reference/esp32-gameos/shell.c: "a contact that
+// scrolled never launches" - its own cards require a release-tap with
+// little movement). One synthetic gesture cannot privilege the app that
+// happens to answer a long drag over the app that happens to answer a
+// short tap, so this is the drag's sibling: pointer down, one RAF tick,
+// pointer up AT THE SAME POINT, no movement in between. Two of them, not
+// one: a menu whose cards sit in the upper part of the panel (gameos's
+// own GUNSHIP/LUCKY 7 layout) is missed entirely by a single tap dead
+// centre, so this tries the panel's centre first and the upper third
+// second, on the same logic drawSyntheticStroke's own diagonal already
+// uses for a drag - reach across the likely area rather than guess one
+// exact pixel.
+async function drawSyntheticTap(page: Page, canvasRect: { x: number; y: number; width: number; height: number }): Promise<void> {
+  const tapAt = async (fx: number, fy: number): Promise<void> => {
+    const x = canvasRect.x + canvasRect.width * fx;
+    const y = canvasRect.y + canvasRect.height * fy;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await wait(32); // one RAF tick at 60Hz, so the host sees a real press before the release
+    await page.mouse.up();
+    await wait(80); // a beat between the two taps, so they read as two contacts, not one drag with a pause in it
+  };
+  await tapAt(0.5, 0.5);
+  await tapAt(0.5, 0.2);
+}
+
 let proofWritten = false;
+// Which of stroke mode's two gestures (if either) actually changed the
+// panel; null in tilt mode, and null in stroke mode until one succeeds.
+let gestureUsed: "tap" | "drag" | null = null;
 const server = serveDist(DIST, PORT);
 let browser: Browser | null = null;
 try {
@@ -398,16 +435,37 @@ try {
     if (!rect) {
       fail("stroke-diff", "the page drew no canvas#panel to draw a stroke onto");
     } else {
+      // NEITHER GESTURE IS PRIVILEGED. tinydraw answers a drag (that is
+      // its whole surface); gameos answers a tap and deliberately ignores
+      // a drag (apps/gameos/reference/esp32-gameos/shell.c: "a contact
+      // that scrolled never launches"). One fixed gesture would pass one
+      // of those apps and fail the other for a reason that has nothing to
+      // do with whether its touch handling works, so this tries the
+      // cheap, small gesture first and only pays for the slower diagonal
+      // sweep if the tap changed nothing.
       await snapshotBefore(page);
-      await drawSyntheticStroke(page, rect);
-      // A beat for the last pointerup's tick to land and the RAF loop to
-      // paint it, the same settle-then-measure shape tilt mode uses.
+      await drawSyntheticTap(page, rect);
       await wait(300);
-      const diff = await diffFractionSinceSnapshot(page, DIFF_CHANNEL_TOLERANCE);
-      if (diff > DIFF_FLOOR) {
-        pass("stroke-diff", `a dragged stroke changed the panel: ${(diff * 100).toFixed(2)}% of pixels differ from before the drag, over the ${(DIFF_FLOOR * 100).toFixed(1)}% floor`);
+      let diff = await diffFractionSinceSnapshot(page, DIFF_CHANNEL_TOLERANCE);
+      gestureUsed = diff > DIFF_FLOOR ? "tap" : null;
+
+      if (!gestureUsed) {
+        await snapshotBefore(page);
+        await drawSyntheticStroke(page, rect);
+        // A beat for the last pointerup's tick to land and the RAF loop
+        // to paint it, the same settle-then-measure shape tilt mode uses.
+        await wait(300);
+        diff = await diffFractionSinceSnapshot(page, DIFF_CHANNEL_TOLERANCE);
+        if (diff > DIFF_FLOOR) gestureUsed = "drag";
+      }
+
+      if (gestureUsed) {
+        pass("stroke-diff", `a synthetic ${gestureUsed} changed the panel: ${(diff * 100).toFixed(2)}% of pixels differ from before it, over the ${(DIFF_FLOOR * 100).toFixed(1)}% floor`);
       } else {
-        fail("stroke-diff", `a dragged stroke changed nothing: ${(diff * 100).toFixed(2)}% of pixels differ from before the drag, under the ${(DIFF_FLOOR * 100).toFixed(1)}% floor this app's own touch handling should clear`);
+        fail(
+          "stroke-diff",
+          `neither gesture changed the panel: a tap at the centre and a tap on the upper third both left it as it was, and a dragged stroke across it changed ${(diff * 100).toFixed(2)}% of pixels, under the ${(DIFF_FLOOR * 100).toFixed(1)}% floor this app's own touch handling should clear`
+        );
       }
     }
 
@@ -513,6 +571,9 @@ if (JSON_OUT) {
         silhouette: SILHOUETTE,
         panel: { w: PANEL_W, h: PANEL_H },
         proof: proofWritten ? PROOF.slice(ROOT.length + 1).replace(/\\/g, "/") : null,
+        // Stroke mode only: which of the two gestures changed the panel,
+        // or null when neither did. Always null in tilt mode.
+        gesture: gestureUsed,
         checks,
       },
       null,
