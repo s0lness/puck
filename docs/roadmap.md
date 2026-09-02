@@ -195,12 +195,49 @@ toolchain paths die because nothing native runs on a personal machine any
 more. A `pack:lint` job checks every pack against the convention's
 required contents, so the reference pack is held to its own standard.
 
-### 7. Describe (research, unscheduled)
+### 7. Describe (STARTED, 2026-09-02: the first draft is measured)
 
 `puck describe <firmware>` drives the emulator through a recorded session
 and drafts the descriptor's interactions and demands from traces and
 frames, leaving the essence paragraph to a person or a model. Fluidbox is
 the fixture. Last, because it is research and the rest is plumbing.
+
+**It exists and it runs.** `bun run describe <app-port.c | module.wasm>
+--pack <pack> --trace <t.json>` (`tools/describe.ts`) writes a
+`descriptor.draft.md` next to the trace plus a `descriptor.draft.json`
+carrying every measurement behind every line. It never writes
+`descriptor.md`. `bun run test:describe` is the proof and
+`docs/decisions/0013-a-descriptor-is-measured-before-it-is-written.md` is the
+reasoning.
+
+The idea that made it work is a control. "The panel changed after the press"
+is not a measurement, because a stopwatch's panel changes every tick anyway,
+so each affordance is diffed against the SAME session with that one input
+removed. That is `portdiff` turned sideways: one module, two traces, instead
+of two modules and one trace.
+
+Two results, both on the real bundles:
+
+- **Chrono's draft agrees with the human wherever a replay can see the
+  answer**: same colour, same orientation, same touch points, same button
+  roles (`key` and `click`, derived from whether the device answered with a
+  short/long verdict, never read out of a `device.json`), and `bun run
+  verdict` reaches the same verdict AND the same per-dimension status from
+  the draft as from the descriptor on all three packs. Where the two differ
+  the draft is the more precise one: the arena actually held 36 bytes against
+  a hand-written 96.
+- **Fluidbox's draft is bounded by its session, which is the finding.** Its
+  one trace shakes and never tilts, so the draft asks for an `event` sensor
+  where the descriptor asks for a continuous `vector` with an `event`
+  fallback, and on the ESP32-S3 pack that is `go` against `degraded`. The
+  human is right and the draft is honest. **This is the first thing in the
+  repository that measures the coverage of a bundle's own traces**, and the
+  fix is a trace that tilts, not a cleverer derivation.
+
+Still open: a draft is per module, per session, per panel, and nothing merges
+several; `Essence` is a bulleted scaffold and a model has not yet been asked
+to write the paragraph from it; and nothing runs `describe` over every bundle
+to report which descriptors their own traces cannot support.
 
 ## What the site says at the end
 
