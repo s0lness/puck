@@ -48,16 +48,22 @@
 //   3. TILT MODE: the fluid's centre of mass moves toward the tilt, by
 //      more than its own idle drift over the same window, so the app is
 //      running and reading the sensor rather than holding a first frame.
-//      STROKE MODE: the panel starts blank (a red check on the rig itself,
-//      not just on the app - a script whose ink measurement was broken
-//      would also see "blank" here and this line would say so), a
-//      synthetic pointer drag then crosses it, and afterwards a visible
-//      fraction of the panel is ink, so the app is reading touch and
-//      painting rather than holding an empty first frame.
+//      STROKE MODE: a synthetic pointer drag crosses the panel, and
+//      afterwards the panel differs visibly from what it was before the
+//      drag - by pixel count, not by a fixed starting colour, since this
+//      mode is not tinydraw-only (tools/ledger.ts also runs it for gameos,
+//      whose own first frame is a coloured menu, not a blank canvas). An
+//      app that ignores touch entirely produces no diff and this line says
+//      so; an app that draws, highlights or navigates on a drag all count.
 //
 // Exit 0: all three passed. Exit 1: at least one did not, and it is named.
 // Needs zig (unless --no-build) and a local Chrome, like every other
 // headless check here; set ZIG_EXE and CHROME_PATH if they are not found.
+// --json prints one machine-readable object as the last line of stdout
+// (tools/ledger.ts's own tailJson convention, matching verify-bundle.ts and
+// hostdiff.ts): {ok, mode, app, silhouette, panel, proof, checks}, where
+// each check is {name, ok, detail}. The human pass()/fail() lines above it
+// are unchanged; --json adds to the output, it does not replace it.
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -78,6 +84,7 @@ function argValue(flag: string, fallback: string): string {
 // the pair this workstream added, the same way a bare `bun run
 // verify-silhouette` proves fluidbox on m5stickc-plus2.
 const STROKE = process.argv.includes("--stroke");
+const JSON_OUT = process.argv.includes("--json");
 const SILHOUETTE = argValue("--silhouette", STROKE ? "m5stack-cores3" : "m5stickc-plus2");
 const APP_SOURCE = argValue("--app", STROKE ? "apps/tinydraw/ports/web/tinydraw.c" : "apps/fluidbox/ports/web/fluid.c");
 const APP_NAME = APP_SOURCE.split("/").pop()!.replace(/\.c$/, "");
@@ -103,23 +110,34 @@ function findChrome(): string {
 }
 const CHROME = process.env.CHROME_PATH || findChrome();
 
-// Stroke mode's own two thresholds, both fractions of the panel.
-// INK_IDLE_CEILING: how much of a "blank" canvas is allowed to be ink
-// before this rig calls it not blank - antialiasing and PNG round-tripping
-// leave a rounding error, never a real drawing, so this is generous enough
-// to absorb that and nothing else (scripts/silhouetteProof.ts's own
-// INK_FLOOR is the same idea for its wide, per-cell check).
-// INK_STROKE_FLOOR: how much MORE of the panel a real stroke has to cover
-// past the idle reading to count as ink rather than noise.
-const INK_IDLE_CEILING = 0.01;
-const INK_STROKE_FLOOR = 0.01;
+// Stroke mode's own floor, a fraction of the panel's own pixel count: how
+// much of the panel has to visibly CHANGE between the before-drag and
+// after-drag snapshot to count as "the app answered the touch" rather than
+// PNG round-tripping noise. Deliberately not "the panel must start blank":
+// tools/ledger.ts runs this same mode for gameos too, and gameos's own
+// first frame is a coloured menu, not an empty canvas the way tinydraw's
+// is - a floor on CHANGE reads right either way, where a floor on the
+// starting colour would only ever be right for one of the two apps.
+const DIFF_FLOOR = 0.005;
+// A per-channel tolerance for "the same pixel": antialiasing a fluid or a
+// static menu redraws pixels that are visually identical but not
+// bit-identical frame to frame, and a tolerance this small only forgives
+// that, never a real stroke.
+const DIFF_CHANNEL_TOLERANCE = 24;
 
 let failures = 0;
-function fail(message: string): void {
+// Every pass()/fail() also names itself (docs/decisions convention here:
+// tools/ledger.ts reads --json's checks by name, not by parsing English),
+// so a caller that only wants "did the panel match" does not have to
+// re-derive it from a sentence meant for a person.
+const checks: { name: string; ok: boolean; detail: string }[] = [];
+function fail(name: string, message: string): void {
   failures++;
+  checks.push({ name, ok: false, detail: message });
   console.error(`FAIL: ${message}`);
 }
-function pass(message: string): void {
+function pass(name: string, message: string): void {
+  checks.push({ name, ok: true, detail: message });
   console.log(`  ok: ${message}`);
 }
 function wait(ms: number): Promise<void> {
@@ -230,28 +248,43 @@ async function tiltRight(page: Page, samples: number, rawX: number): Promise<voi
 
 // ---- stroke mode's own helpers --------------------------------------------
 
-// Fraction of the panel that is not its own most common pixel value, the
-// same histogram measurement scripts/silhouetteProof.ts uses for the wide
-// per-app-per-silhouette proof: generic to whatever colour an app clears
-// its background to (tinydraw's is white, but nothing here assumes that),
-// so the same function reads "blank" before the stroke and "has ink" after
-// it without knowing tinydraw's own palette.
-async function inkFraction(page: Page): Promise<number> {
-  return page.evaluate(() => {
+// Keeps the pre-drag frame INSIDE the page (a page-global ImageData),
+// rather than serialising every pixel back to this process twice: the
+// panel is small, but the round trip is not free and this runs once per
+// app per silhouette under tools/ledger.ts, not once ever.
+async function snapshotBefore(page: Page): Promise<void> {
+  await page.evaluate(() => {
     const canvas = document.querySelector("canvas#panel") as HTMLCanvasElement | null;
     const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return -1;
-    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const histogram = new Map<number, number>();
-    for (let i = 0; i < data.length; i += 4) {
-      const key = (data[i]! << 16) | (data[i + 1]! << 8) | data[i + 2]!;
-      histogram.set(key, (histogram.get(key) ?? 0) + 1);
-    }
-    let top = 0;
-    for (const n of histogram.values()) if (n > top) top = n;
-    const total = data.length / 4;
-    return total === 0 ? -1 : 1 - top / total;
+    (window as unknown as { __vsBefore?: ImageData }).__vsBefore = ctx && canvas ? ctx.getImageData(0, 0, canvas.width, canvas.height) : undefined;
   });
+}
+
+// Fraction of pixels whose R, G or B changed by more than `tolerance`
+// since snapshotBefore(). Deliberately a CHANGE measurement, not an "is it
+// ink" one: tinydraw's panel goes from blank to a line, gameos's goes from
+// one menu frame to a slightly different one (or a whole new screen), and
+// both are "the app answered the touch" even though only one of them ever
+// passes through a state that could be called blank.
+async function diffFractionSinceSnapshot(page: Page, tolerance: number): Promise<number> {
+  return page.evaluate((tol) => {
+    const canvas = document.querySelector("canvas#panel") as HTMLCanvasElement | null;
+    const ctx = canvas?.getContext("2d");
+    const before = (window as unknown as { __vsBefore?: ImageData }).__vsBefore;
+    if (!canvas || !ctx || !before) return -1;
+    const after = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    if (after.data.length !== before.data.length) return -1;
+    let changed = 0;
+    let n = 0;
+    for (let i = 0; i < after.data.length; i += 4) {
+      n++;
+      const dr = Math.abs(after.data[i]! - before.data[i]!);
+      const dg = Math.abs(after.data[i + 1]! - before.data[i + 1]!);
+      const db = Math.abs(after.data[i + 2]! - before.data[i + 2]!);
+      if (dr > tol || dg > tol || db > tol) changed++;
+    }
+    return n === 0 ? -1 : changed / n;
+  }, tolerance);
 }
 
 // A diagonal drag across most of the panel, dispatched as real pointer
@@ -280,6 +313,7 @@ async function drawSyntheticStroke(page: Page, canvasRect: { x: number; y: numbe
   await page.mouse.up();
 }
 
+let proofWritten = false;
 const server = serveDist(DIST, PORT);
 let browser: Browser | null = null;
 try {
@@ -289,7 +323,7 @@ try {
     args: ["--no-sandbox", "--disable-dev-shm-usage"],
   });
   const page = await browser.newPage();
-  page.on("pageerror", (e: unknown) => fail(`page error: ${e instanceof Error ? e.message : String(e)}`));
+  page.on("pageerror", (e: unknown) => fail("page-error", `page error: ${e instanceof Error ? e.message : String(e)}`));
 
   // Headless desktop Chrome does not always expose the mobile-only motion
   // constructors, and host.ts feature-detects them before it will even draw
@@ -336,33 +370,25 @@ try {
   });
 
   if (modulePanel && modulePanel.w === PANEL_W && modulePanel.h === PANEL_H) {
-    pass(`the module's own emu_device() declares ${modulePanel.name}: ${modulePanel.w}x${modulePanel.h}, buttons ${modulePanel.buttons.join(", ")}`);
+    pass("module-panel", `the module's own emu_device() declares ${modulePanel.name}: ${modulePanel.w}x${modulePanel.h}, buttons ${modulePanel.buttons.join(", ")}`);
   } else {
-    fail(`the module declares ${JSON.stringify(modulePanel)}, and the silhouette's device.json says ${PANEL_W}x${PANEL_H}`);
+    fail("module-panel", `the module declares ${JSON.stringify(modulePanel)}, and the silhouette's device.json says ${PANEL_W}x${PANEL_H}`);
   }
 
   // ---- 2: the browser paints that panel, 1:1 ---------------------------
   if (declared.canvasW === PANEL_W && declared.canvasH === PANEL_H) {
-    pass(`the painted canvas is ${declared.canvasW}x${declared.canvasH} device pixels, one per panel pixel`);
+    pass("canvas-panel", `the painted canvas is ${declared.canvasW}x${declared.canvasH} device pixels, one per panel pixel`);
   } else {
-    fail(`the painted canvas is ${declared.canvasW}x${declared.canvasH}, expected ${PANEL_W}x${PANEL_H} at this viewport`);
+    fail("canvas-panel", `the painted canvas is ${declared.canvasW}x${declared.canvasH}, expected ${PANEL_W}x${PANEL_H} at this viewport`);
   }
   console.log(`  (ghost buttons on the page: ${declared.buttons.join(", ") || "none"})`);
 
   if (STROKE) {
-    // ---- 3 (stroke mode): a finger draws ink -----------------------------
-    // RED BEFORE GREEN: the panel has to start blank before anything about
-    // a stroke is asserted. This is a check on the rig as much as the app -
-    // an inkFraction() that was broken (reading the wrong canvas, say)
-    // would show ink here too, and this line is what tells that apart from
-    // tinydraw actually starting with something already drawn.
-    const idle = await inkFraction(page);
-    if (idle >= INK_IDLE_CEILING) {
-      fail(`the panel is not blank before any stroke: ${(idle * 100).toFixed(2)}% of it is already ink, over the ${(INK_IDLE_CEILING * 100).toFixed(1)}% ceiling a fresh canvas should read`);
-    } else {
-      pass(`the panel starts blank: ${(idle * 100).toFixed(2)}% ink, under the ${(INK_IDLE_CEILING * 100).toFixed(1)}% ceiling`);
-    }
-
+    // ---- 3 (stroke mode): a finger changes something ---------------------
+    // A beat to let whatever the first frame is finish settling (a menu's
+    // own fade-in, say) before the "before" snapshot, so the diff below is
+    // never just that settling caught mid-way.
+    await wait(500);
     const rect = await page.evaluate(() => {
       const canvas = document.querySelector("canvas#panel") as HTMLCanvasElement | null;
       if (!canvas) return null;
@@ -370,17 +396,18 @@ try {
       return { x: r.x, y: r.y, width: r.width, height: r.height };
     });
     if (!rect) {
-      fail("the page drew no canvas#panel to draw a stroke onto");
+      fail("stroke-diff", "the page drew no canvas#panel to draw a stroke onto");
     } else {
+      await snapshotBefore(page);
       await drawSyntheticStroke(page, rect);
       // A beat for the last pointerup's tick to land and the RAF loop to
       // paint it, the same settle-then-measure shape tilt mode uses.
       await wait(300);
-      const after = await inkFraction(page);
-      if (after > Math.max(INK_IDLE_CEILING * 2, idle + INK_STROKE_FLOOR)) {
-        pass(`the stroke left ink: ${(after * 100).toFixed(2)}% of the panel is now ink, against ${(idle * 100).toFixed(2)}% before it`);
+      const diff = await diffFractionSinceSnapshot(page, DIFF_CHANNEL_TOLERANCE);
+      if (diff > DIFF_FLOOR) {
+        pass("stroke-diff", `a dragged stroke changed the panel: ${(diff * 100).toFixed(2)}% of pixels differ from before the drag, over the ${(DIFF_FLOOR * 100).toFixed(1)}% floor`);
       } else {
-        fail(`the stroke left no visible ink: ${(after * 100).toFixed(2)}% of the panel is ink, against ${(idle * 100).toFixed(2)}% before it`);
+        fail("stroke-diff", `a dragged stroke changed nothing: ${(diff * 100).toFixed(2)}% of pixels differ from before the drag, under the ${(DIFF_FLOOR * 100).toFixed(1)}% floor this app's own touch handling should clear`);
       }
     }
 
@@ -396,8 +423,9 @@ try {
       mkdirSync(dirname(PROOF), { recursive: true });
       writeFileSync(PROOF, Buffer.from(dataUrl.split(",")[1]!, "base64"));
       console.log(`  wrote ${PROOF}`);
+      proofWritten = true;
     } else {
-      fail("no canvas to write a proof from");
+      fail("proof", "no canvas to write a proof from");
     }
   } else {
     // ---- 3 (tilt mode): the fluid answers the tilt -----------------------
@@ -423,7 +451,7 @@ try {
       chip.click();
       return true;
     });
-    if (!tiltOn) fail("the page drew no tilt control, so this device's vector sensor never reached the host");
+    if (!tiltOn) fail("tilt-control", "the page drew no tilt control, so this device's vector sensor never reached the host");
 
     const rawX = await gravityRightSampleX(page);
     const before = await centroidX(page);
@@ -435,9 +463,9 @@ try {
     // would pass a mirrored mapping. The bar is twice the pool's own idle
     // drift over the identical window, and at least 2% of the panel width.
     if (shift > Math.max(0.02, idleDrift * 2)) {
-      pass(`a tilt to the right poured the fluid right: centre of mass moved ${(shift * 100).toFixed(2)}% of the panel width, against ${(idleDrift * 100).toFixed(2)}% of idle drift over the same ${WINDOW_MS}ms`);
+      pass("tilt-shift", `a tilt to the right poured the fluid right: centre of mass moved ${(shift * 100).toFixed(2)}% of the panel width, against ${(idleDrift * 100).toFixed(2)}% of idle drift over the same ${WINDOW_MS}ms`);
     } else {
-      fail(`the fluid did not follow the tilt: centre of mass moved ${(shift * 100).toFixed(2)}%, idle drift ${(idleDrift * 100).toFixed(2)}%, over ${WINDOW_MS}ms`);
+      fail("tilt-shift", `the fluid did not follow the tilt: centre of mass moved ${(shift * 100).toFixed(2)}%, idle drift ${(idleDrift * 100).toFixed(2)}%, over ${WINDOW_MS}ms`);
     }
 
     // ---- the proof ---------------------------------------------------
@@ -456,8 +484,9 @@ try {
       mkdirSync(dirname(PROOF), { recursive: true });
       writeFileSync(PROOF, Buffer.from(dataUrl.split(",")[1]!, "base64"));
       console.log(`  wrote ${PROOF}`);
+      proofWritten = true;
     } else {
-      fail("no canvas to write a proof from");
+      fail("proof", "no canvas to write a proof from");
     }
   }
 
@@ -465,6 +494,32 @@ try {
 } finally {
   server.stop(true);
   if (browser) await closeBrowser(browser);
+}
+
+// Printed regardless of pass/fail, and nothing may print after it: tools/
+// ledger.ts's tailJson scans stdout from the end for a line that is a
+// lone "{", parses from there to the very end of the string, and a human
+// sentence trailing the JSON would make that parse fail. So --json exits
+// right here, the same shape tools/verify-bundle.ts's own --json branch
+// uses (JSON only, nothing else, once the checks above have already
+// printed their human lines for anyone watching this run directly).
+if (JSON_OUT) {
+  console.log(
+    JSON.stringify(
+      {
+        ok: failures === 0,
+        mode: STROKE ? "stroke" : "tilt",
+        app: APP_NAME,
+        silhouette: SILHOUETTE,
+        panel: { w: PANEL_W, h: PANEL_H },
+        proof: proofWritten ? PROOF.slice(ROOT.length + 1).replace(/\\/g, "/") : null,
+        checks,
+      },
+      null,
+      2
+    )
+  );
+  process.exit(failures > 0 ? 1 : 0);
 }
 
 if (failures > 0) {
