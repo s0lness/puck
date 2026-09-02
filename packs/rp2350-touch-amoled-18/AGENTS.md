@@ -318,6 +318,27 @@ Windows and only on Windows: without it the interface is driverless and
 therefore invisible to WebUSB there, while Linux and macOS would not
 notice. Do not drop it as "descriptor bloat".
 
+## Gate
+
+This pack has no `gate/` directory. Its equivalent, per
+[`docs/convention/device-pack.md`](../../docs/convention/device-pack.md)'s
+"or an equivalent set of fast checks," is [`tools/invariants/`](tools/invariants/):
+a static reachability and register-write checker over the linked native
+image (decision 0006), wired into the board build itself rather than run
+as a separate step. `cmake --build` runs it as the build's final action
+and **fails the build** on a violation whenever `bun` is on `PATH`; it is
+not optional in spirit, the same way `gate/` is not optional for the esp32
+and web packs. See "Building it" above for exactly where it runs, and
+`tools/invariants/README.md` for what each rule checks and why.
+
+**This is not yet a `bun run pack:esp32:gate`-style standalone command**,
+so `tools/pack-lint.ts` cannot invoke it directly the way it could a real
+`gate/`; naming it here is what lets `pack:lint` accept it as the
+convention's named equivalent rather than reporting a false gap. A
+follow-up that gives it its own `bun run` entry point, independent of a
+full native build, would let it satisfy the letter of `gate/` as well as
+its spirit.
+
 ## Gotchas that bite
 
 - **The wasm link segfaults intermittently.** `zig cc` for
