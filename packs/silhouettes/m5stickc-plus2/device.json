@@ -1,0 +1,60 @@
+{
+  "convention": "0.2",
+  "name": "M5StickC-PLUS2",
+  "panel": {
+    "w": 135,
+    "h": 240,
+    "format": "rgb565be"
+  },
+  "buttons": [
+    {
+      "id": "a",
+      "label": "A",
+      "edge": "left",
+      "at": 0.5,
+      "role": "key",
+      "longPressMs": 1500
+    },
+    {
+      "id": "b",
+      "label": "B",
+      "edge": "right",
+      "at": 0.72,
+      "role": "click"
+    },
+    {
+      "id": "pwr",
+      "label": "PWR",
+      "edge": "bottom",
+      "at": 0.5,
+      "role": "power"
+    }
+  ],
+  "touch": {
+    "points": 0
+  },
+  "sensors": [
+    {
+      "id": "shake",
+      "kind": "event"
+    },
+    {
+      "id": "tilt",
+      "kind": "vector",
+      "unit": "g"
+    }
+  ],
+  "budget": {
+    "ram": {
+      "bytes": 196608,
+      "basis": "520 KB of on-chip SRAM (ESP32-PICO-V3-02, an ESP32 SiP), minus the 64,800-byte full framebuffer, minus a 256 KB reserve for the SDK, its task stacks and the radio stacks. Derived from the datasheet, never measured on this board."
+    },
+    "framebuffer": "full",
+    "tickBudgetMs": 16
+  },
+  "provenance": {
+    "datasheet": "https://docs.m5stack.com/en/core/M5StickC%20PLUS2",
+    "verified": false,
+    "note": "unverified against silicon. Panel (135x240, ST7789V2), IMU (MPU6886), MCU (ESP32-PICO-V3-02 at up to 240MHz, 8MB flash, 2MB quad PSRAM) and the button GPIOs (A on G37, B on G39, power on G35, power hold on G4) are read off M5Stack's own product documentation. The 520 KB SRAM figure is the ESP32's, from Espressif, not from that page. The power button is declared role power rather than key: the vendor documentation does not state that software may read G35 as an ordinary input, and a silhouette does not get to guess a control into existence. The PSRAM is deliberately absent from the RAM budget: it exists, it is slow, and no firmware here has measured what an app can actually do with it."
+  }
+}

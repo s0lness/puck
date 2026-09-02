@@ -1,0 +1,35 @@
+{
+  "convention": "0.2",
+  "name": "Feather-ESP32S2-TFT",
+  "panel": {
+    "w": 240,
+    "h": 135,
+    "format": "rgb565be"
+  },
+  "buttons": [
+    {
+      "id": "d0",
+      "label": "D0",
+      "edge": "bottom",
+      "at": 0.5,
+      "role": "click"
+    }
+  ],
+  "touch": {
+    "points": 0
+  },
+  "sensors": [],
+  "budget": {
+    "ram": {
+      "bytes": 131072,
+      "basis": "320 KB of on-chip SRAM (ESP32-S2), minus the 64,800-byte full framebuffer, minus a 128 KB reserve for the SDK and its stacks. Derived from the datasheet, never measured on this board."
+    },
+    "framebuffer": "full",
+    "tickBudgetMs": 16
+  },
+  "provenance": {
+    "datasheet": "https://www.adafruit.com/product/5300",
+    "verified": false,
+    "note": "unverified against silicon. Panel (1.14 inch IPS, 240x135, ST7789), MCU (ESP32-S2 at 240MHz, 4MB flash, 2MB PSRAM) and the button complement are read off Adafruit's own product page. The 320 KB SRAM figure is the ESP32-S2's, from Espressif, not from that page. ONE button is declared, and that is the point of this silhouette: the board carries exactly two tactile buttons, RESET and BOOT0/D0, and RESET is not readable by an app, so it is not declared at all rather than declared as a control that does nothing. There is no IMU on this board, which is why its sensors array is empty rather than optimistic. Do not confuse this board with the ESP32-S2 Reverse TFT Feather (product 5345), which has three user buttons and would answer a different question."
+  }
+}
