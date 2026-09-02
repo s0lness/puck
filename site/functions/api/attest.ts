@@ -1,50 +1,59 @@
-// POST /api/attest  - record one confirmed run of a port's trace on a real board
-// GET  /api/attest   - counts and latest date per app x pack
+// POST /api/attest              - record one confirmed run of a port's trace on a real board
+// GET  /api/attest              - every app x pack summary
+// GET  /api/attest?app=&pack=   - one app x pack summary
 //
-// A Cloudflare Pages Function, backed by the D1 database bound as ATTEST.
-// See site/README.md for exactly which dashboard/API steps create that
-// database and that binding; this file assumes both exist and says so
-// plainly when they do not, rather than failing as a null dereference.
+// A Cloudflare Pages Function over the KV namespace bound as ATTEST. See
+// site/README.md for the key shapes and the binding; this file assumes the
+// binding exists and says so plainly when it does not, rather than failing
+// as a null dereference. The PREVIEW environment deliberately has no
+// binding, so every preview deployment answers 503 here and the counters
+// fall back to their empty state, which is the same path a static clone of
+// site/dist/ takes.
 //
-// WHAT THIS ENDPOINT KNOWS ABOUT THE PERSON USING IT: nothing. It reads no
-// cookie, sets no cookie, stores no IP, no user agent, no session, no
-// fingerprint, and no hash of any of those. The body it accepts carries an
-// app name, a pack name, an artifact hash, a verdict, per-point pixel
-// counts, and a board family (site/attest/plan.ts's AttestPost). That is
-// the whole record, and the schema comment says the same thing from the
-// other side.
+// KV, NOT D1, and not because KV is the better fit: the account is at its
+// ten-database D1 limit. What that costs is stated below rather than
+// discovered, at "the race".
+//
+// WHAT THIS ENDPOINT KNOWS ABOUT THE PERSON USING IT: nothing that outlives
+// a minute, and nothing that is ever stored next to an attestation. The
+// record it writes carries an app name, a pack name, an artifact hash, a
+// verdict, per-point pixel counts, and a board family (site/attest/plan.ts's
+// AttestPost). It reads no cookie and sets no cookie. The one exception is
+// the rate-limit key, and it is deliberately shaped so it cannot become
+// anything else: see "the rate limit" below.
 //
 // THE DATE IS STAMPED HERE, NOT ACCEPTED. The body carries the browser's own
 // date because a person reading their own posted record should see what
-// their machine thought the day was, but `confirmed_at` - the column every
-// count and every "last confirmed N days ago" is computed from - is the
-// server's own UTC date. A client date is a number the client chose, and a
-// public endpoint that ordered its own history by one would be trivially
-// rewritable.
+// their machine thought the day was, but the date every count and every
+// "last confirmed N days ago" is computed from is this server's own UTC
+// date. A client date is a number the client chose, and a public endpoint
+// that ordered its own history by one would be trivially rewritable.
 //
 // TYPES ARE DECLARED, NOT DEPENDED ON. This repository's only dependencies
 // are puppeteer-core, esptool-js and typescript (package.json), and pulling
-// @cloudflare/workers-types in for two interfaces would be a worse trade
-// than the fifteen lines below - the same call site/flasher/webserial.d.ts
+// @cloudflare/workers-types in for three interfaces would be a worse trade
+// than the twenty lines below - the same call site/flasher/webserial.d.ts
 // already made for Web Serial.
 
-interface D1Result<T = unknown> {
-  results: T[];
-  success: boolean;
+interface KVListKey<M> {
+  name: string;
+  metadata?: M;
 }
 
-interface D1PreparedStatement {
-  bind(...values: unknown[]): D1PreparedStatement;
-  run(): Promise<D1Result>;
-  all<T = unknown>(): Promise<D1Result<T>>;
+interface KVListResult<M> {
+  keys: KVListKey<M>[];
+  list_complete: boolean;
+  cursor?: string;
 }
 
-interface D1Database {
-  prepare(query: string): D1PreparedStatement;
+interface KVNamespace {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, options?: { expirationTtl?: number; metadata?: unknown }): Promise<void>;
+  list<M = unknown>(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<KVListResult<M>>;
 }
 
 interface Env {
-  ATTEST?: D1Database;
+  ATTEST?: KVNamespace;
 }
 
 interface FunctionContext {
@@ -77,6 +86,18 @@ interface AttestBody {
   date: string;
 }
 
+/** The value (and the list metadata) under a summary key. */
+interface Summary {
+  /** Matching runs. Confirmations, never boards: nothing here identifies a board. */
+  count: number;
+  /** Runs that came back diverged. Kept because a divergence is evidence, not a discarded failure. */
+  diverged: number;
+  /** Server-stamped UTC date of the most recent MATCHING run, or null. */
+  lastConfirmedAt: string | null;
+}
+
+const EMPTY_SUMMARY: Summary = { count: 0, diverged: 0, lastConfirmedAt: null };
+
 // Caps, not policy: this is a public, unauthenticated endpoint, and the only
 // honest defence a static-site function has against a bored visitor is
 // refusing anything that is not the shape it asked for. A name is a
@@ -87,9 +108,17 @@ const SHA_RE = /^[0-9a-f]{64}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_POINTS = 64;
 const MAX_TRACE_NAME = 128;
+// A real body for the largest bundle in this repository is a couple of
+// hundred bytes. 4 KB is generous by an order of magnitude and still bounds
+// what one request can push into KV.
+const MAX_BODY_BYTES = 4096;
+// One post per (app, pack, artifact) per client per minute. Long enough to
+// stop a loop, short enough that a person re-running a flaky board is never
+// told to wait.
+const RATE_LIMIT_SECONDS = 60;
 
-function badRequest(why: string): Response {
-  return json({ error: why }, 400);
+function summaryKey(app: string, pack: string): string {
+  return `s:${app}:${pack}`;
 }
 
 function json(body: unknown, status = 200): Response {
@@ -98,19 +127,23 @@ function json(body: unknown, status = 200): Response {
     headers: {
       "content-type": "application/json; charset=utf-8",
       // The counter is read by the gallery's own pages and is a small,
-      // public number; a short cache keeps a burst of card renders off D1
+      // public number; a short cache keeps a burst of card renders off KV
       // without making a fresh attestation take minutes to appear.
       "cache-control": status === 200 ? "public, max-age=60" : "no-store",
     },
   });
 }
 
-function noDatabase(): Response {
+function badRequest(why: string): Response {
+  return json({ error: why }, 400);
+}
+
+function noNamespace(): Response {
   return json(
     {
       error:
-        "this deployment has no ATTEST database bound, so attestations cannot be read or recorded. See site/README.md " +
-        "for the two steps that create the D1 database and bind it to the Pages project.",
+        "this deployment has no ATTEST namespace bound, so attestations cannot be read or recorded. Preview " +
+        "deployments deliberately have none. See site/README.md for the binding.",
     },
     503
   );
@@ -148,7 +181,7 @@ function parseBody(raw: unknown): AttestBody | string {
   }
 
   // The verdict has to agree with the points it claims to summarise, or the
-  // stored row would assert something its own evidence contradicts.
+  // stored record would assert something its own evidence contradicts.
   const everyPointMatched = points.every((p) => p.match);
   if ((b.verdict === "match") !== everyPointMatched) {
     return 'verdict "match" requires every point to have matched, and "diverge" requires at least one that did not';
@@ -165,71 +198,205 @@ function parseBody(raw: unknown): AttestBody | string {
   };
 }
 
+function todayUTC(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ---------------------------------------------------------------------
+// The rate limit
+//
+// One post per (app, pack, artifact sha) per client per minute, held in a KV
+// key with a 60 second TTL. It needs SOMETHING per client, and the only
+// thing a Pages Function has is the connecting IP, so the shape matters:
+//
+//   - the IP is SHA-256'd and only the first 16 hex characters are kept, so
+//     the raw address is never written anywhere;
+//   - the key expires in 60 seconds, so nothing accumulates;
+//   - it lives under its own `rl:` prefix, is never read by the GET side,
+//     and is never joined to an attestation record, which has no field it
+//     could be joined on anyway.
+//
+// If the header is missing (it always exists in production, in front of
+// Cloudflare) the per-client limit is skipped rather than collapsed into one
+// global bucket: a shared bucket would let one caller lock everybody else
+// out of posting, which is a worse failure than no limit.
+// ---------------------------------------------------------------------
+
+async function clientFingerprint(request: Request): Promise<string | null> {
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (!ip) return null;
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ip));
+  return Array.from(new Uint8Array(digest))
+    .slice(0, 8)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 // ---------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------
 
 export async function onRequestPost(context: FunctionContext): Promise<Response> {
-  const db = context.env.ATTEST;
-  if (!db) return noDatabase();
+  const kv = context.env.ATTEST;
+  if (!kv) return noNamespace();
+
+  // Read as text first: a 400 for an oversized body must not require parsing
+  // the oversized body.
+  const text = await context.request.text();
+  if (new TextEncoder().encode(text).byteLength > MAX_BODY_BYTES) {
+    return badRequest(`the body must be at most ${MAX_BODY_BYTES} bytes; a real attestation is a few hundred`);
+  }
 
   let raw: unknown;
   try {
-    raw = await context.request.json();
+    raw = JSON.parse(text);
   } catch {
     return badRequest("the body is not valid JSON");
   }
   const parsed = parseBody(raw);
   if (typeof parsed === "string") return badRequest(parsed);
 
-  await db
-    .prepare(
-      `INSERT INTO attestations (app, pack, port_sha, verdict, points, board_family, confirmed_at, client_date)
-       VALUES (?, ?, ?, ?, ?, ?, date('now'), ?)`
-    )
-    .bind(parsed.app, parsed.pack, parsed.portSha, parsed.verdict, JSON.stringify(parsed.points), parsed.boardFamily, parsed.date)
-    .run();
+  const who = await clientFingerprint(context.request);
+  const rateKey = who ? `rl:${who}:${parsed.app}:${parsed.pack}:${parsed.portSha}` : null;
+  if (rateKey && (await kv.get(rateKey)) !== null) {
+    return json(
+      {
+        error:
+          `this result was already posted for ${parsed.app} on ${parsed.pack} within the last ${RATE_LIMIT_SECONDS} seconds. ` +
+          `Run the trace again if the board's answer changed.`,
+      },
+      429
+    );
+  }
+
+  const confirmedAt = todayUTC();
+  // A random suffix, not a counter: two posts landing in the same second
+  // must not overwrite each other, and there is no sequence to read.
+  const suffix = crypto.randomUUID().slice(0, 8);
+  const record = {
+    app: parsed.app,
+    pack: parsed.pack,
+    portSha: parsed.portSha,
+    verdict: parsed.verdict,
+    points: parsed.points,
+    boardFamily: parsed.boardFamily,
+    confirmedAt,
+    clientDate: parsed.date,
+  };
+  await kv.put(`a:${parsed.app}:${parsed.pack}:${confirmedAt}:${suffix}`, JSON.stringify(record));
+
+  // THE RACE, stated rather than discovered. This is a read-modify-write on
+  // one key, and KV offers no compare-and-set, so two posts for the same
+  // app+pack landing within the same eventual-consistency window can both
+  // read the same summary and one can overwrite the other's increment. The
+  // lost update costs one confirmation off a public counter, the individual
+  // `a:` records are unaffected (each has its own key), and the summary can
+  // be rebuilt from them at any time by listing that prefix. At this scale,
+  // a handful of people posting after flashing a board they are holding,
+  // that is the right trade against a lock or a durable object. If the
+  // counter ever matters enough to be exact, rebuild it from `a:` rather
+  // than making this write cleverer.
+  const key = summaryKey(parsed.app, parsed.pack);
+  let summary: Summary = { ...EMPTY_SUMMARY };
+  const existing = await kv.get(key);
+  if (existing) {
+    try {
+      const prev = JSON.parse(existing) as Partial<Summary>;
+      summary = {
+        count: typeof prev.count === "number" ? prev.count : 0,
+        diverged: typeof prev.diverged === "number" ? prev.diverged : 0,
+        lastConfirmedAt: typeof prev.lastConfirmedAt === "string" ? prev.lastConfirmedAt : null,
+      };
+    } catch {
+      // A corrupt summary is recoverable (it is derived data); starting it
+      // over is better than refusing the post that found it.
+    }
+  }
+  if (parsed.verdict === "match") {
+    summary.count++;
+    if (!summary.lastConfirmedAt || confirmedAt > summary.lastConfirmedAt) summary.lastConfirmedAt = confirmedAt;
+  } else {
+    summary.diverged++;
+  }
+  // The metadata copy is what the listing below reads, so rendering every
+  // card's counter is one list call rather than a get per app+pack.
+  await kv.put(key, JSON.stringify(summary), { metadata: summary });
+
+  if (rateKey) await kv.put(rateKey, "1", { expirationTtl: RATE_LIMIT_SECONDS });
 
   return json({ recorded: true, app: parsed.app, pack: parsed.pack, verdict: parsed.verdict }, 201);
 }
 
-interface CountRow {
-  app: string;
-  pack: string;
-  confirmations: number;
-  diverged: number;
-  last_confirmed_at: string | null;
+function countEntry(app: string, pack: string, summary: Summary): Record<string, unknown> {
+  return {
+    app,
+    pack,
+    // The client's own field name: confirmations, never boards. Nothing here
+    // identifies a board, so two runs on one board and two runs on two are
+    // indistinguishable, and the wording has to say only what the data can
+    // support.
+    confirmations: summary.count,
+    diverged: summary.diverged,
+    lastConfirmedAt: summary.lastConfirmedAt,
+  };
 }
 
 export async function onRequestGet(context: FunctionContext): Promise<Response> {
-  const db = context.env.ATTEST;
-  if (!db) return noDatabase();
+  const kv = context.env.ATTEST;
+  if (!kv) return noNamespace();
 
-  // One query for the whole index: a gallery page shows a counter per card,
-  // and a request per card would be a request per app for a handful of
-  // integers.
-  const rows = await db
-    .prepare(
-      `SELECT app,
-              pack,
-              SUM(CASE WHEN verdict = 'match' THEN 1 ELSE 0 END)   AS confirmations,
-              SUM(CASE WHEN verdict = 'diverge' THEN 1 ELSE 0 END) AS diverged,
-              MAX(CASE WHEN verdict = 'match' THEN confirmed_at END) AS last_confirmed_at
-         FROM attestations
-        GROUP BY app, pack`
-    )
-    .all<CountRow>();
+  const url = new URL(context.request.url);
+  const app = url.searchParams.get("app");
+  const pack = url.searchParams.get("pack");
 
-  const counts: Record<string, unknown> = {};
-  for (const row of rows.results ?? []) {
-    counts[`${row.app}:${row.pack}`] = {
-      app: row.app,
-      pack: row.pack,
-      confirmations: Number(row.confirmations ?? 0),
-      diverged: Number(row.diverged ?? 0),
-      lastConfirmedAt: row.last_confirmed_at ?? null,
-    };
+  if (app || pack) {
+    if (!app || !pack) return badRequest("app and pack must be given together");
+    if (!NAME_RE.test(app) || !NAME_RE.test(pack)) return badRequest("app and pack must be registry.json names");
+    const raw = await kv.get(summaryKey(app, pack));
+    let summary: Summary = { ...EMPTY_SUMMARY };
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Partial<Summary>;
+        summary = {
+          count: typeof parsed.count === "number" ? parsed.count : 0,
+          diverged: typeof parsed.diverged === "number" ? parsed.diverged : 0,
+          lastConfirmedAt: typeof parsed.lastConfirmedAt === "string" ? parsed.lastConfirmedAt : null,
+        };
+      } catch {
+        // fall through to the empty summary: an unreadable derived value is
+        // "nothing confirmed yet", not an error for the reader to handle
+      }
+    }
+    // The same envelope the listing returns, so a caller can read one shape
+    // whichever way it asked.
+    return json({ counts: { [`${app}:${pack}`]: countEntry(app, pack, summary) } });
   }
+
+  // Every summary, in one listing: a gallery page shows a counter per card,
+  // and a request per card would be a request per app for a handful of
+  // integers. The summary rides in each key's metadata, so this is one call
+  // with no per-key get behind it.
+  const counts: Record<string, unknown> = {};
+  let cursor: string | undefined;
+  do {
+    const page = await kv.list<Partial<Summary>>({ prefix: "s:", cursor });
+    for (const entry of page.keys) {
+      const rest = entry.name.slice(2);
+      const split = rest.indexOf(":");
+      if (split < 0) continue;
+      const entryApp = rest.slice(0, split);
+      const entryPack = rest.slice(split + 1);
+      const m = entry.metadata;
+      const summary: Summary = {
+        count: typeof m?.count === "number" ? m.count : 0,
+        diverged: typeof m?.diverged === "number" ? m.diverged : 0,
+        lastConfirmedAt: typeof m?.lastConfirmedAt === "string" ? m.lastConfirmedAt : null,
+      };
+      counts[`${entryApp}:${entryPack}`] = countEntry(entryApp, entryPack, summary);
+    }
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor);
+
   return json({ counts });
 }
 

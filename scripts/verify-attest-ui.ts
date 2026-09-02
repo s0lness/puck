@@ -21,7 +21,7 @@
 //                     recover exactly the frame the bundle recorded.
 //
 //   /api/attest       a puppeteer request route, which is why nothing here
-//                     needs a Pages Function, a D1 database or a network.
+//                     needs a Pages Function, a KV namespace or a network.
 //                     The POST body is captured and asserted against the
 //                     documented shape (site/attest/plan.ts's AttestPost).
 //

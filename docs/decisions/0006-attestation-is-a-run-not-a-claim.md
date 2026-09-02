@@ -46,13 +46,18 @@ one was, from data, with no date typed by anybody.
 
 ## Three things this deliberately does not do
 
-**It does not identify anybody.** No IP, no user agent, no cookie, no
-session, no fingerprint, no hash of any of those. The posted record is the
-app, the pack, the sha256 of the firmware artifact the browser actually
-fetched, the verdict, the per-point pixel counts, the board family and the
-server's own date. The schema comment
-([`site/d1/schema.sql`](../../site/d1/schema.sql)) says the same from the
-database's side.
+**It does not identify anybody.** The stored record is the app, the pack, the
+sha256 of the firmware artifact the browser actually fetched, the verdict,
+the per-point pixel counts, the board family and the server's own date. No
+user agent, no cookie, no session, no fingerprint, and no field any of those
+could later be joined on. [`site/README.md`](../../site/README.md) says the
+same from the storage's side, key shape by key shape.
+
+The one thing that touches a client at all is the rate limit, and its shape
+is the promise rather than a note beside it: the connecting IP is hashed and
+truncated, the key expires in sixty seconds, it lives under its own prefix,
+and the read side never looks at it. A public endpoint with no limit at all
+would be worse for everybody, including for the number's meaning.
 
 **So it counts confirmations, not boards.** Nothing here can tell two runs
 on one board from two runs on two, so the counter says "14 confirmations"
@@ -70,10 +75,11 @@ that reads as what it is.
 ## Why a divergence is a result, not an error
 
 A board that draws something else is evidence about that port on that
-silicon, and it is posted with the same button and stored in the same table.
-An attestation system that only recorded agreement would be an applause
-meter. `verdict` is a column, `diverge` is one of its two values, and the
-endpoint refuses a `match` whose own per-point results contradict it.
+silicon, and it is posted with the same button and stored under the same key
+prefix. An attestation system that only recorded agreement would be an
+applause meter. `verdict` is a stored field with two values, the summary
+counts both, and the endpoint refuses a `match` whose own per-point results
+contradict it.
 
 ## What it costs
 
@@ -91,6 +97,15 @@ It also means one wire protocol now runs in two places, which is why
 browser transport share one implementation rather than agreeing exactly once,
 on the day the second was written ([`0002`](0002-two-compilers-not-one.md)
 makes the same argument about firmware).
+
+And the counter is approximate, on purpose. The store is a KV namespace
+rather than a relational one (the account is at its D1 limit), so the summary
+is a read-modify-write with no compare-and-set: two posts for the same app
+and pack inside one consistency window can lose an increment. What that
+buys back is that every attestation is still its own key, so the summary is
+derived data that can be rebuilt from the records at any time. A counter that
+is occasionally one low is a fair price; a counter that could not be checked
+against the runs behind it would not be.
 
 ## Status of the old field
 

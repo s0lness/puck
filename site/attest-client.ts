@@ -11,7 +11,7 @@
 // is a static build that this repository serves from a plain file server in
 // its own headless checks, opens straight off disk during development, and
 // which anyone can clone and serve themselves. In all of those there is no
-// Pages Function and no D1 behind /api/attest, so fetchAttestations()
+// Pages Function and no KV namespace behind /api/attest, so fetchAttestations()
 // resolves to null and every caller renders the empty state rather than an
 // error. A counter that turned into "failed to load" on a local preview
 // would be worse than no counter.
