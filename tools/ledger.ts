@@ -571,6 +571,8 @@ interface VerifySilhouetteJson {
   mode: "tilt" | "stroke";
   panel: { w: number; h: number };
   proof: string | null;
+  /** Stroke mode only: "tap" or "drag", whichever changed the panel; null if neither did. Already folded into the stroke-diff check's own detail string below, carried here too so nothing reading this JSON has to re-parse English for it. */
+  gesture: "tap" | "drag" | null;
   checks: { name: string; ok: boolean; detail: string }[];
 }
 
