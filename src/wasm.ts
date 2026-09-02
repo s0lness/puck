@@ -61,6 +61,16 @@ export interface EmuExports {
   // as emu_app_current/emu_app_switch above: a device with no sound simply
   // does not export these, and audio.ts must not assume every firmware has
   // a speaker.
+  // Optional: how many bytes of its fixed per-app allocation arena the
+  // running app has taken, and how large that arena is (wasm/emu_abi.h's
+  // "the app arena"). Only a firmware whose app contract HAS a bump
+  // allocator exports these: packs/rp2350-touch-amoled-18 does,
+  // packs/web does not, so every call site guards them exactly like the
+  // sensor and sound exports above. Read after a replay by
+  // src/replayCore.ts, which is how tools/describe.ts states an app's
+  // memory demand from the module rather than from a device's budget.
+  emu_arena_used?(): number;
+  emu_arena_capacity?(): number;
   emu_sound_sample_rate?(): number;
   emu_sound_play_seq?(): number;
   emu_sound_stop_seq?(): number;

@@ -1,0 +1,772 @@
+{
+  "tool": "tools/describe.ts",
+  "convention": "0.1",
+  "note": "Every claim in descriptor.draft.md is one of these measurements. A frame diff here is this session against the same session with one input removed, at tolerance zero.",
+  "generatedAt": "2026-09-02",
+  "app": "chrono",
+  "module": {
+    "path": "site/dist/modules/chrono-rp2350.wasm",
+    "from": "given already built"
+  },
+  "pack": {
+    "name": "rp2350-touch-amoled-18",
+    "deviceJson": "packs/rp2350-touch-amoled-18/device.json"
+  },
+  "settings": {
+    "everyMs": 250,
+    "windowTicks": 12,
+    "persistMs": 2000,
+    "timingRepeats": 5,
+    "tolerance": 0
+  },
+  "demands": {
+    "convention": "0.1",
+    "panel": {
+      "minW": 120,
+      "minH": 420,
+      "orientation": "either",
+      "color": false
+    },
+    "buttons": [
+      {
+        "role": "key",
+        "why": "A short PWR press redraws 120 by 108 pixels at x 124, y 326. TODO, say why this control has to exist"
+      },
+      {
+        "role": "click",
+        "why": "A BOOT click redraws 120 by 186 pixels at x 124, y 230. TODO, say why this control has to exist"
+      }
+    ],
+    "touch": {
+      "points": 0
+    },
+    "sensors": [],
+    "memory": {
+      "baseBytes": 36
+    },
+    "tick": {
+      "needsMs": 1
+    }
+  },
+  "memorySource": "the module's own emu_arena_used() after the session (36 of 65536 bytes)",
+  "affordances": [
+    {
+      "key": "button:1:short",
+      "phrase": "A short PWR press",
+      "input": {
+        "kind": "button",
+        "index": 1,
+        "press": "short"
+      },
+      "occurrences": [
+        {
+          "phrase": "A short PWR press",
+          "atMs": 32,
+          "endMs": 112,
+          "removedEvents": 3,
+          "changed": true,
+          "latencyTicks": 1,
+          "latencyMs": 16,
+          "peakDiffPixels": 5184,
+          "box": {
+            "x": 124,
+            "y": 326,
+            "w": 120,
+            "h": 108
+          },
+          "persistAt": 1808,
+          "persistNote": "probed 1696ms on rather than 2000ms, because the next input arrived",
+          "persists": true,
+          "perTick": [
+            {
+              "atMs": 112,
+              "diffPixels": 0,
+              "box": null
+            },
+            {
+              "atMs": 128,
+              "diffPixels": 2592,
+              "box": {
+                "x": 124,
+                "y": 386,
+                "w": 120,
+                "h": 30
+              }
+            },
+            {
+              "atMs": 144,
+              "diffPixels": 1404,
+              "box": {
+                "x": 142,
+                "y": 386,
+                "w": 84,
+                "h": 30
+              }
+            },
+            {
+              "atMs": 160,
+              "diffPixels": 1566,
+              "box": {
+                "x": 124,
+                "y": 386,
+                "w": 120,
+                "h": 30
+              }
+            },
+            {
+              "atMs": 176,
+              "diffPixels": 810,
+              "box": {
+                "x": 175,
+                "y": 404,
+                "w": 51,
+                "h": 30
+              }
+            },
+            {
+              "atMs": 192,
+              "diffPixels": 216,
+              "box": {
+                "x": 175,
+                "y": 404,
+                "w": 18,
+                "h": 12
+              }
+            },
+            {
+              "atMs": 208,
+              "diffPixels": 810,
+              "box": {
+                "x": 142,
+                "y": 386,
+                "w": 51,
+                "h": 30
+              }
+            },
+            {
+              "atMs": 224,
+              "diffPixels": 5184,
+              "box": {
+                "x": 124,
+                "y": 326,
+                "w": 120,
+                "h": 90
+              }
+            },
+            {
+              "atMs": 240,
+              "diffPixels": 3996,
+              "box": {
+                "x": 124,
+                "y": 326,
+                "w": 120,
+                "h": 108
+              }
+            },
+            {
+              "atMs": 256,
+              "diffPixels": 4158,
+              "box": {
+                "x": 124,
+                "y": 326,
+                "w": 120,
+                "h": 90
+              }
+            },
+            {
+              "atMs": 272,
+              "diffPixels": 3402,
+              "box": {
+                "x": 124,
+                "y": 326,
+                "w": 120,
+                "h": 108
+              }
+            },
+            {
+              "atMs": 288,
+              "diffPixels": 4644,
+              "box": {
+                "x": 124,
+                "y": 326,
+                "w": 120,
+                "h": 90
+              }
+            }
+          ]
+        },
+        {
+          "phrase": "A short PWR press",
+          "atMs": 1808,
+          "endMs": 1888,
+          "removedEvents": 3,
+          "changed": true,
+          "latencyTicks": 1,
+          "latencyMs": 16,
+          "peakDiffPixels": 4320,
+          "box": {
+            "x": 124,
+            "y": 326,
+            "w": 102,
+            "h": 90
+          },
+          "persistAt": 1920,
+          "persistNote": "probed 32ms on rather than 2000ms, because the next input arrived",
+          "persists": true,
+          "perTick": [
+            {
+              "atMs": 1888,
+              "diffPixels": 0,
+              "box": null
+            },
+            {
+              "atMs": 1904,
+              "diffPixels": 1674,
+              "box": {
+                "x": 124,
+                "y": 386,
+                "w": 102,
+                "h": 30
+              }
+            },
+            {
+              "atMs": 1920,
+              "diffPixels": 4320,
+              "box": {
+                "x": 124,
+                "y": 326,
+                "w": 102,
+                "h": 90
+              }
+            }
+          ]
+        }
+      ],
+      "changed": true,
+      "latencyTicks": 1,
+      "latencyMs": 16,
+      "box": {
+        "x": 124,
+        "y": 326,
+        "w": 120,
+        "h": 108
+      },
+      "peakDiffPixels": 5184,
+      "persists": true,
+      "panelFraction": 0.07861024844720498
+    },
+    {
+      "key": "button:0:click",
+      "phrase": "A BOOT click",
+      "input": {
+        "kind": "button",
+        "index": 0,
+        "press": "click"
+      },
+      "occurrences": [
+        {
+          "phrase": "A BOOT click",
+          "atMs": 2000,
+          "endMs": 2080,
+          "removedEvents": 2,
+          "changed": true,
+          "latencyTicks": 0,
+          "latencyMs": 0,
+          "peakDiffPixels": 6696,
+          "box": {
+            "x": 124,
+            "y": 230,
+            "w": 120,
+            "h": 186
+          },
+          "persistAt": 2096,
+          "persistNote": "probed 16ms on rather than 2000ms, because the session ended",
+          "persists": true,
+          "perTick": [
+            {
+              "atMs": 2080,
+              "diffPixels": 6696,
+              "box": {
+                "x": 124,
+                "y": 230,
+                "w": 120,
+                "h": 186
+              }
+            },
+            {
+              "atMs": 2096,
+              "diffPixels": 6696,
+              "box": {
+                "x": 124,
+                "y": 230,
+                "w": 120,
+                "h": 186
+              }
+            }
+          ]
+        }
+      ],
+      "changed": true,
+      "latencyTicks": 0,
+      "latencyMs": 0,
+      "box": {
+        "x": 124,
+        "y": 230,
+        "w": 120,
+        "h": 186
+      },
+      "peakDiffPixels": 6696,
+      "persists": true,
+      "panelFraction": 0.13538431677018634
+    }
+  ],
+  "unexercised": [
+    "shake (event): declared by the device and never delivered in any of these sessions",
+    "tilt (vector): declared by the device and never delivered in any of these sessions",
+    "touch: the device declares 1 point(s) and no session contains a touch event"
+  ],
+  "traces": [
+    {
+      "trace": "apps/chrono/traces/chrono-startstop.trace.json",
+      "recordedAt": "2026-08-18T00:00:00.000Z",
+      "events": 125,
+      "ticks": 116,
+      "durationMs": 2096,
+      "capturePoints": 26,
+      "counterfactualReplays": 3,
+      "affordances": [
+        {
+          "key": "button:1:short",
+          "phrase": "A short PWR press",
+          "input": {
+            "kind": "button",
+            "index": 1,
+            "press": "short"
+          },
+          "occurrences": [
+            {
+              "phrase": "A short PWR press",
+              "atMs": 32,
+              "endMs": 112,
+              "removedEvents": 3,
+              "changed": true,
+              "latencyTicks": 1,
+              "latencyMs": 16,
+              "peakDiffPixels": 5184,
+              "box": {
+                "x": 124,
+                "y": 326,
+                "w": 120,
+                "h": 108
+              },
+              "persistAt": 1808,
+              "persistNote": "probed 1696ms on rather than 2000ms, because the next input arrived",
+              "persists": true,
+              "perTick": [
+                {
+                  "atMs": 112,
+                  "diffPixels": 0,
+                  "box": null
+                },
+                {
+                  "atMs": 128,
+                  "diffPixels": 2592,
+                  "box": {
+                    "x": 124,
+                    "y": 386,
+                    "w": 120,
+                    "h": 30
+                  }
+                },
+                {
+                  "atMs": 144,
+                  "diffPixels": 1404,
+                  "box": {
+                    "x": 142,
+                    "y": 386,
+                    "w": 84,
+                    "h": 30
+                  }
+                },
+                {
+                  "atMs": 160,
+                  "diffPixels": 1566,
+                  "box": {
+                    "x": 124,
+                    "y": 386,
+                    "w": 120,
+                    "h": 30
+                  }
+                },
+                {
+                  "atMs": 176,
+                  "diffPixels": 810,
+                  "box": {
+                    "x": 175,
+                    "y": 404,
+                    "w": 51,
+                    "h": 30
+                  }
+                },
+                {
+                  "atMs": 192,
+                  "diffPixels": 216,
+                  "box": {
+                    "x": 175,
+                    "y": 404,
+                    "w": 18,
+                    "h": 12
+                  }
+                },
+                {
+                  "atMs": 208,
+                  "diffPixels": 810,
+                  "box": {
+                    "x": 142,
+                    "y": 386,
+                    "w": 51,
+                    "h": 30
+                  }
+                },
+                {
+                  "atMs": 224,
+                  "diffPixels": 5184,
+                  "box": {
+                    "x": 124,
+                    "y": 326,
+                    "w": 120,
+                    "h": 90
+                  }
+                },
+                {
+                  "atMs": 240,
+                  "diffPixels": 3996,
+                  "box": {
+                    "x": 124,
+                    "y": 326,
+                    "w": 120,
+                    "h": 108
+                  }
+                },
+                {
+                  "atMs": 256,
+                  "diffPixels": 4158,
+                  "box": {
+                    "x": 124,
+                    "y": 326,
+                    "w": 120,
+                    "h": 90
+                  }
+                },
+                {
+                  "atMs": 272,
+                  "diffPixels": 3402,
+                  "box": {
+                    "x": 124,
+                    "y": 326,
+                    "w": 120,
+                    "h": 108
+                  }
+                },
+                {
+                  "atMs": 288,
+                  "diffPixels": 4644,
+                  "box": {
+                    "x": 124,
+                    "y": 326,
+                    "w": 120,
+                    "h": 90
+                  }
+                }
+              ]
+            },
+            {
+              "phrase": "A short PWR press",
+              "atMs": 1808,
+              "endMs": 1888,
+              "removedEvents": 3,
+              "changed": true,
+              "latencyTicks": 1,
+              "latencyMs": 16,
+              "peakDiffPixels": 4320,
+              "box": {
+                "x": 124,
+                "y": 326,
+                "w": 102,
+                "h": 90
+              },
+              "persistAt": 1920,
+              "persistNote": "probed 32ms on rather than 2000ms, because the next input arrived",
+              "persists": true,
+              "perTick": [
+                {
+                  "atMs": 1888,
+                  "diffPixels": 0,
+                  "box": null
+                },
+                {
+                  "atMs": 1904,
+                  "diffPixels": 1674,
+                  "box": {
+                    "x": 124,
+                    "y": 386,
+                    "w": 102,
+                    "h": 30
+                  }
+                },
+                {
+                  "atMs": 1920,
+                  "diffPixels": 4320,
+                  "box": {
+                    "x": 124,
+                    "y": 326,
+                    "w": 102,
+                    "h": 90
+                  }
+                }
+              ]
+            }
+          ],
+          "changed": true,
+          "latencyTicks": 1,
+          "latencyMs": 16,
+          "box": {
+            "x": 124,
+            "y": 326,
+            "w": 120,
+            "h": 108
+          },
+          "peakDiffPixels": 5184,
+          "persists": true,
+          "panelFraction": 0.07861024844720498
+        },
+        {
+          "key": "button:0:click",
+          "phrase": "A BOOT click",
+          "input": {
+            "kind": "button",
+            "index": 0,
+            "press": "click"
+          },
+          "occurrences": [
+            {
+              "phrase": "A BOOT click",
+              "atMs": 2000,
+              "endMs": 2080,
+              "removedEvents": 2,
+              "changed": true,
+              "latencyTicks": 0,
+              "latencyMs": 0,
+              "peakDiffPixels": 6696,
+              "box": {
+                "x": 124,
+                "y": 230,
+                "w": 120,
+                "h": 186
+              },
+              "persistAt": 2096,
+              "persistNote": "probed 16ms on rather than 2000ms, because the session ended",
+              "persists": true,
+              "perTick": [
+                {
+                  "atMs": 2080,
+                  "diffPixels": 6696,
+                  "box": {
+                    "x": 124,
+                    "y": 230,
+                    "w": 120,
+                    "h": 186
+                  }
+                },
+                {
+                  "atMs": 2096,
+                  "diffPixels": 6696,
+                  "box": {
+                    "x": 124,
+                    "y": 230,
+                    "w": 120,
+                    "h": 186
+                  }
+                }
+              ]
+            }
+          ],
+          "changed": true,
+          "latencyTicks": 0,
+          "latencyMs": 0,
+          "box": {
+            "x": 124,
+            "y": 230,
+            "w": 120,
+            "h": 186
+          },
+          "peakDiffPixels": 6696,
+          "persists": true,
+          "panelFraction": 0.13538431677018634
+        }
+      ],
+      "panel": {
+        "w": 368,
+        "h": 448,
+        "format": "rgb565be",
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "paintedBox": {
+          "x": 124,
+          "y": 14,
+          "w": 120,
+          "h": 420
+        },
+        "paintedFraction": 0.30570652173913043,
+        "everChangedBox": {
+          "x": 124,
+          "y": 230,
+          "w": 120,
+          "h": 204
+        },
+        "colourfulFrames": 0,
+        "framesInspected": 26,
+        "maxColourfulPixels": 0
+      },
+      "arena": {
+        "usedBytes": 36,
+        "capacityBytes": 65536
+      },
+      "pushLoad": {
+        "tickCount": 117,
+        "maxPushesPerTick": 3,
+        "maxPushPixelsPerTick": 17280,
+        "meanPushPixelsPerTick": 6301.538461538462
+      },
+      "tick": {
+        "msPerTick": 0.01869310344827603,
+        "withTicksMs": 3.568899999999985,
+        "withoutTicksMs": 1.4004999999999654,
+        "repeats": 5
+      },
+      "firmwareLog": [
+        "chrono: entered, stopped at 00:00:00\r\n",
+        "switch: chrono (0 us)",
+        "chrono: BOOT click, reset to 00:00:00\r\n"
+      ],
+      "inputs": {
+        "buttons": [
+          {
+            "index": 0,
+            "label": "BOOT",
+            "used": true
+          },
+          {
+            "index": 1,
+            "label": "PWR",
+            "used": true
+          }
+        ],
+        "sensors": [
+          {
+            "index": 0,
+            "name": "shake",
+            "kind": "event",
+            "used": false
+          },
+          {
+            "index": 1,
+            "name": "tilt",
+            "kind": "vector",
+            "used": false
+          }
+        ],
+        "touch": {
+          "points": 1,
+          "used": false
+        }
+      }
+    },
+    {
+      "trace": "apps/chrono/traces/chrono-idle.trace.json",
+      "recordedAt": "2026-08-14T20:20:48.964Z",
+      "events": 64,
+      "ticks": 64,
+      "durationMs": 1008,
+      "capturePoints": 5,
+      "counterfactualReplays": 0,
+      "affordances": [],
+      "panel": {
+        "w": 368,
+        "h": 448,
+        "format": "rgb565be",
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "paintedBox": {
+          "x": 124,
+          "y": 14,
+          "w": 120,
+          "h": 420
+        },
+        "paintedFraction": 0.30570652173913043,
+        "everChangedBox": null,
+        "colourfulFrames": 0,
+        "framesInspected": 5,
+        "maxColourfulPixels": 0
+      },
+      "arena": {
+        "usedBytes": 36,
+        "capacityBytes": 65536
+      },
+      "pushLoad": {
+        "tickCount": 64,
+        "maxPushesPerTick": 0,
+        "maxPushPixelsPerTick": 0,
+        "meanPushPixelsPerTick": 0
+      },
+      "tick": {
+        "msPerTick": 0.009329687500000183,
+        "withTicksMs": 1.9218000000000188,
+        "withoutTicksMs": 1.324700000000007,
+        "repeats": 5
+      },
+      "firmwareLog": [
+        "chrono: entered, stopped at 00:00:00\r\n",
+        "switch: chrono (0 us)"
+      ],
+      "inputs": {
+        "buttons": [
+          {
+            "index": 0,
+            "label": "BOOT",
+            "used": false
+          },
+          {
+            "index": 1,
+            "label": "PWR",
+            "used": false
+          }
+        ],
+        "sensors": [
+          {
+            "index": 0,
+            "name": "shake",
+            "kind": "event",
+            "used": false
+          },
+          {
+            "index": 1,
+            "name": "tilt",
+            "kind": "vector",
+            "used": false
+          }
+        ],
+        "touch": {
+          "points": 1,
+          "used": false
+        }
+      }
+    }
+  ]
+}

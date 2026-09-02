@@ -49,6 +49,20 @@ export interface PushLoadStats {
   meanPushPixelsPerTick: number;
 }
 
+// How much of the module's own fixed per-app arena the app had taken by the
+// end of the replay, straight from wasm/emu_abi.h's OPTIONAL emu_arena_used()
+// / emu_arena_capacity(). Read once, at the end, rather than per tick: a bump
+// allocator only grows, so the last reading is the high-water mark, and a
+// per-tick series would cost a call per tick for a number no caller has asked
+// for. Absent whenever the module does not export the pair, which is the
+// normal case for a firmware with no arena in its app contract (packs/web);
+// a caller wanting a memory figure anyway has to fall back to the device's
+// own declared budget and SAY SO, which is what tools/describe.ts does.
+export interface ArenaStats {
+  usedBytes: number;
+  capacityBytes: number;
+}
+
 export interface ReplayResult {
   device: DeviceDescriptor;
   // One captured frame per requested capture point, in the same order,
@@ -61,6 +75,9 @@ export interface ReplayResult {
   // symmetry with the other optional emu_* exports this file already treats
   // that way (emu_sensor_vector, above).
   pushStats?: PushLoadStats;
+  // Present only when the module exports emu_arena_used()/emu_arena_capacity()
+  // (see ArenaStats above).
+  arena?: ArenaStats;
 }
 
 // Options carried from the replayed trace into the instantiation itself.
@@ -176,5 +193,10 @@ export async function replayFromBytes(bytes: ArrayBuffer, events: TraceEvent[], 
       }
     : undefined;
 
-  return { device, frames, log, pushStats };
+  const arena: ArenaStats | undefined =
+    typeof emu.emu_arena_used === "function" && typeof emu.emu_arena_capacity === "function"
+      ? { usedBytes: emu.emu_arena_used(), capacityBytes: emu.emu_arena_capacity() }
+      : undefined;
+
+  return { device, frames, log, pushStats, arena };
 }

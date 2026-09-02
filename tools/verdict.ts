@@ -1,8 +1,15 @@
 #!/usr/bin/env bun
 // puck verdict: does this app fit this device, mechanically.
 //
-//   puck verdict <app> <pack-or-silhouette> [--json]
-//   bun run verdict <app> <pack-or-silhouette> [--json]
+//   puck verdict <app> <pack-or-silhouette> [--json] [--descriptor <path>]
+//   bun run verdict <app> <pack-or-silhouette> [--json] [--descriptor <path>]
+//
+// `--descriptor` reads the demands out of a descriptor OTHER than the one
+// registry.json points at, and exists for exactly one caller: comparing a
+// `descriptor.draft.md` (tools/describe.ts) against the hand-written
+// descriptor it was drafted beside, on the same app and the same target,
+// through this same code. Without it, "does the draft decide the same way"
+// could only be answered by a second implementation of this file.
 //
 // docs/convention/app-bundle.md's porting flow already had this step, and
 // it was a step a person did by reading two files and forming an opinion:
@@ -502,18 +509,28 @@ export function computeVerdict(app: string, target: string, targetKind: "pack" |
 if (import.meta.main) {
   const argv = process.argv.slice(2);
   const json = argv.includes("--json");
-  const positional = argv.filter((a) => !a.startsWith("--"));
+  const positional: string[] = [];
+  let descriptorOverride = "";
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!;
+    if (arg === "--descriptor") {
+      const value = argv[++i];
+      if (value === undefined) die("--descriptor needs a path");
+      descriptorOverride = resolve(REPO_ROOT, value);
+    } else if (!arg.startsWith("--")) positional.push(arg);
+  }
   if (positional.length !== 2) {
-    console.error("usage: puck verdict <app> <pack-or-silhouette> [--json]");
+    console.error("usage: puck verdict <app> <pack-or-silhouette> [--json] [--descriptor <path>]");
     process.exit(EXIT_INFRA);
   }
 
   const registry = readJson<Registry>(join(REPO_ROOT, "registry.json"));
   const app = resolveApp(registry, positional[0]!);
   const target = resolveTarget(registry, positional[1]!);
+  if (descriptorOverride !== "" && !existsSync(descriptorOverride)) die(`no such descriptor: ${descriptorOverride}`);
   let demands: Demands;
   try {
-    demands = readDemands(app.descriptor);
+    demands = readDemands(descriptorOverride === "" ? app.descriptor : descriptorOverride);
   } catch (err) {
     die(err instanceof Error ? err.message : String(err));
   }

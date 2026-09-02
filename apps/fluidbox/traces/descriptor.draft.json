@@ -1,0 +1,474 @@
+{
+  "tool": "tools/describe.ts",
+  "convention": "0.1",
+  "note": "Every claim in descriptor.draft.md is one of these measurements. A frame diff here is this session against the same session with one input removed, at tolerance zero.",
+  "generatedAt": "2026-09-02",
+  "app": "fluidbox",
+  "module": {
+    "path": "site/dist/modules/fluidbox-rp2350.wasm",
+    "from": "given already built"
+  },
+  "pack": {
+    "name": "rp2350-touch-amoled-18",
+    "deviceJson": "packs/rp2350-touch-amoled-18/device.json"
+  },
+  "settings": {
+    "everyMs": 250,
+    "windowTicks": 12,
+    "persistMs": 2000,
+    "timingRepeats": 5,
+    "tolerance": 0
+  },
+  "demands": {
+    "convention": "0.1",
+    "panel": {
+      "minW": 365,
+      "minH": 119,
+      "orientation": "either",
+      "color": true
+    },
+    "buttons": [],
+    "touch": {
+      "points": 0
+    },
+    "sensors": [
+      {
+        "kind": "event",
+        "why": "A shake event redraws 365 by 71 pixels at x 2, y 376. TODO, say why this signal has to exist"
+      }
+    ],
+    "memory": {
+      "baseBytes": 6284
+    },
+    "tick": {
+      "needsMs": 1
+    }
+  },
+  "memorySource": "the module's own emu_arena_used() after the session (6284 of 65536 bytes)",
+  "affordances": [
+    {
+      "key": "sensor:0:event",
+      "phrase": "A shake event",
+      "input": {
+        "kind": "sensor",
+        "index": 0,
+        "signal": "event"
+      },
+      "occurrences": [
+        {
+          "phrase": "A shake event",
+          "atMs": 4016,
+          "endMs": 4016,
+          "removedEvents": 1,
+          "changed": true,
+          "latencyTicks": 0,
+          "latencyMs": 0,
+          "peakDiffPixels": 7098,
+          "box": {
+            "x": 2,
+            "y": 376,
+            "w": 365,
+            "h": 71
+          },
+          "persistAt": 6016,
+          "persistNote": null,
+          "persists": true,
+          "perTick": [
+            {
+              "atMs": 4016,
+              "diffPixels": 4691,
+              "box": {
+                "x": 2,
+                "y": 378,
+                "w": 364,
+                "h": 69
+              }
+            },
+            {
+              "atMs": 4032,
+              "diffPixels": 5150,
+              "box": {
+                "x": 2,
+                "y": 377,
+                "w": 364,
+                "h": 70
+              }
+            },
+            {
+              "atMs": 4048,
+              "diffPixels": 5701,
+              "box": {
+                "x": 2,
+                "y": 377,
+                "w": 364,
+                "h": 70
+              }
+            },
+            {
+              "atMs": 4064,
+              "diffPixels": 5763,
+              "box": {
+                "x": 2,
+                "y": 376,
+                "w": 365,
+                "h": 71
+              }
+            },
+            {
+              "atMs": 4080,
+              "diffPixels": 6109,
+              "box": {
+                "x": 2,
+                "y": 376,
+                "w": 365,
+                "h": 71
+              }
+            },
+            {
+              "atMs": 4096,
+              "diffPixels": 6470,
+              "box": {
+                "x": 2,
+                "y": 377,
+                "w": 365,
+                "h": 70
+              }
+            },
+            {
+              "atMs": 4112,
+              "diffPixels": 6701,
+              "box": {
+                "x": 2,
+                "y": 377,
+                "w": 365,
+                "h": 70
+              }
+            },
+            {
+              "atMs": 4128,
+              "diffPixels": 6587,
+              "box": {
+                "x": 2,
+                "y": 378,
+                "w": 365,
+                "h": 69
+              }
+            },
+            {
+              "atMs": 4144,
+              "diffPixels": 7035,
+              "box": {
+                "x": 2,
+                "y": 378,
+                "w": 365,
+                "h": 69
+              }
+            },
+            {
+              "atMs": 4160,
+              "diffPixels": 6827,
+              "box": {
+                "x": 2,
+                "y": 378,
+                "w": 365,
+                "h": 69
+              }
+            },
+            {
+              "atMs": 4176,
+              "diffPixels": 7098,
+              "box": {
+                "x": 3,
+                "y": 378,
+                "w": 364,
+                "h": 69
+              }
+            },
+            {
+              "atMs": 4192,
+              "diffPixels": 6985,
+              "box": {
+                "x": 3,
+                "y": 378,
+                "w": 364,
+                "h": 69
+              }
+            }
+          ]
+        }
+      ],
+      "changed": true,
+      "latencyTicks": 0,
+      "latencyMs": 0,
+      "box": {
+        "x": 2,
+        "y": 376,
+        "w": 365,
+        "h": 71
+      },
+      "peakDiffPixels": 7098,
+      "persists": true,
+      "panelFraction": 0.15719016886645962
+    }
+  ],
+  "unexercised": [
+    "BOOT: declared by the device and never pressed in any of these sessions",
+    "PWR: declared by the device and never pressed in any of these sessions",
+    "tilt (vector): declared by the device and never delivered in any of these sessions",
+    "touch: the device declares 1 point(s) and no session contains a touch event"
+  ],
+  "traces": [
+    {
+      "trace": "apps/fluidbox/traces/fluid-settle-shake.trace.json",
+      "recordedAt": "2026-08-18T14:39:09.124Z",
+      "events": 566,
+      "ticks": 565,
+      "durationMs": 9024,
+      "capturePoints": 51,
+      "counterfactualReplays": 1,
+      "affordances": [
+        {
+          "key": "sensor:0:event",
+          "phrase": "A shake event",
+          "input": {
+            "kind": "sensor",
+            "index": 0,
+            "signal": "event"
+          },
+          "occurrences": [
+            {
+              "phrase": "A shake event",
+              "atMs": 4016,
+              "endMs": 4016,
+              "removedEvents": 1,
+              "changed": true,
+              "latencyTicks": 0,
+              "latencyMs": 0,
+              "peakDiffPixels": 7098,
+              "box": {
+                "x": 2,
+                "y": 376,
+                "w": 365,
+                "h": 71
+              },
+              "persistAt": 6016,
+              "persistNote": null,
+              "persists": true,
+              "perTick": [
+                {
+                  "atMs": 4016,
+                  "diffPixels": 4691,
+                  "box": {
+                    "x": 2,
+                    "y": 378,
+                    "w": 364,
+                    "h": 69
+                  }
+                },
+                {
+                  "atMs": 4032,
+                  "diffPixels": 5150,
+                  "box": {
+                    "x": 2,
+                    "y": 377,
+                    "w": 364,
+                    "h": 70
+                  }
+                },
+                {
+                  "atMs": 4048,
+                  "diffPixels": 5701,
+                  "box": {
+                    "x": 2,
+                    "y": 377,
+                    "w": 364,
+                    "h": 70
+                  }
+                },
+                {
+                  "atMs": 4064,
+                  "diffPixels": 5763,
+                  "box": {
+                    "x": 2,
+                    "y": 376,
+                    "w": 365,
+                    "h": 71
+                  }
+                },
+                {
+                  "atMs": 4080,
+                  "diffPixels": 6109,
+                  "box": {
+                    "x": 2,
+                    "y": 376,
+                    "w": 365,
+                    "h": 71
+                  }
+                },
+                {
+                  "atMs": 4096,
+                  "diffPixels": 6470,
+                  "box": {
+                    "x": 2,
+                    "y": 377,
+                    "w": 365,
+                    "h": 70
+                  }
+                },
+                {
+                  "atMs": 4112,
+                  "diffPixels": 6701,
+                  "box": {
+                    "x": 2,
+                    "y": 377,
+                    "w": 365,
+                    "h": 70
+                  }
+                },
+                {
+                  "atMs": 4128,
+                  "diffPixels": 6587,
+                  "box": {
+                    "x": 2,
+                    "y": 378,
+                    "w": 365,
+                    "h": 69
+                  }
+                },
+                {
+                  "atMs": 4144,
+                  "diffPixels": 7035,
+                  "box": {
+                    "x": 2,
+                    "y": 378,
+                    "w": 365,
+                    "h": 69
+                  }
+                },
+                {
+                  "atMs": 4160,
+                  "diffPixels": 6827,
+                  "box": {
+                    "x": 2,
+                    "y": 378,
+                    "w": 365,
+                    "h": 69
+                  }
+                },
+                {
+                  "atMs": 4176,
+                  "diffPixels": 7098,
+                  "box": {
+                    "x": 3,
+                    "y": 378,
+                    "w": 364,
+                    "h": 69
+                  }
+                },
+                {
+                  "atMs": 4192,
+                  "diffPixels": 6985,
+                  "box": {
+                    "x": 3,
+                    "y": 378,
+                    "w": 364,
+                    "h": 69
+                  }
+                }
+              ]
+            }
+          ],
+          "changed": true,
+          "latencyTicks": 0,
+          "latencyMs": 0,
+          "box": {
+            "x": 2,
+            "y": 376,
+            "w": 365,
+            "h": 71
+          },
+          "peakDiffPixels": 7098,
+          "persists": true,
+          "panelFraction": 0.15719016886645962
+        }
+      ],
+      "panel": {
+        "w": 368,
+        "h": 448,
+        "format": "rgb565be",
+        "background": [
+          0,
+          0,
+          0
+        ],
+        "paintedBox": {
+          "x": 2,
+          "y": 328,
+          "w": 365,
+          "h": 119
+        },
+        "paintedFraction": 0.26345957880434784,
+        "everChangedBox": {
+          "x": 2,
+          "y": 328,
+          "w": 365,
+          "h": 119
+        },
+        "colourfulFrames": 51,
+        "framesInspected": 51,
+        "maxColourfulPixels": 6370
+      },
+      "arena": {
+        "usedBytes": 6284,
+        "capacityBytes": 65536
+      },
+      "pushLoad": {
+        "tickCount": 565,
+        "maxPushesPerTick": 1,
+        "maxPushPixelsPerTick": 40832,
+        "meanPushPixelsPerTick": 25494.65486725664
+      },
+      "tick": {
+        "msPerTick": 0.07949858407079624,
+        "withTicksMs": 48.6715999999999,
+        "withoutTicksMs": 3.7549000000000206,
+        "repeats": 5
+      },
+      "firmwareLog": [
+        "switch: fluid (0 us)"
+      ],
+      "inputs": {
+        "buttons": [
+          {
+            "index": 0,
+            "label": "BOOT",
+            "used": false
+          },
+          {
+            "index": 1,
+            "label": "PWR",
+            "used": false
+          }
+        ],
+        "sensors": [
+          {
+            "index": 0,
+            "name": "shake",
+            "kind": "event",
+            "used": true
+          },
+          {
+            "index": 1,
+            "name": "tilt",
+            "kind": "vector",
+            "used": false
+          }
+        ],
+        "touch": {
+          "points": 1,
+          "used": false
+        }
+      }
+    }
+  ]
+}
