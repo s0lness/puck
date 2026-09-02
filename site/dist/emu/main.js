@@ -1003,7 +1003,7 @@ async function postFreeze(bundle, id) {
   try {
     const res = await fetch("/api/freeze", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-puck-emulator": "1" },
       body: JSON.stringify(id ? { ...bundle, id } : bundle)
     });
     if (!res.ok)
@@ -1246,6 +1246,10 @@ function compareFrames(a, b, tolerance) {
   if (a.width !== b.width || a.height !== b.height) {
     return { match: false, diffPixels: -1, totalPixels: a.width * a.height, firstDiffAt: null, maxChannelDelta: 255, diffImage: null };
   }
+  const expectedLength = a.width * a.height * 3;
+  if (a.rgb.length !== expectedLength || b.rgb.length !== expectedLength) {
+    return { match: false, diffPixels: -1, totalPixels: a.width * a.height, firstDiffAt: null, maxChannelDelta: 255, diffImage: null };
+  }
   const { width: w, height: h } = a;
   let diffPixels = 0;
   let firstDiffAt = null;
@@ -1336,7 +1340,7 @@ async function checkAgainstBaseline(wasmBytes, baseline, tolerance = 0) {
     if (!d.match && d.diffImage)
       diffImages.push({ atMs: cur.atMs, rgb: d.diffImage });
   }
-  return { pass: points.every((p) => p.match), points, baselineFrames, currentFrames: replay.frames, diffImages };
+  return { pass: points.length > 0 && points.every((p) => p.match), points, baselineFrames, currentFrames: replay.frames, diffImages };
 }
 function toRegressionResultPayload(baseline, check) {
   return {
@@ -2678,7 +2682,14 @@ async function bringUp(bytes, reason) {
     failReload(err);
     return;
   }
-  if (newEmu.emu_init() === 0) {
+  let initOk;
+  try {
+    initOk = newEmu.emu_init();
+  } catch (err) {
+    failReload(err);
+    return;
+  }
+  if (initOk === 0) {
     failReload(new Error("emu_init() returned 0 (framebuffer allocation failed; see console pane above for why)"));
     return;
   }
@@ -2936,13 +2947,20 @@ function startReplay(trace) {
     consoleLog.push("cannot replay: no wasm module loaded yet");
     return;
   }
+  if (reloadInFlight) {
+    consoleLog.push("reload already in progress, ignoring (starting replay)");
+    return;
+  }
   recorder.enabled = false;
   paused = true;
   btnPause.textContent = "resume";
+  reloadInFlight = true;
   bringUp(wasmBytes, `replay of trace recorded ${trace.recordedAt}`).then(() => {
     replayer = new Replayer(trace.events);
     updateReplayBar();
     consoleLog.push(`replay loaded: ${trace.events.length} events. step or resume to play.`);
+  }).finally(() => {
+    reloadInFlight = false;
   });
 }
 function stopReplay() {
@@ -3033,7 +3051,7 @@ async function saveTraceToServer() {
   }
   const trace = recorder.toTrace(device);
   try {
-    const res = await fetch("/api/trace", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(trace) });
+    const res = await fetch("/api/trace", { method: "POST", headers: { "content-type": "application/json", "x-puck-emulator": "1" }, body: JSON.stringify(trace) });
     if (!res.ok)
       throw new Error(`HTTP ${res.status}`);
     const data = await res.json();

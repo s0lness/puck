@@ -16,6 +16,11 @@
   --accent-ink: #ffffff;
   --success: #1a7f37;
   --success-ink: #ffffff;
+  /* The one place this palette needed a fourth colour: a matrix cell whose
+     build failed or whose page threw is not a cost to be weighed, it is a
+     thing that did not work, and reading it in the same accent as a
+     divergence would flatten the difference. Used on chips only. */
+  --danger: #a8261b;
   --radius: 10px;
 }
 
@@ -31,6 +36,7 @@
     --accent-ink: #0d1117;
     --success: #3fb950;
     --success-ink: #0d1117;
+    --danger: #f0776a;
   }
 }
 
@@ -161,28 +167,118 @@ section > .wrap > p.lede { color: var(--text-soft); margin: -8px 0 22px; max-wid
 .badge.accent { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .card .links { margin-top: auto; padding-top: 10px; display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.9rem; }
 
-/* ---- proof matrix ---- */
-.matrix-scroll { overflow-x: auto; }
-table.matrix { border-collapse: collapse; width: 100%; min-width: 480px; }
+/* ---- the matrix: apps down, devices across ----
+   The one layout rule that matters here is that the TABLE scrolls
+   horizontally and the PAGE never does: nine columns will not fit a phone
+   and should not try, and a page that scrolls sideways under a reader's
+   thumb is the failure this exists to avoid. .matrix-scroll is the only
+   thing with overflow-x, and every column carries a min-width so cells
+   stay readable inside it rather than squeezing to nothing.
+   -webkit-overflow-scrolling is what makes that scroll feel like a scroll
+   on iOS rather than like a stuck page. */
+.matrix-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+table.matrix { border-collapse: collapse; width: 100%; }
 table.matrix th, table.matrix td {
   border: 1px solid var(--border);
-  padding: 12px 14px;
+  padding: 10px 12px;
   text-align: left;
   vertical-align: top;
   font-size: 0.92rem;
 }
 table.matrix th { background: var(--surface-2); font-weight: 600; }
-table.matrix td.app-row { font-weight: 600; background: var(--surface-2); }
-.proof-cell .proof-mode { display: block; font-weight: 600; }
-.proof-cell .proof-verif { display: block; color: var(--text-soft); font-size: 0.85rem; margin-top: 2px; }
-.proof-cell.empty { color: var(--text-soft); }
-/* The second of the two-mark matrix (docs/convention/publishing.md): every
-   proven cell is emulator-proven by the harness itself; this small dot +
-   label is the additional, distinct claim that a port has ALSO been run
-   against real hardware (bundle.json's own "silicon" field on that port).
-   The attestation date and method sit in the title attribute (a tooltip on
-   hover/focus), not inline, so the matrix stays scannable at a glance. */
-.proof-cell .proof-silicon { display: block; margin-top: 4px; font-size: 0.78rem; color: var(--accent); font-weight: 600; }
+table.matrix th.corner { background: var(--surface-2); border-top: 0; border-left: 0; }
+/* Where one column group ends and the next begins: a heavier left edge,
+   not a coloured band, so the grouping reads at a glance without adding a
+   second colour to a page that has one accent. */
+table.matrix .group-start { border-left: 3px solid var(--text-soft); }
+.group-row th.group-head { padding-top: 12px; }
+.group-label { display: block; font-size: 0.86rem; letter-spacing: 0.02em; text-transform: uppercase; }
+.group-note { display: block; font-weight: 400; color: var(--text-soft); font-size: 0.78rem; margin-top: 2px; }
+.target-head { min-width: 152px; }
+.target-head a { color: var(--text); text-decoration: none; }
+.target-head a:hover { text-decoration: underline; }
+.target-sub { display: block; font-weight: 400; color: var(--text-soft); font-size: 0.76rem; margin-top: 2px; }
+
+th.app-row {
+  min-width: 148px;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface-2);
+}
+.app-name { display: block; font-size: 1rem; }
+.app-blurb { display: block; font-weight: 400; color: var(--text-soft); font-size: 0.78rem; margin-top: 4px; }
+.app-doc { display: block; font-size: 0.78rem; margin-top: 6px; font-weight: 400; }
+.app-prov { display: block; font-weight: 400; color: var(--text-soft); font-size: 0.74rem; margin-top: 6px; }
+
+table.matrix td.cell { min-width: 152px; background: var(--surface); }
+td.cell-empty, td.cell-void { background: var(--bg); }
+.cell .thumb-video { margin-bottom: 8px; }
+.cell-open { display: block; font-size: 0.88rem; font-weight: 600; }
+.cell-mode { margin: 4px 0 0; color: var(--text-soft); font-size: 0.78rem; }
+.cell-why { margin: 6px 0 0; color: var(--text-soft); font-size: 0.78rem; line-height: 1.45; }
+.cell-note { color: var(--text-soft); }
+.cell-prov { margin: 6px 0 0; color: var(--text-soft); font-size: 0.74rem; }
+.cell-publish { display: inline-block; margin-top: 8px; font-size: 0.78rem; }
+
+/* The silhouette proof: the canvas the headless run actually painted, at
+   its own size, never scaled up past it (a 135x240 stick blown up to fill
+   a column would be a picture of a picture). */
+.thumb-proof { display: block; margin-bottom: 8px; }
+.thumb-proof-still { cursor: default; }
+.proof-img {
+  display: block;
+  max-width: 100%;
+  /* Capped, because a 135x240 stick is nearly twice as tall as the column
+     is wide and a cell that is mostly one flat proof pushes every mark
+     under it out of sight. */
+  max-height: 210px;
+  width: auto;
+  height: auto;
+  image-rendering: pixelated;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35);
+}
+
+/* One mark, one chip. The reason behind every mark is in its title
+   attribute, so the grid stays scannable and nothing is hidden: the cells
+   that are not a clean pass ALSO print their first sentence underneath,
+   because a tooltip is not a way of saying something plainly. */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.chip {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-soft);
+  cursor: default;
+}
+.chip-ok { border-color: var(--success); color: var(--success); }
+/* A divergence is a RESULT, not an error (docs/decisions/0011 makes the
+   same argument about an attestation): it gets the accent, never a red. */
+.chip-warn { border-color: var(--accent); color: var(--accent); }
+.chip-bad { border-color: var(--danger); color: var(--danger); }
+.chip-mute { color: var(--text-soft); }
+.matrix-foot { margin: 14px 0 0; color: var(--text-soft); font-size: 0.82rem; max-width: 760px; }
+
+/* The matrix is the one thing on this page that is wider than the prose,
+   and it is allowed to be: nine device columns plus the app column want
+   about 1560px, and squeezing them into the 1040px column every paragraph
+   here uses would push the silhouettes (the whole point of the table) off
+   the right edge on every desktop. Wider than the text, still centred,
+   still scrolling inside its own container rather than moving the page. */
+.wrap-wide { max-width: 1640px; }
 
 /* ---- how it works ---- */
 .how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }

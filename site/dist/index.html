@@ -4,26 +4,58 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>puck: apps that travel between tiny computers</title>
-<meta name="description" content="A gallery of firmware ported between device packs: recorded demo loops on this page, the real WebAssembly build one click away on every run page." />
+<meta name="description" content="Every app in this repository against every device it knows about, one cell each: a build that ran, or a plain statement of what is missing." />
 <meta property="og:title" content="puck: apps that travel between tiny computers" />
-<meta property="og:description" content="A gallery of firmware ported between device packs: recorded demo loops on this page, the real WebAssembly build one click away on every run page." />
+<meta property="og:description" content="Every app in this repository against every device it knows about, one cell each: a build that ran, or a plain statement of what is missing." />
 <meta property="og:type" content="website" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2214%22%20fill%3D%22%232f6feb%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23fafafa%22%2F%3E%3C%2Fsvg%3E" />
-<link rel="stylesheet" href="styles.css?v=f3a91b140c" />
+<link rel="stylesheet" href="styles.css?v=2071d3998f" />
 </head>
 <body>
 <div class="wrap">
   <header class="hero">
     <h1>puck</h1>
     <p class="tagline">apps that travel between tiny computers.</p>
-    <p class="sub">Every clip below is a recording of the real thing, compiled to WebAssembly and running live one click away. <a href="https://github.com/s0lness/puck/blob/master/README.md">puck</a> is a device-agnostic emulator, a set of self-contained device packs, and a set of portable app bundles; open any run page to touch the actual emulator, not a mockup.</p>
+    <p class="sub">5 apps down, 9 devices across, 45 cells. Every one of them either runs that app's own C, one click away, or says plainly what is missing. Nothing below is a mockup and nothing below is a date somebody typed: the whole table is <a href="https://github.com/s0lness/puck/blob/master/ledger.json">ledger.json</a>, written by <a href="https://github.com/s0lness/puck/blob/master/tools/ledger.ts"><code>bun run ledger</code></a>, which builds and replays every cell it claims. <a href="https://github.com/s0lness/puck/blob/master/README.md">puck</a> is a device-agnostic emulator, a set of self-contained device packs, and a set of portable app bundles.</p>
   </header>
+</div>
 
-  <section id="apps">
-    <div class="wrap" style="padding:0">
-      <div class="cards">
-<div class="card">
-  <a class="thumb thumb-video" style="aspect-ratio:484 / 404" href="run/chrono-rp2350.html" aria-label="chrono demo, open the live run page">
+<section id="matrix">
+  <div class="wrap">
+      <h2>the matrix</h2>
+      <p class="lede">A cell with a picture is a build that ran: <strong>emulator</strong> is the module rebuilt from the port's own source and its traces replayed, <strong>host</strong> is the same C compiled natively under address and undefined-behaviour sanitizers and diffed against it frame by frame, and <strong>silicon</strong> is how many real boards have run that port's trace and confirmed the frames. A cell with no port carries the mechanical verdict instead, with the reason it came out that way. Hover or focus any mark for the sentence behind it.</p>
+  </div>
+  <div class="wrap wrap-wide">
+      <div class="matrix-scroll">
+        <table class="matrix">
+          <thead>
+            <tr class="group-row"><th class="corner"></th>
+            <th class="group-head" colspan="3"><span class="group-label">device packs</span><span class="group-note">real firmware, in this repository</span></th>
+            <th class="group-head group-start" colspan="1"><span class="group-label">an author&#39;s own pack</span><span class="group-note">named by their bundle, not carried here</span></th>
+            <th class="group-head group-start" colspan="5"><span class="group-label">silhouettes</span><span class="group-note">a device.json and nothing else, no firmware anywhere</span></th>
+            </tr>
+            <tr><th class="corner"></th>
+            <th class="target-head" data-target="rp2350-touch-amoled-18"><a href="https://github.com/s0lness/puck/blob/master/packs/rp2350-touch-amoled-18/AGENTS.md">RP2350-Touch-AMOLED-1.8</a><span class="target-sub">368&times;448</span></th>
+            <th class="target-head" data-target="esp32-s3-touch-amoled-18"><a href="https://github.com/s0lness/puck/blob/master/packs/esp32-s3-touch-amoled-18/AGENTS.md">ESP32-S3-Touch-AMOLED-1.8</a><span class="target-sub">368&times;448</span></th>
+            <th class="target-head" data-target="web"><a href="https://github.com/s0lness/puck/blob/master/packs/web/AGENTS.md">Web-Touch</a><span class="target-sub">368&times;448</span></th>
+            <th class="target-head group-start" data-target="tinydraw-esp32-s3-touch-amoled-18">tinydraw-esp32-s3-touch-amoled-18<span class="target-sub"></span></th>
+            <th class="target-head group-start" data-target="m5stickc-plus2"><a href="https://github.com/s0lness/puck/blob/master/packs/silhouettes/m5stickc-plus2/AGENTS.md">M5StickC-PLUS2</a><span class="target-sub">135&times;240 &middot; datasheet only</span></th>
+            <th class="target-head" data-target="feather-esp32s2-tft"><a href="https://github.com/s0lness/puck/blob/master/packs/silhouettes/feather-esp32s2-tft/AGENTS.md">Feather-ESP32S2-TFT</a><span class="target-sub">240&times;135 &middot; datasheet only</span></th>
+            <th class="target-head" data-target="lilygo-t-display-s3"><a href="https://github.com/s0lness/puck/blob/master/packs/silhouettes/lilygo-t-display-s3/AGENTS.md">LILYGO T-Display-S3</a><span class="target-sub">170&times;320 &middot; datasheet only</span></th>
+            <th class="target-head" data-target="pico-display-pack-2"><a href="https://github.com/s0lness/puck/blob/master/packs/silhouettes/pico-display-pack-2/AGENTS.md">Pico Display Pack 2.0 on Pico 2</a><span class="target-sub">320&times;240 &middot; datasheet only</span></th>
+            <th class="target-head" data-target="watchy"><a href="https://github.com/s0lness/puck/blob/master/packs/silhouettes/watchy/AGENTS.md">Watchy</a><span class="target-sub">200&times;200 &middot; datasheet only</span></th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <th class="app-row" scope="row" data-app="chrono">
+            <span class="app-name">chrono</span>
+            <span class="app-blurb">A full-screen stopwatch: six seven-segment digits, two buttons, nothing else on screen.</span>
+            <a class="app-doc" href="https://github.com/s0lness/puck/blob/master/apps/chrono/descriptor.md">descriptor</a>
+            
+          </th>
+          <td class="cell cell-port" data-cell="runs" data-target="rp2350-touch-amoled-18">
+        <a class="thumb thumb-video" style="aspect-ratio:484 / 404" href="run/chrono-rp2350.html" aria-label="chrono on RP2350-Touch-AMOLED-1.8, open the live run page">
     <span class="card-bezel" style="border-radius:7.025%">
       <span class="card-panel" style="left:3.719%;top:4.455%;width:92.562%;height:91.089%;border-radius:1.339%">
         <video autoplay muted loop playsinline poster="assets/demos/chrono-rp2350.png?v=e716d84cd7" data-panel-w="448" data-panel-h="368">
@@ -32,21 +64,63 @@
       </span>
       <span class="card-btn" style="top:0;left:33.603%;height:3.465%;width:11.570%"></span><span class="card-btn" style="top:0;left:54.826%;height:3.465%;width:11.570%"></span>
     </span>
-    <noscript><img src="assets/demos/chrono-rp2350.gif?v=fcb6fdae1e" alt="chrono demo" /></noscript>
+    <noscript><img src="assets/demos/chrono-rp2350.gif?v=fcb6fdae1e" alt="chrono on RP2350-Touch-AMOLED-1.8" /></noscript>
   </a>
-  <div class="body">
-    <h3>chrono</h3>
-    <p>A full-screen stopwatch: six seven-segment digits, two buttons, nothing else on screen.</p>
-    <div class="badges"><span class="badge accent">native · pixel-exact</span><span class="badge accent">faithful port · pixel-exact</span></div>
-    <ul class="attest-counters"><li><span class="attest-pack">RP2350-Touch-AMOLED-1.8</span> <span class="attest-counter attest-counter-empty" data-attest-app="chrono" data-attest-pack="rp2350-touch-amoled-18">no board has confirmed this yet</span></li><li><span class="attest-pack">ESP32-S3-Touch-AMOLED-1.8</span> <span class="attest-counter attest-counter-empty" data-attest-app="chrono" data-attest-pack="esp32-s3-touch-amoled-18">no board has confirmed this yet</span></li></ul>
-    <div class="links">
-      <a href="run/chrono-rp2350.html">run on RP2350-Touch-AMOLED-1.8</a><a href="run/chrono-esp32.html">run on ESP32-S3-Touch-AMOLED-1.8</a><a href="web/chrono/">run on your phone: Web-Touch</a>
-      <a href="https://github.com/s0lness/puck/blob/master/apps/chrono/descriptor.md">descriptor</a>
-    </div>
-  </div>
-</div>
-<div class="card">
-  <a class="thumb thumb-video" style="aspect-ratio:404 / 484" href="run/fluidbox-rp2350.html" aria-label="fluidbox demo, open the live run page">
+        <a class="cell-open" href="run/chrono-rp2350.html">run it</a>
+        <p class="cell-mode">native, pixel-exact</p>
+        <div class="chips"><span class="chip chip-ok" title="4/4 frame(s) matched">emulator PASS</span><span class="chip chip-ok" title="4/4 capture point(s) identical to the wasm build, sanitizers address, undefined">host MATCH</span><span class="chip chip-mute attest-counter attest-counter-empty" data-attest-app="chrono" data-attest-pack="rp2350-touch-amoled-18">no board has confirmed this yet</span></div>
+        
+      </td>
+          <td class="cell cell-port" data-cell="runs" data-target="esp32-s3-touch-amoled-18">
+        
+        <a class="cell-open" href="run/chrono-esp32.html">run it</a>
+        <p class="cell-mode">faithful port, pixel-exact</p>
+        <div class="chips"><span class="chip chip-ok" title="4/4 frame(s) matched">emulator PASS</span><span class="chip chip-ok" title="4/4 capture point(s) identical to the wasm build, sanitizers address, undefined">host MATCH</span><span class="chip chip-mute attest-counter attest-counter-empty" data-attest-app="chrono" data-attest-pack="esp32-s3-touch-amoled-18">no board has confirmed this yet</span></div>
+        
+      </td>
+          <td class="cell cell-port" data-cell="runs" data-target="web">
+        
+        <a class="cell-open" href="web/chrono/">run it on your phone</a>
+        <p class="cell-mode">faithful port, pixel-exact</p>
+        <div class="chips"><span class="chip chip-ok" title="4/4 frame(s) matched">emulator PASS</span><span class="chip chip-ok" title="4/4 capture point(s) identical to the wasm build, sanitizers address, undefined">host MATCH</span></div>
+        
+      </td>
+          <td class="cell cell-void group-start" data-cell="void" data-target="tinydraw-esp32-s3-touch-amoled-18"><p class="cell-why">not this app's target</p></td>
+          <td class="cell cell-silhouette group-start" data-cell="runs" data-target="m5stickc-plus2">
+        <a class="thumb-proof" href="run/chrono-m5stickc-plus2.html" aria-label="open chrono running on the M5StickC-PLUS2 silhouette"><img src="assets/proofs/m5stickc-plus2-chrono.png?v=6e630caf86" alt="chrono running on the M5StickC-PLUS2 silhouette" class="proof-img" loading="lazy" /></a>
+        <div class="chips"><span class="chip chip-warn" title="chrono on M5StickC-PLUS2 (silhouette): degraded. The cost is stated: panel, 135x240 is under the 200x200 this app asks for, and above the 128x96 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">degraded</span><span class="chip chip-ok" title="240x135 (this panel&#39;s 135x240, presented a quarter turn round), 16.7% of the panel painted, ghost buttons a, b, pwr">runs here</span></div>
+        <p class="cell-why">240x135 (this panel&#39;s 135x240, presented a quarter turn round), 16.7% of the panel painted, ghost buttons a, b, pwr</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="runs" data-target="feather-esp32s2-tft">
+        <a class="thumb-proof" href="run/chrono-feather-esp32s2-tft.html" aria-label="open chrono running on the Feather-ESP32S2-TFT silhouette"><img src="assets/proofs/feather-esp32s2-tft-chrono.png?v=b39c3d838f" alt="chrono running on the Feather-ESP32S2-TFT silhouette" class="proof-img" loading="lazy" /></a>
+        <div class="chips"><span class="chip chip-bad" title="chrono on Feather-ESP32S2-TFT (silhouette): refuse. Refused because buttons: this device offers 1 button an app may use and this app needs 2; what they are for: key, start and stop, and it must feel instant; click, reset to 00:00:00, on a different control so it cannot be hit by accident. It would also cost: panel, 240x135 is under the 200x200 this app asks for, and above the 128x96 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-ok" title="135x240 (this panel&#39;s 240x135, presented a quarter turn round), 14.4% of the panel painted, ghost buttons d0, and this panel is already landscape, so the host&#39;s own quarter turn puts the app across the device&#39;s short side rather than along it">runs here</span></div>
+        <p class="cell-why">135x240 (this panel&#39;s 240x135, presented a quarter turn round), 14.4% of the panel painted, ghost buttons d0, and this panel is already landscape, so the host&#39;s own quarter turn puts the app across the device&#39;s short…</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="runs" data-target="lilygo-t-display-s3">
+        <a class="thumb-proof" href="run/chrono-lilygo-t-display-s3.html" aria-label="open chrono running on the LILYGO T-Display-S3 silhouette"><img src="assets/proofs/lilygo-t-display-s3-chrono.png?v=5c40ea2c9c" alt="chrono running on the LILYGO T-Display-S3 silhouette" class="proof-img" loading="lazy" /></a>
+        <div class="chips"><span class="chip chip-warn" title="chrono on LILYGO T-Display-S3 (silhouette): degraded. The cost is stated: panel, 170x320 is under the 200x200 this app asks for, and above the 128x96 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">degraded</span><span class="chip chip-ok" title="320x170 (this panel&#39;s 170x320, presented a quarter turn round), 16.4% of the panel painted, ghost buttons boot, io14">runs here</span></div>
+        <p class="cell-why">320x170 (this panel&#39;s 170x320, presented a quarter turn round), 16.4% of the panel painted, ghost buttons boot, io14</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="runs" data-target="pico-display-pack-2">
+        <a class="thumb-proof" href="run/chrono-pico-display-pack-2.html" aria-label="open chrono running on the Pico Display Pack 2.0 on Pico 2 silhouette"><img src="assets/proofs/pico-display-pack-2-chrono.png?v=289a595bec" alt="chrono running on the Pico Display Pack 2.0 on Pico 2 silhouette" class="proof-img" loading="lazy" /></a>
+        <div class="chips"><span class="chip chip-ok" title="chrono on Pico Display Pack 2.0 on Pico 2 (silhouette): go. Every dimension the app states is met by what the device declares. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">go</span><span class="chip chip-ok" title="240x320 (this panel&#39;s 320x240, presented a quarter turn round), 16.0% of the panel painted, ghost buttons a, b, x, y, and this panel is already landscape, so the host&#39;s own quarter turn puts the app across the device&#39;s short side rather than along it">runs here</span></div>
+        <p class="cell-why">240x320 (this panel&#39;s 320x240, presented a quarter turn round), 16.0% of the panel painted, ghost buttons a, b, x, y, and this panel is already landscape, so the host&#39;s own quarter turn puts the app across the device&#39;s…</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="verdict" data-target="watchy">
+        <span class="thumb-proof thumb-proof-still"><img src="assets/proofs/watchy-chrono.png?v=fc4bac1bd5" alt="chrono running on the Watchy silhouette" class="proof-img" loading="lazy" /></span>
+        <div class="chips"><span class="chip chip-warn" title="chrono on Watchy (silhouette): degraded. The cost is stated: buttons, &quot;UP&quot; is a click standing in for the key this app wants (start and stop, and it must feel instant). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">degraded</span><span class="chip chip-ok" title="200x200 (this panel&#39;s 200x200, presented a quarter turn round), 15.4% of the panel painted, ghost buttons up, down, menu, back">runs, no page here</span></div>
+        <p class="cell-why">200x200 (this panel&#39;s 200x200, presented a quarter turn round), 15.4% of the panel painted, ghost buttons up, down, menu, back. It ran, and there is no page for it here: this board declares a mono1 panel and the shared emulator only reads the 16-bit formats the real packs declare, so presenting it would mean pretending packs/web&#39;s own RGB565 framebuffer is this board&#39;s glass</p>
+      </td>
+        </tr>
+        <tr>
+          <th class="app-row" scope="row" data-app="fluidbox">
+            <span class="app-name">fluidbox</span>
+            <span class="app-blurb">A particle liquid that sloshes and settles inside the device&#39;s own enclosure shape.</span>
+            <a class="app-doc" href="https://github.com/s0lness/puck/blob/master/apps/fluidbox/descriptor.md">descriptor</a>
+            
+          </th>
+          <td class="cell cell-port" data-cell="runs" data-target="rp2350-touch-amoled-18">
+        <a class="thumb thumb-video" style="aspect-ratio:404 / 484" href="run/fluidbox-rp2350.html" aria-label="fluidbox on RP2350-Touch-AMOLED-1.8, open the live run page">
     <span class="card-bezel" style="border-radius:8.416%">
       <span class="card-panel" style="left:4.455%;top:3.719%;width:91.089%;height:92.562%;border-radius:1.630%">
         <video autoplay muted loop playsinline poster="assets/demos/fluidbox-rp2350.png?v=6a5d3ae116" data-panel-w="368" data-panel-h="448">
@@ -55,21 +129,63 @@
       </span>
       <span class="card-btn" style="right:0;top:33.603%;width:3.465%;height:11.570%"></span><span class="card-btn" style="right:0;top:54.826%;width:3.465%;height:11.570%"></span>
     </span>
-    <noscript><img src="assets/demos/fluidbox-rp2350.gif?v=07ebb4d325" alt="fluidbox demo" /></noscript>
+    <noscript><img src="assets/demos/fluidbox-rp2350.gif?v=07ebb4d325" alt="fluidbox on RP2350-Touch-AMOLED-1.8" /></noscript>
   </a>
-  <div class="body">
-    <h3>fluidbox</h3>
-    <p>A particle liquid that sloshes and settles inside the device&#39;s own enclosure shape.</p>
-    <div class="badges"><span class="badge">adaptation · invariants</span><span class="badge accent">adaptation · invariants</span></div>
-    <ul class="attest-counters"><li><span class="attest-pack">RP2350-Touch-AMOLED-1.8</span> <span class="attest-counter attest-counter-empty" data-attest-app="fluidbox" data-attest-pack="rp2350-touch-amoled-18">no board has confirmed this yet</span></li><li><span class="attest-pack">ESP32-S3-Touch-AMOLED-1.8</span> <span class="attest-counter attest-counter-empty" data-attest-app="fluidbox" data-attest-pack="esp32-s3-touch-amoled-18">no board has confirmed this yet</span></li></ul>
-    <div class="links">
-      <a href="run/fluidbox-rp2350.html">run on RP2350-Touch-AMOLED-1.8</a><a href="run/fluidbox-esp32.html">run on ESP32-S3-Touch-AMOLED-1.8</a><a href="web/fluidbox/">run on your phone: Web-Touch</a>
-      <a href="https://github.com/s0lness/puck/blob/master/apps/fluidbox/descriptor.md">descriptor</a>
-    </div>
-  </div>
-</div>
-<div class="card">
-  <a class="thumb thumb-video" style="aspect-ratio:404 / 484" href="run/tinydraw-rp2350.html" aria-label="tinydraw demo, open the live run page">
+        <a class="cell-open" href="run/fluidbox-rp2350.html">run it</a>
+        <p class="cell-mode">adaptation, invariants (degraded)</p>
+        <div class="chips"><span class="chip chip-ok" title="all invariants held over 3 frame(s)">emulator PASS</span><span class="chip chip-warn" title="3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)">host DIVERGE</span><span class="chip chip-mute attest-counter attest-counter-empty" data-attest-app="fluidbox" data-attest-pack="rp2350-touch-amoled-18">no board has confirmed this yet</span></div>
+        <p class="cell-why">3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)</p>
+      </td>
+          <td class="cell cell-port" data-cell="runs" data-target="esp32-s3-touch-amoled-18">
+        
+        <a class="cell-open" href="run/fluidbox-esp32.html">run it</a>
+        <p class="cell-mode">adaptation, invariants</p>
+        <div class="chips"><span class="chip chip-ok" title="all invariants held over 3 frame(s)">emulator PASS</span><span class="chip chip-warn" title="3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)">host DIVERGE</span><span class="chip chip-mute attest-counter attest-counter-empty" data-attest-app="fluidbox" data-attest-pack="esp32-s3-touch-amoled-18">no board has confirmed this yet</span></div>
+        <p class="cell-why">3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)</p>
+      </td>
+          <td class="cell cell-port" data-cell="runs" data-target="web">
+        
+        <a class="cell-open" href="web/fluidbox/">run it on your phone</a>
+        <p class="cell-mode">adaptation, invariants</p>
+        <div class="chips"><span class="chip chip-ok" title="all invariants held over 3 frame(s)">emulator PASS</span><span class="chip chip-warn" title="3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)">host DIVERGE</span></div>
+        <p class="cell-why">3/3 capture point(s) differ from the wasm build, first fluid-settle-shake t=4000ms at 7696/164864px (4.67%)</p>
+      </td>
+          <td class="cell cell-void group-start" data-cell="void" data-target="tinydraw-esp32-s3-touch-amoled-18"><p class="cell-why">not this app's target</p></td>
+          <td class="cell cell-silhouette group-start" data-cell="runs" data-target="m5stickc-plus2">
+        <a class="thumb-proof" href="run/fluidbox-m5stickc-plus2.html" aria-label="open fluidbox running on the M5StickC-PLUS2 silhouette"><img src="assets/proofs/m5stickc-plus2-fluidbox.png?v=30df9e1040" alt="fluidbox running on the M5StickC-PLUS2 silhouette" class="proof-img" loading="lazy" /></a>
+        <div class="chips"><span class="chip chip-warn" title="fluidbox on M5StickC-PLUS2 (silhouette): degraded. It runs at 25 particles against the reference 130 (how many particles the fluid is made of), bound by panel area (135x240 at one per 1268 px). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">degraded: 25 particles</span><span class="chip chip-ok" title="135x240, 3.8% of the panel painted, ghost buttons a, b, pwr">runs here</span></div>
+        <p class="cell-why">135x240, 3.8% of the panel painted, ghost buttons a, b, pwr</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="runs" data-target="feather-esp32s2-tft">
+        <a class="thumb-proof" href="run/fluidbox-feather-esp32s2-tft.html" aria-label="open fluidbox running on the Feather-ESP32S2-TFT silhouette"><img src="assets/proofs/feather-esp32s2-tft-fluidbox.png?v=2c1e3ba57a" alt="fluidbox running on the Feather-ESP32S2-TFT silhouette" class="proof-img" loading="lazy" /></a>
+        <div class="chips"><span class="chip chip-bad" title="fluidbox on Feather-ESP32S2-TFT (silhouette): refuse. Refused because sensors: this app needs a vector sensor (gravity direction, read every step, so tilting the device pours the liquid) and the device declares none at all. It would also cost: buttons, &quot;D0&quot; is a click standing in for the key this app wants (reset the fluid to a settled block, one tap, no explanation). It runs at 25 particles against the reference 130 (how many particles the fluid is made of), bound by panel area (240x135 at one per 1268 px). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-ok" title="240x135, 3.8% of the panel painted, ghost buttons d0">runs here</span></div>
+        <p class="cell-why">240x135, 3.8% of the panel painted, ghost buttons d0</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="runs" data-target="lilygo-t-display-s3">
+        <a class="thumb-proof" href="run/fluidbox-lilygo-t-display-s3.html" aria-label="open fluidbox running on the LILYGO T-Display-S3 silhouette"><img src="assets/proofs/lilygo-t-display-s3-fluidbox.png?v=2cec65469d" alt="fluidbox running on the LILYGO T-Display-S3 silhouette" class="proof-img" loading="lazy" /></a>
+        <div class="chips"><span class="chip chip-bad" title="fluidbox on LILYGO T-Display-S3 (silhouette): refuse. Refused because sensors: this app needs a vector sensor (gravity direction, read every step, so tilting the device pours the liquid) and the device declares none at all. It runs at 42 particles against the reference 130 (how many particles the fluid is made of), bound by panel area (170x320 at one per 1268 px). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-ok" title="170x320, 3.8% of the panel painted, ghost buttons boot, io14">runs here</span></div>
+        <p class="cell-why">170x320, 3.8% of the panel painted, ghost buttons boot, io14</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="runs" data-target="pico-display-pack-2">
+        <a class="thumb-proof" href="run/fluidbox-pico-display-pack-2.html" aria-label="open fluidbox running on the Pico Display Pack 2.0 on Pico 2 silhouette"><img src="assets/proofs/pico-display-pack-2-fluidbox.png?v=7136133a3c" alt="fluidbox running on the Pico Display Pack 2.0 on Pico 2 silhouette" class="proof-img" loading="lazy" /></a>
+        <div class="chips"><span class="chip chip-bad" title="fluidbox on Pico Display Pack 2.0 on Pico 2 (silhouette): refuse. Refused because sensors: this app needs a vector sensor (gravity direction, read every step, so tilting the device pours the liquid) and the device declares none at all. It runs at 60 particles against the reference 130 (how many particles the fluid is made of), bound by panel area (320x240 at one per 1268 px). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-ok" title="320x240, 3.8% of the panel painted, ghost buttons a, b, x, y">runs here</span></div>
+        <p class="cell-why">320x240, 3.8% of the panel painted, ghost buttons a, b, x, y</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="verdict" data-target="watchy">
+        <span class="thumb-proof thumb-proof-still"><img src="assets/proofs/watchy-fluidbox.png?v=5f33688eaa" alt="fluidbox running on the Watchy silhouette" class="proof-img" loading="lazy" /></span>
+        <div class="chips"><span class="chip chip-bad" title="fluidbox on Watchy (silhouette): refuse. Refused because panel: this app&#39;s colour carries information and the panel is mono1, which is not a colour one. It would also cost: buttons, &quot;UP&quot; is a click standing in for the key this app wants (reset the fluid to a settled block, one tap, no explanation). It runs at 31 particles against the reference 130 (how many particles the fluid is made of), bound by panel area (200x200 at one per 1268 px). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-ok" title="200x200, 3.8% of the panel painted, ghost buttons up, down, menu, back">runs, no page here</span></div>
+        <p class="cell-why">200x200, 3.8% of the panel painted, ghost buttons up, down, menu, back. It ran, and there is no page for it here: this board declares a mono1 panel and the shared emulator only reads the 16-bit formats the real packs declare, so presenting it would mean pretending packs/web&#39;s own RGB565 framebuffer is this board&#39;s glass</p>
+      </td>
+        </tr>
+        <tr>
+          <th class="app-row" scope="row" data-app="tinydraw">
+            <span class="app-name">tinydraw</span>
+            <span class="app-blurb">A full-panel finger-drawing canvas: variable-width antialiased ink, two-level zoom, one-stroke undo.</span>
+            <a class="app-doc" href="https://github.com/s0lness/puck/blob/master/apps/tinydraw/descriptor.md">descriptor</a>
+            
+          </th>
+          <td class="cell cell-port" data-cell="runs" data-target="rp2350-touch-amoled-18">
+        <a class="thumb thumb-video" style="aspect-ratio:404 / 484" href="run/tinydraw-rp2350.html" aria-label="tinydraw on RP2350-Touch-AMOLED-1.8, open the live run page">
     <span class="card-bezel" style="border-radius:8.416%">
       <span class="card-panel" style="left:4.455%;top:3.719%;width:91.089%;height:92.562%;border-radius:1.630%">
         <video autoplay muted loop playsinline poster="assets/demos/tinydraw-rp2350.png?v=fe1bb68d12" data-panel-w="368" data-panel-h="448">
@@ -78,21 +194,80 @@
       </span>
       <span class="card-btn" style="right:0;top:33.603%;width:3.465%;height:11.570%"></span><span class="card-btn" style="right:0;top:54.826%;width:3.465%;height:11.570%"></span>
     </span>
-    <noscript><img src="assets/demos/tinydraw-rp2350.gif?v=c5d59b7e7a" alt="tinydraw demo" /></noscript>
+    <noscript><img src="assets/demos/tinydraw-rp2350.gif?v=c5d59b7e7a" alt="tinydraw on RP2350-Touch-AMOLED-1.8" /></noscript>
   </a>
-  <div class="body">
-    <h3>tinydraw</h3>
-    <p>A full-panel finger-drawing canvas: variable-width antialiased ink, two-level zoom, one-stroke undo.</p>
-    <div class="badges"><span class="badge">adaptation · invariants</span></div>
-    <ul class="attest-counters"><li><span class="attest-pack">RP2350-Touch-AMOLED-1.8</span> <span class="attest-counter attest-counter-empty" data-attest-app="tinydraw" data-attest-pack="rp2350-touch-amoled-18">no board has confirmed this yet</span></li></ul>
-    <div class="links">
-      <a href="run/tinydraw-rp2350.html">run on RP2350-Touch-AMOLED-1.8</a><a href="web/tinydraw/">run on your phone: Web-Touch</a>
-      <a href="https://github.com/s0lness/puck/blob/master/apps/tinydraw/descriptor.md">descriptor</a>
-    </div>
-  </div>
-</div>
-<div class="card">
-  <a class="thumb thumb-video" style="aspect-ratio:404 / 484" href="run/gameos-esp32.html" aria-label="gameos demo, open the live run page">
+        <a class="cell-open" href="run/tinydraw-rp2350.html">run it</a>
+        <p class="cell-mode">adaptation, invariants (degraded)</p>
+        <div class="chips"><span class="chip chip-ok" title="all invariants held over 4 frame(s)">emulator PASS</span><span class="chip chip-ok" title="4/4 capture point(s) identical to the wasm build, sanitizers address, undefined">host MATCH</span><span class="chip chip-mute attest-counter attest-counter-empty" data-attest-app="tinydraw" data-attest-pack="rp2350-touch-amoled-18">no board has confirmed this yet</span></div>
+        
+      </td>
+          <td class="cell cell-port" data-cell="runs" data-target="esp32-s3-touch-amoled-18">
+        
+        <a class="cell-open" href="run/tinydraw-esp32.html">run it</a>
+        <p class="cell-mode">adaptation, invariants (degraded)</p>
+        <div class="chips"><span class="chip chip-ok" title="all invariants held over 4 frame(s)">emulator PASS</span><span class="chip chip-ok" title="4/4 capture point(s) identical to the wasm build, sanitizers address, undefined">host MATCH</span><span class="chip chip-mute attest-counter attest-counter-empty" data-attest-app="tinydraw" data-attest-pack="esp32-s3-touch-amoled-18">no board has confirmed this yet</span></div>
+        
+      </td>
+          <td class="cell cell-port" data-cell="runs" data-target="web">
+        
+        <a class="cell-open" href="web/tinydraw/">run it on your phone</a>
+        <p class="cell-mode">adaptation, invariants (degraded)</p>
+        <div class="chips"><span class="chip chip-ok" title="all invariants held over 4 frame(s)">emulator PASS</span><span class="chip chip-ok" title="4/4 capture point(s) identical to the wasm build, sanitizers address, undefined">host MATCH</span></div>
+        
+      </td>
+          <td class="cell cell-void group-start" data-cell="void" data-target="tinydraw-esp32-s3-touch-amoled-18"><p class="cell-why">not this app's target</p></td>
+          <td class="cell cell-silhouette group-start" data-cell="verdict" data-target="m5stickc-plus2">
+        <span class="thumb-proof thumb-proof-still"><img src="assets/proofs/m5stickc-plus2-tinydraw.png?v=8e0151719e" alt="tinydraw running on the M5StickC-PLUS2 silhouette" class="proof-img" loading="lazy" /></span>
+        <div class="chips"><span class="chip chip-bad" title="tinydraw on M5StickC-PLUS2 (silhouette): refuse. Refused because touch: this app needs 1 touch point(s) and the device declares 0. It would also cost: panel, 135x240 is under the 200x200 this app asks for, and above the 128x128 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-warn" title="the app compiled, instantiated and painted this 135x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart">blank</span></div>
+        <p class="cell-why">the app compiled, instantiated and painted this 135x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="verdict" data-target="feather-esp32s2-tft">
+        <span class="thumb-proof thumb-proof-still"><img src="assets/proofs/feather-esp32s2-tft-tinydraw.png?v=8397ce4f8d" alt="tinydraw running on the Feather-ESP32S2-TFT silhouette" class="proof-img" loading="lazy" /></span>
+        <div class="chips"><span class="chip chip-bad" title="tinydraw on Feather-ESP32S2-TFT (silhouette): refuse. Refused because buttons: this device offers 1 button an app may use and this app needs 2; what they are for: key, cycle the zoom level; click, undo the last stroke, on a different control so cycling zoom cannot erase work, and because touch: this app needs 1 touch point(s) and the device declares 0. It would also cost: panel, 240x135 is under the 200x200 this app asks for, and above the 128x128 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-warn" title="the app compiled, instantiated and painted this 240x135 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart">blank</span></div>
+        <p class="cell-why">the app compiled, instantiated and painted this 240x135 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="verdict" data-target="lilygo-t-display-s3">
+        <span class="thumb-proof thumb-proof-still"><img src="assets/proofs/lilygo-t-display-s3-tinydraw.png?v=f1914822be" alt="tinydraw running on the LILYGO T-Display-S3 silhouette" class="proof-img" loading="lazy" /></span>
+        <div class="chips"><span class="chip chip-bad" title="tinydraw on LILYGO T-Display-S3 (silhouette): refuse. Refused because touch: this app needs 1 touch point(s) and the device declares 0. It would also cost: panel, 170x320 is under the 200x200 this app asks for, and above the 128x128 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-warn" title="the app compiled, instantiated and painted this 170x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart">blank</span></div>
+        <p class="cell-why">the app compiled, instantiated and painted this 170x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="verdict" data-target="pico-display-pack-2">
+        <span class="thumb-proof thumb-proof-still"><img src="assets/proofs/pico-display-pack-2-tinydraw.png?v=af64319d16" alt="tinydraw running on the Pico Display Pack 2.0 on Pico 2 silhouette" class="proof-img" loading="lazy" /></span>
+        <div class="chips"><span class="chip chip-bad" title="tinydraw on Pico Display Pack 2.0 on Pico 2 (silhouette): refuse. Refused because touch: this app needs 1 touch point(s) and the device declares 0. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-warn" title="the app compiled, instantiated and painted this 320x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart">blank</span></div>
+        <p class="cell-why">the app compiled, instantiated and painted this 320x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="verdict" data-target="watchy">
+        <span class="thumb-proof thumb-proof-still"><img src="assets/proofs/watchy-tinydraw.png?v=ce0552180a" alt="tinydraw running on the Watchy silhouette" class="proof-img" loading="lazy" /></span>
+        <div class="chips"><span class="chip chip-bad" title="tinydraw on Watchy (silhouette): refuse. Refused because touch: this app needs 1 touch point(s) and the device declares 0. It would also cost: buttons, &quot;UP&quot; is a click standing in for the key this app wants (cycle the zoom level). This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-warn" title="the app compiled, instantiated and painted this 200x200 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart">blank</span></div>
+        <p class="cell-why">the app compiled, instantiated and painted this 200x200 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart</p>
+      </td>
+        </tr>
+        <tr>
+          <th class="app-row" scope="row" data-app="gameos">
+            <span class="app-name">gameos</span>
+            <span class="app-blurb">A handheld game console shell: pick a game to launch a thermal gunner, a slot machine, or a swing-driven procedural golf course.</span>
+            <a class="app-doc" href="https://github.com/s0lness/puck/blob/master/apps/gameos/descriptor.md">descriptor</a>
+            
+          </th>
+          <td class="cell cell-port" data-cell="runs" data-target="rp2350-touch-amoled-18">
+        <a class="thumb thumb-video" style="aspect-ratio:404 / 484" href="run/gameos-rp2350.html" aria-label="gameos on RP2350-Touch-AMOLED-1.8, open the live run page">
+    <span class="card-bezel" style="border-radius:8.416%">
+      <span class="card-panel" style="left:4.455%;top:3.719%;width:91.089%;height:92.562%;border-radius:1.630%">
+        <video autoplay muted loop playsinline poster="assets/demos/gameos-rp2350.png?v=c67386614e" data-panel-w="368" data-panel-h="448">
+          <source src="assets/demos/gameos-rp2350.mp4?v=ae049c38a0" type="video/mp4" />
+        </video>
+      </span>
+      <span class="card-btn" style="right:0;top:33.603%;width:3.465%;height:11.570%"></span><span class="card-btn" style="right:0;top:54.826%;width:3.465%;height:11.570%"></span>
+    </span>
+    <noscript><img src="assets/demos/gameos-rp2350.gif?v=d6e442090e" alt="gameos on RP2350-Touch-AMOLED-1.8" /></noscript>
+  </a>
+        <a class="cell-open" href="run/gameos-rp2350.html">run it</a>
+        <p class="cell-mode">adaptation, invariants (degraded)</p>
+        <div class="chips"><span class="chip chip-ok" title="all invariants held over 12 frame(s)">emulator PASS</span><span class="chip chip-warn" title="3/12 capture point(s) differ from the wasm build, first gameos-demo t=304ms at 376/164864px (0.23%)">host DIVERGE</span><span class="chip chip-mute attest-counter attest-counter-empty" data-attest-app="gameos" data-attest-pack="rp2350-touch-amoled-18">no board has confirmed this yet</span></div>
+        <p class="cell-why">3/12 capture point(s) differ from the wasm build, first gameos-demo t=304ms at 376/164864px (0.23%)</p>
+      </td>
+          <td class="cell cell-port" data-cell="runs" data-target="esp32-s3-touch-amoled-18">
+        <a class="thumb thumb-video" style="aspect-ratio:404 / 484" href="run/gameos-esp32.html" aria-label="gameos on ESP32-S3-Touch-AMOLED-1.8, open the live run page">
     <span class="card-bezel" style="border-radius:8.416%">
       <span class="card-panel" style="left:4.455%;top:3.719%;width:91.089%;height:92.562%;border-radius:1.630%">
         <video autoplay muted loop playsinline poster="assets/demos/gameos-esp32.png?v=c40c391ba9" data-panel-w="368" data-panel-h="448">
@@ -101,69 +276,121 @@
       </span>
       <span class="card-btn" style="right:0;top:33.603%;width:3.465%;height:11.570%"></span><span class="card-btn" style="right:0;top:54.826%;width:3.465%;height:11.570%"></span>
     </span>
-    <noscript><img src="assets/demos/gameos-esp32.gif?v=8b73c3a8c3" alt="gameos demo" /></noscript>
+    <noscript><img src="assets/demos/gameos-esp32.gif?v=8b73c3a8c3" alt="gameos on ESP32-S3-Touch-AMOLED-1.8" /></noscript>
   </a>
-  <div class="body">
-    <h3>gameos</h3>
-    <p>A handheld game console shell: pick a game to launch a thermal gunner, a slot machine, or a swing-driven procedural golf course.</p>
-    <div class="badges"><span class="badge">adaptation · invariants</span></div>
-    <ul class="attest-counters"><li><span class="attest-pack">ESP32-S3-Touch-AMOLED-1.8</span> <span class="attest-counter attest-counter-empty" data-attest-app="gameos" data-attest-pack="esp32-s3-touch-amoled-18">no board has confirmed this yet</span></li><li><span class="attest-pack">RP2350-Touch-AMOLED-1.8</span> <span class="attest-counter attest-counter-empty" data-attest-app="gameos" data-attest-pack="rp2350-touch-amoled-18">no board has confirmed this yet</span></li></ul>
-    <div class="links">
-      <a href="run/gameos-esp32.html">run on ESP32-S3-Touch-AMOLED-1.8</a><a href="run/gameos-rp2350.html">run on RP2350-Touch-AMOLED-1.8</a>
-      <a href="https://github.com/s0lness/puck/blob/master/apps/gameos/descriptor.md">descriptor</a>
-    </div>
-  </div>
-</div>
-      </div>
-    </div>
-  </section>
-
-  <section id="proof">
-    <div class="wrap" style="padding:0">
-      <h2>proof matrix</h2>
-      <p class="lede">Each cell is a real build of that app's own port, for that device pack's real firmware, verified by the shared harness (<code>bun run verify-bundle</code>): click through to run it live. Every cell shown is emulator-proven; a cell additionally marked <strong>&#9679; on silicon</strong> has also been run against the real board over serial, an attestation, not an automatic guarantee (hover or focus the mark for when and how).</p>
-      <div class="matrix-scroll">
-        <table class="matrix">
-          <thead><tr><th></th>
-        <th>RP2350-Touch-AMOLED-1.8</th>
-        <th>ESP32-S3-Touch-AMOLED-1.8</th>
-        <th>Web-Touch</th>
-          </tr></thead>
-          <tbody>
-      <tr>
-        <td class="app-row">chrono</td>
-        <td class="proof-cell"><a href="run/chrono-rp2350.html"><span class="proof-mode">native</span><span class="proof-verif">pixel-exact</span><span class="proof-silicon" title="run against real hardware, attested 2026-08-14: differential harness (harness/links/devlinkLink.ts) run against the physical rp2350 board over USB serial, commit f1958c3: the idle stopwatch trace matched pixel-for-pixel at tolerance zero, 164,864 identical pixels.">&#9679; on silicon</span></a></td>
-        <td class="proof-cell"><a href="run/chrono-esp32.html"><span class="proof-mode">faithful port</span><span class="proof-verif">pixel-exact</span><span class="proof-silicon" title="run against real hardware, attested 2026-08-19: differential harness (harness/links/devlinkLink.ts) run against the physical ESP32-S3-Touch-AMOLED-1.8 over its native USB Serial/JTAG port, commit 45e89dd: the idle stopwatch trace matched pixel-for-pixel at tolerance zero, 164,864 identical pixels. The board&#39;s half of that comparison is a screenshot with no framebuffer behind it, captured band by band as the panel was painted (packs/esp32-s3-touch-amoled-18/docs/decisions/0002).">&#9679; on silicon</span></a></td>
-        <td class="proof-cell"><a href="web/chrono/"><span class="proof-mode">faithful port</span><span class="proof-verif">pixel-exact</span></a></td>
-      </tr>
-      <tr>
-        <td class="app-row">fluidbox</td>
-        <td class="proof-cell"><a href="run/fluidbox-rp2350.html"><span class="proof-mode">adaptation</span><span class="proof-verif">invariants (degraded)</span></a></td>
-        <td class="proof-cell"><a href="run/fluidbox-esp32.html"><span class="proof-mode">adaptation</span><span class="proof-verif">invariants</span></a></td>
-        <td class="proof-cell"><a href="web/fluidbox/"><span class="proof-mode">adaptation</span><span class="proof-verif">invariants</span></a></td>
-      </tr>
-      <tr>
-        <td class="app-row">tinydraw</td>
-        <td class="proof-cell"><a href="run/tinydraw-rp2350.html"><span class="proof-mode">adaptation</span><span class="proof-verif">invariants (degraded)</span></a></td>
-        <td class="proof-cell empty">not ported</td>
-        <td class="proof-cell"><a href="web/tinydraw/"><span class="proof-mode">adaptation</span><span class="proof-verif">invariants (degraded)</span></a></td>
-      </tr>
-      <tr>
-        <td class="app-row">gameos</td>
-        <td class="proof-cell"><a href="run/gameos-rp2350.html"><span class="proof-mode">adaptation</span><span class="proof-verif">invariants (degraded)</span></a></td>
-        <td class="proof-cell"><a href="run/gameos-esp32.html"><span class="proof-mode">adaptation</span><span class="proof-verif">invariants (degraded)</span></a></td>
-        <td class="proof-cell empty">not ported</td>
-      </tr>
+        <a class="cell-open" href="run/gameos-esp32.html">run it</a>
+        <p class="cell-mode">adaptation, invariants (degraded)</p>
+        <div class="chips"><span class="chip chip-ok" title="all invariants held over 21 frame(s)">emulator PASS</span><span class="chip chip-bad" title="harness/hostdiff.ts: unexpected error: EOF: end of file, write Error: EOF: end of file, write     at async replayHost (C:\Users\sylve\projects\puck\.claude\worktrees\agent-a1a475c9ac10a10f5\harness\hostSide.ts:387:20)     at async main (C:\Users\sylve\projects\puck\.claude\worktrees\agent-a1a475c9ac10a10f5\harness\hostdiff.ts:280:30)">host CRASHED</span><span class="chip chip-mute attest-counter attest-counter-empty" data-attest-app="gameos" data-attest-pack="esp32-s3-touch-amoled-18">no board has confirmed this yet</span></div>
+        
+      </td>
+          <td class="cell cell-empty" data-cell="empty" data-target="web">
+        <div class="chips"><span class="chip chip-ok" title="gameos on Web-Touch (pack): go. Every dimension the app states is met by what the device declares. Unchecked: memory (this target declares no budget.ram.bytes, and nothing here invents one); tick (this target declares no budget.tickBudgetMs). A verdict is a comparison of two documents, never a prediction that the port runs.">go</span></div>
+        <p class="cell-why">no port yet. every dimension this app states is met by what the device declares</p>
+        <a class="cell-publish" href="puck-publish/">how to port it</a>
+      </td>
+          <td class="cell cell-void group-start" data-cell="void" data-target="tinydraw-esp32-s3-touch-amoled-18"><p class="cell-why">not this app's target</p></td>
+          <td class="cell cell-silhouette group-start" data-cell="verdict" data-target="m5stickc-plus2">
+        <span class="thumb-proof thumb-proof-still"><img src="assets/proofs/m5stickc-plus2-gameos.png?v=b4b8794fc9" alt="gameos running on the M5StickC-PLUS2 silhouette" class="proof-img" loading="lazy" /></span>
+        <div class="chips"><span class="chip chip-bad" title="gameos on M5StickC-PLUS2 (silhouette): refuse. Refused because panel: 135x240 is under the 184x224 this app can scale to, and because touch: this app needs 1 touch point(s) and the device declares 0. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-warn" title="the app compiled, instantiated and painted this 135x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart">blank</span></div>
+        <p class="cell-why">the app compiled, instantiated and painted this 135x240 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart <span class="cell-note">via its RP2350-Touch-AMOLED-1.8 port's own file</span></p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="verdict" data-target="feather-esp32s2-tft">
+        <span class="thumb-proof thumb-proof-still"><img src="assets/proofs/feather-esp32s2-tft-gameos.png?v=03d466f1db" alt="gameos running on the Feather-ESP32S2-TFT silhouette" class="proof-img" loading="lazy" /></span>
+        <div class="chips"><span class="chip chip-bad" title="gameos on Feather-ESP32S2-TFT (silhouette): refuse. Refused because panel: 240x135 is under the 184x224 this app can scale to, and because touch: this app needs 1 touch point(s) and the device declares 0, and because sensors: this app needs a vector sensor (GUNSHIP aims the reticle by tilt, the donor&#39;s own default aim mode) and the device declares none at all. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-bad" title="memory access out of bounds">page-error</span></div>
+        <p class="cell-why">memory access out of bounds <span class="cell-note">via its RP2350-Touch-AMOLED-1.8 port's own file</span></p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="verdict" data-target="lilygo-t-display-s3">
+        <span class="thumb-proof thumb-proof-still"><img src="assets/proofs/lilygo-t-display-s3-gameos.png?v=a2e9695668" alt="gameos running on the LILYGO T-Display-S3 silhouette" class="proof-img" loading="lazy" /></span>
+        <div class="chips"><span class="chip chip-bad" title="gameos on LILYGO T-Display-S3 (silhouette): refuse. Refused because panel: 170x320 is under the 184x224 this app can scale to, and because touch: this app needs 1 touch point(s) and the device declares 0, and because sensors: this app needs a vector sensor (GUNSHIP aims the reticle by tilt, the donor&#39;s own default aim mode) and the device declares none at all. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-warn" title="the app compiled, instantiated and painted this 170x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart">blank</span></div>
+        <p class="cell-why">the app compiled, instantiated and painted this 170x320 panel, and 100.00% of it is one single colour. That is what an app with nothing to show yet looks like, and it is also what an app drawing at coordinates outside this panel looks like: the PNG beside this line is the only thing that tells the two apart <span class="cell-note">via its RP2350-Touch-AMOLED-1.8 port's own file</span></p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="verdict" data-target="pico-display-pack-2">
+        <span class="thumb-proof thumb-proof-still"><img src="assets/proofs/pico-display-pack-2-gameos.png?v=c2106aac5f" alt="gameos running on the Pico Display Pack 2.0 on Pico 2 silhouette" class="proof-img" loading="lazy" /></span>
+        <div class="chips"><span class="chip chip-bad" title="gameos on Pico Display Pack 2.0 on Pico 2 (silhouette): refuse. Refused because touch: this app needs 1 touch point(s) and the device declares 0, and because sensors: this app needs a vector sensor (GUNSHIP aims the reticle by tilt, the donor&#39;s own default aim mode) and the device declares none at all. It would also cost: panel, 320x240 is under the 368x448 this app asks for, and above the 184x224 it scales to: the layout comes out of the panel, so it fits, smaller. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-bad" title="memory access out of bounds">page-error</span></div>
+        <p class="cell-why">memory access out of bounds <span class="cell-note">via its RP2350-Touch-AMOLED-1.8 port's own file</span></p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="verdict" data-target="watchy">
+        <span class="thumb-proof thumb-proof-still"><img src="assets/proofs/watchy-gameos.png?v=970b5fcd97" alt="gameos running on the Watchy silhouette" class="proof-img" loading="lazy" /></span>
+        <div class="chips"><span class="chip chip-bad" title="gameos on Watchy (silhouette): refuse. Refused because panel: this app&#39;s colour carries information and the panel is mono1, which is not a colour one, and because touch: this app needs 1 touch point(s) and the device declares 0. This target is unverified against silicon, so every number above came from a datasheet, not from a board. A verdict is a comparison of two documents, never a prediction that the port runs.">refuse</span><span class="chip chip-bad" title="null function">page-error</span></div>
+        <p class="cell-why">null function <span class="cell-note">via its RP2350-Touch-AMOLED-1.8 port's own file</span></p>
+      </td>
+        </tr>
+        <tr>
+          <th class="app-row" scope="row" data-app="aliceisjustplaying/tinydraw">
+            <span class="app-name">aliceisjustplaying/tinydraw</span>
+            
+            <a class="app-doc" href="https://github.com/aliceisjustplaying/tinydraw">their repository</a>
+            <span class="app-prov">reproduced from aliceisjustplaying/tinydraw@7a157d4 on 2026-09-02</span>
+          </th>
+          <td class="cell cell-empty" data-cell="empty" data-target="rp2350-touch-amoled-18">
+        <div class="chips"><span class="chip chip-mute" title="aliceisjustplaying/tinydraw&#39;s descriptor.md&#39;s Demands section carries no ```json demands block, so this app&#39;s requirements are prose only.
+        Add one (docs/convention/app-bundle.md, &quot;Demands are also machine-readable&quot;); nothing here guesses at prose.">no verdict</span></div>
+        <p class="cell-why">no port yet. aliceisjustplaying/tinydraw&#39;s descriptor.md&#39;s Demands section carries no ```json demands block, so this app&#39;s requirements are prose only.</p>
+        <a class="cell-publish" href="puck-publish/">how to port it</a>
+      </td>
+          <td class="cell cell-empty" data-cell="empty" data-target="esp32-s3-touch-amoled-18">
+        <div class="chips"><span class="chip chip-mute" title="aliceisjustplaying/tinydraw&#39;s descriptor.md&#39;s Demands section carries no ```json demands block, so this app&#39;s requirements are prose only.
+        Add one (docs/convention/app-bundle.md, &quot;Demands are also machine-readable&quot;); nothing here guesses at prose.">no verdict</span></div>
+        <p class="cell-why">no port yet. aliceisjustplaying/tinydraw&#39;s descriptor.md&#39;s Demands section carries no ```json demands block, so this app&#39;s requirements are prose only.</p>
+        <a class="cell-publish" href="puck-publish/">how to port it</a>
+      </td>
+          <td class="cell cell-empty" data-cell="empty" data-target="web">
+        <div class="chips"><span class="chip chip-mute" title="aliceisjustplaying/tinydraw&#39;s descriptor.md&#39;s Demands section carries no ```json demands block, so this app&#39;s requirements are prose only.
+        Add one (docs/convention/app-bundle.md, &quot;Demands are also machine-readable&quot;); nothing here guesses at prose.">no verdict</span></div>
+        <p class="cell-why">no port yet. aliceisjustplaying/tinydraw&#39;s descriptor.md&#39;s Demands section carries no ```json demands block, so this app&#39;s requirements are prose only.</p>
+        <a class="cell-publish" href="puck-publish/">how to port it</a>
+      </td>
+          <td class="cell cell-external group-start" data-cell="verdict" data-target="tinydraw-esp32-s3-touch-amoled-18">
+        <div class="chips"><span class="chip chip-bad" title="build command exited 1 for https://github.com/aliceisjustplaying/tinydraw.git@000de0aa74: ./scripts/build-puck-wasm
+unsupported Puck build host: MINGW64_NT-10.0-26200-ARM64 x86_64">emulator ERROR</span></div>
+        <p class="cell-why">build command exited 1 for https://github.com/aliceisjustplaying/tinydraw.git@000de0aa74: ./scripts/build-puck-wasm</p>
+        <p class="cell-prov">built by aliceisjustplaying/tinydraw@000de0a, its own command: ./scripts/build-puck-wasm</p>
+      </td>
+          <td class="cell cell-silhouette group-start" data-cell="verdict" data-target="m5stickc-plus2">
+        
+        <div class="chips"><span class="chip chip-mute" title="aliceisjustplaying/tinydraw&#39;s descriptor.md&#39;s Demands section carries no ```json demands block, so this app&#39;s requirements are prose only.
+        Add one (docs/convention/app-bundle.md, &quot;Demands are also machine-readable&quot;); nothing here guesses at prose.">no verdict</span><span class="chip chip-bad" title="aliceisjustplaying/tinydraw&#39;s bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from">build-failed</span></div>
+        <p class="cell-why">aliceisjustplaying/tinydraw&#39;s bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="verdict" data-target="feather-esp32s2-tft">
+        
+        <div class="chips"><span class="chip chip-mute" title="aliceisjustplaying/tinydraw&#39;s descriptor.md&#39;s Demands section carries no ```json demands block, so this app&#39;s requirements are prose only.
+        Add one (docs/convention/app-bundle.md, &quot;Demands are also machine-readable&quot;); nothing here guesses at prose.">no verdict</span><span class="chip chip-bad" title="aliceisjustplaying/tinydraw&#39;s bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from">build-failed</span></div>
+        <p class="cell-why">aliceisjustplaying/tinydraw&#39;s bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="verdict" data-target="lilygo-t-display-s3">
+        
+        <div class="chips"><span class="chip chip-mute" title="aliceisjustplaying/tinydraw&#39;s descriptor.md&#39;s Demands section carries no ```json demands block, so this app&#39;s requirements are prose only.
+        Add one (docs/convention/app-bundle.md, &quot;Demands are also machine-readable&quot;); nothing here guesses at prose.">no verdict</span><span class="chip chip-bad" title="aliceisjustplaying/tinydraw&#39;s bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from">build-failed</span></div>
+        <p class="cell-why">aliceisjustplaying/tinydraw&#39;s bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="verdict" data-target="pico-display-pack-2">
+        
+        <div class="chips"><span class="chip chip-mute" title="aliceisjustplaying/tinydraw&#39;s descriptor.md&#39;s Demands section carries no ```json demands block, so this app&#39;s requirements are prose only.
+        Add one (docs/convention/app-bundle.md, &quot;Demands are also machine-readable&quot;); nothing here guesses at prose.">no verdict</span><span class="chip chip-bad" title="aliceisjustplaying/tinydraw&#39;s bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from">build-failed</span></div>
+        <p class="cell-why">aliceisjustplaying/tinydraw&#39;s bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from</p>
+      </td>
+          <td class="cell cell-silhouette" data-cell="verdict" data-target="watchy">
+        
+        <div class="chips"><span class="chip chip-mute" title="aliceisjustplaying/tinydraw&#39;s descriptor.md&#39;s Demands section carries no ```json demands block, so this app&#39;s requirements are prose only.
+        Add one (docs/convention/app-bundle.md, &quot;Demands are also machine-readable&quot;); nothing here guesses at prose.">no verdict</span><span class="chip chip-bad" title="aliceisjustplaying/tinydraw&#39;s bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from">build-failed</span></div>
+        <p class="cell-why">aliceisjustplaying/tinydraw&#39;s bundle names no port source this pack could compile: a silhouette runs through packs/web, and this bundle declares no web port and no rp2350 port to borrow one from</p>
+      </td>
+        </tr>
           </tbody>
         </table>
       </div>
-    </div>
-  </section>
+  </div>
+  <div class="wrap">
+    <p class="matrix-foot">A silhouette is a board nobody has written firmware for: one <code>device.json</code> with its numbers read off a datasheet and never measured against silicon, compiled against through <a href="https://github.com/s0lness/puck/blob/master/packs/web">packs/web</a> so the app really runs at that panel size with those buttons. Last computed 2026-09-02.</p>
+  </div>
+</section>
 
+<div class="wrap">
   <section id="reference">
     <div class="wrap" style="padding:0">
       <h2>reference app</h2>
-      <p class="lede">Not a port: each device pack's own shipped app, plus the instrument's own minimal example firmware - every tile below links to it running live, the same as the cards above.</p>
+      <p class="lede">Not a port: each device pack's own shipped app, plus the instrument's own minimal example firmware - every tile below links to it running live, the same as the cells above.</p>
       <div class="ref-cards">
 <div class="ref-card">
   <a class="thumb thumb-video" style="aspect-ratio:404 / 484" href="run/esp32-demo.html" aria-label="ESP32-S3-Touch-AMOLED-1.8: demo demo, open the live run page">
@@ -212,13 +439,13 @@
         </div>
         <div class="item">
           <h3>app descriptors</h3>
-          <p>An app is defined by its descriptor and traces, not by one implementation's source code: what appears on screen, every interaction, and separate requirements from preferences. A port starts with a verdict against the target pack, stated plainly, before any code is written.</p>
+          <p>An app is defined by its descriptor and traces, not by one implementation's source code: what appears on screen, every interaction, and separate requirements from preferences. A port starts with a verdict against the target pack, computed from those two documents, before any code is written.</p>
           <span class="src"><a href="https://github.com/s0lness/puck/blob/master/docs/convention/app-bundle.md">app-bundle.md</a></span>
         </div>
         <div class="item">
-          <h3>the verifier</h3>
-          <p>A faithful port replays its traces and compares frames pixel for pixel. An adaptation states behavioral invariants instead, and gets checked against those. Either way, the same shared harness decides, not a claim in a README.</p>
-          <span class="src"><a href="https://github.com/s0lness/puck/blob/master/docs/harness.md">harness.md</a></span>
+          <h3>the ledger</h3>
+          <p>Every cell above is recomputed when its own inputs change, and reused when they do not. A faithful port replays its traces and compares frames pixel for pixel; an adaptation states behavioral invariants and gets checked against those; either way the shared harness decides, not a claim in a README.</p>
+          <span class="src"><a href="https://github.com/s0lness/puck/blob/master/docs/decisions/0012-the-gallery-is-built-from-a-ledger.md">decision 0012</a></span>
         </div>
       </div>
     </div>
@@ -227,7 +454,7 @@
   <footer>
     <div class="wrap" style="padding:0">
       <a href="https://github.com/s0lness/puck/blob/master/README.md">s0lness/puck</a> on GitHub, MIT licensed.
-      &middot; <a href="agents.html?v=5f1e70f0fe">agents</a>
+      &middot; <a href="agents.html?v=d1cb386cd7">agents</a>
     </div>
   </footer>
 </div>
