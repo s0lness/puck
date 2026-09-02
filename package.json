@@ -29,6 +29,7 @@
     "pack:esp32:gate": "bun run packs/esp32-s3-touch-amoled-18/gate/run.ts",
     "harness:hardware:pacing": "bun run harness/hardwarePacing.ts",
     "test:hostile": "bun run test/hostile/run.ts",
+    "test:devlink": "bun run test/devlink/run.ts",
     "test:regression": "bun run test/regression/run.ts",
     "test:wasi": "bun run test/wasi/run.ts",
     "test:external": "bun run test/external/run.ts",
