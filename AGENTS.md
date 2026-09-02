@@ -15,11 +15,37 @@ before assuming more than that. This distinction is load-bearing; do not
 describe this tool as running "the exact binary" anywhere.
 
 **The repository has three surfaces.** The instrument is `src/`, `harness/`
-and `wasm/`: a device-agnostic emulator and verifier. `packs/` contains
-self-contained device folders an LLM can target, with
-`packs/rp2350-touch-amoled-18/` as the reference pack. `apps/` contains
-portable app bundles, with `apps/chrono/` as the reference bundle. Read
-[`docs/convention/`](docs/convention/) before changing either format.
+and `wasm/`: a device-agnostic emulator and verifier, hardened by
+`test/hostile/` (firmware built on purpose to break the loader and tick
+path, proving the failure is loud rather than silent). `packs/` contains
+self-contained device folders an LLM can target: `packs/rp2350-touch-amoled-18/`
+(the reference pack, real firmware for the Waveshare RP2350-Touch-AMOLED-1.8),
+`packs/esp32-s3-touch-amoled-18/` (the same panel on the lower-memory
+ESP32-S3, with no room for a full framebuffer, so its ESP-IDF half paints
+in 16 bands of 28 rows instead), and `packs/web/` (the browser itself as a
+device pack: same panel and buttons, a real accelerometer, a build that
+also emits an installable PWA page per app - see
+`docs/decisions/0006-the-browser-is-a-device-pack.md`). `apps/` contains
+portable app bundles: `apps/chrono/` (the reference bundle, a stopwatch),
+`apps/fluidbox/` (a tilt-driven particle-fluid scene, degraded and
+invariant-verified on its adapted port), `apps/tinydraw/` (a
+finger-drawing canvas, an external author's own app registered by URL and
+also carried as a local bundle), and `apps/gameos/` (a handheld
+game-console shell that vendors a donor's real engine, and on its esp32
+port the donor's real shell too - see
+`docs/decisions/0007-gameos-vendors-the-donor-shell.md`). Any app or pack
+that carries someone else's source keeps it under its own `reference/`
+folder with a `NOTICE.md` stating exactly what came from where and under
+what licence; read that file before touching any of it.
+
+Read [`docs/convention/`](docs/convention/) before changing any of these
+formats. Porting or publishing an app follows
+[`skills/puck-publish/SKILL.md`](skills/puck-publish/SKILL.md) step by
+step; every proven pack+app combination is published live at
+[`site/`](site/), whose `dist/` output is **committed** and served as-is
+by Cloudflare Pages (no Pages-side build step - a site change is not live
+until `bun run site:build` has actually run and its output has actually
+been committed).
 
 The reference pack is real firmware for the Waveshare
 RP2350-Touch-AMOLED-1.8. Its `AGENTS.md` is the first thing to read before
@@ -35,10 +61,14 @@ bun run example:build   # compiles example/firmware/main.c -> wasm/dist/emu.wasm
 bun run dev             # http://127.0.0.1:5340
 ```
 
-`bun run pack:build` swaps the example for the puck's real firmware,
-writing the same `wasm/dist/emu.wasm`. It needs `zig`, and its wasm link
-segfaults on roughly one run in three; that is a known zig bug, not your
-change, so run it again. `bun run pack:screens` regenerates
+`bun run pack:build` swaps the example for the RP2350 reference pack's
+real firmware, writing the same `wasm/dist/emu.wasm`. It needs `zig`, and
+its wasm link segfaults on roughly one run in three; that is a known zig
+bug, not your change, so run it again. `bun run pack:esp32:build` does the
+same for `packs/esp32-s3-touch-amoled-18/`, and `bun run pack:web:build`
+for `packs/web/`; `bun run pack:web:host` builds that pack's second mode
+instead, a standalone installable page per app rather than the shared
+emulator's module. `bun run pack:screens` regenerates
 `packs/rp2350-touch-amoled-18/README.md`'s screenshots from that module, and `bun run pack:demo`
 regenerates both READMEs' animated GIF by driving the real page in a real
 browser and encoding the frames with `ffmpeg` (a binary this repo invokes,
@@ -53,20 +83,76 @@ dev`. Live reload picks up a rebuilt module automatically.
 `bun run verify` drives the page headlessly with `puppeteer-core` against a
 local Chrome install (no bundled download - set `CHROME_PATH` if it can't
 find yours) and, if `wasm/dist/emu.wasm` exists, drives a real synthetic
-touch stroke and confirms the panel actually changed.
+touch stroke and confirms the panel actually changed. `bun run
+verify:embed`, `verify:tilt`, `verify:motion`, `verify:drag` and
+`verify:gameos-accel` are the same headless-Chrome method, each narrowed to
+one feature: the bare `?embed=1` page a public run page iframes, the
+rotation-driven tilt sensor steering fluidbox's gravity, live phone
+`devicemotion` and desktop drag-as-accelerometer, and the esp32 gameos
+port's raw accelerometer stream, in that order. Each script's own header
+comment names the exact bug it was written to catch; read it before
+assuming what it covers.
+
+### Pack-specific gates
+
+A device pack's own fast, hardware-free checks live beside the pack and
+are not part of `bun run verify`, which only exercises the shared
+instrument. `bun run pack:esp32:gate` (`packs/esp32-s3-touch-amoled-18/gate/run.ts`)
+and `bun run pack:web:gate` (`packs/web/gate/device-agrees.ts`) are each
+that pack's own answer to `docs/convention/device-pack.md`'s "`gate/`, or
+an equivalent set of fast checks for device-specific invariants": neither
+needs a board, a toolchain, or a build, and each catches exactly the class
+of bug that pack has actually shipped once - read each script's own header
+comment for which. `packs/rp2350-touch-amoled-18` has no `gate/`; its
+`AGENTS.md` names `tools/invariants/`, run as the native build's own final
+step rather than as a standalone command, as its equivalent (see that
+pack's "Gate" section).
+
+`bun run pack:lint` (`tools/pack-lint.ts`) checks every LOCAL pack in
+`registry.json` against `docs/convention/device-pack.md`'s required
+contents, mechanically: `AGENTS.md` present, `device.json` parses and
+carries every field `emu_device()` requires, a non-empty `gotchas.md`, a
+`wasm/build.ts` that exists and bounds every zig attempt with a
+per-attempt timeout, and either a real `gate/` or an `AGENTS.md` section
+literally named `## Gate` stating the pack's own equivalent explicitly.
+One violation per line on stderr, exit 1; a clean tree exits 0. It is red
+on `packs/rp2350-touch-amoled-18` today for the timeout gap specifically
+(tracked, not fixed here - see `docs/decisions/0008-the-pack-is-canonical-tiny-computers-consumes-it.md`).
+
+### The differential harness
 
 `bun run harness:selftest` proves the differential test harness's own
 mechanism works, with no real hardware required (see `harness/fixtures/loopbackLink.ts`'s
 header comment for exactly what that does and does not prove).
 
-`bun run harness:hardware` is the same harness against the actual board on
-USB (`harness/links/devlinkLink.ts`), and `bun run harness:hardware:pacing`
-measures what screenshot rate that board tolerates. Both need hardware and
-both say so and exit `2` within about a second when there is none. Read
-[`docs/harness.md`](docs/harness.md)'s "Against the real board" before
-running either: a hardware run SWITCHES APPS, which zeroes the app arena,
-so it destroys whatever the owner had on screen (a drawing, a running
-timer). It never reflashes and never leaves the port held.
+`bun run harness:hardware` is the same harness against the actual RP2350
+board on USB (`harness/links/devlinkLink.ts`), and `bun run
+harness:hardware:pacing` measures what screenshot rate that board
+tolerates; `harness:hardware:esp32` and `harness:hardware:esp32:chrono`
+run the identical link against the esp32-s3 board's own traces. All four
+need hardware and all say so and exit `2` within about a second when there
+is none. Read [`docs/harness.md`](docs/harness.md)'s "Against the real
+board" before running any of them: a hardware run SWITCHES APPS, which
+zeroes the app arena, so it destroys whatever the owner had on screen (a
+drawing, a running timer). It never reflashes and never leaves the port
+held.
+
+`bun run portdiff` (`harness/portdiff.ts`) is the PORT differential
+harness: given two wasm modules and one trace, it replays the same trace
+against both, headless, and diffs the captured frames pixel-exact. This is
+what a `faithful` port's actual proof is
+(`docs/convention/app-bundle.md`), and `bun run verify-bundle` calls this
+same implementation rather than reimplementing the comparison.
+
+`bun run invariants` (`harness/invariantRun.ts`) is the device-agnostic
+runner half of "verified by invariants" (an `adaptation` port's proof): it
+replays a trace against one module, captures the framebuffer at the
+bundle's own stated moments, and hands the frames to whatever checker
+module the bundle supplies. The bundle owns the checks; this file only
+owns replay-and-capture, so a new invariant-verified app costs zero
+changes here.
+
+### Proving a firmware regression, and the instrument's own hostile inputs
 
 `bun run test:regression` proves the in-page, hardware-free regression
 check (`src/regression.ts`, the "baseline"/"check" buttons - see
@@ -80,14 +166,56 @@ are answered deterministically from the trace, and anything else is
 refused by name. See
 `docs/decisions/0004-wasi-lite-not-wasi.md`.
 
-`bun run test:external` proves `tools/externalBuild.ts`, the one
-clone-pin-run implementation behind a bundle port that is built by
-someone else's repository, against the in-repo fixture (no network). The
-end-to-end version of the same thing is `bun run verify-bundle
-test/fixtures/external-bundle`. Read
-`docs/decisions/0005-external-ports-are-reproduced.md` first, including
-its trust model: verifying such a bundle means running that repository's
-build command on this machine.
+`bun run test:hostile` (`test/hostile/`) proves the emulator fails LOUDLY,
+not silently, against firmware built on purpose to break it: every hostile
+fixture under `test/hostile/firmware/*.c` is driven through a real dev
+server in a real headless Chrome, and each one must land as a clean
+`#wasmError` banner, a distinct `#engineDead` banner, or a skipped, logged
+"firmware bug:" finding - never an uncaught page error, never a silently
+frozen tick loop. See `docs/findings-first-adversarial-pass.md` for the
+audit this suite grew out of.
+
+### Publishing: the gate that actually matters
+
+`bun run verify-bundle <bundle>` is **the publishing gate**: the one
+command that decides whether a claimed port is real. It rebuilds the
+module from the bundle's own declared source (a local pack's own
+`wasm/build.ts --app`, or, for an external port, `tools/externalBuild.ts`
+cloning and running another repository's own build command at a pinned
+commit) and replays its declared traces itself, through the same
+`portdiff`/`invariants` code path every other consumer of this repository
+uses, never a second implementation. Nothing about a port is ever taken on
+prose (`docs/convention/publishing.md`'s "listing is a reproduction, not a
+submission"); this is what that sentence means mechanically. `bun run
+test:external` proves `tools/externalBuild.ts` itself (the clone-pin-run
+step) against an in-repo fixture with no network; see
+`docs/decisions/0005-external-ports-are-reproduced.md` for the trust model
+behind running someone else's build command on your own machine.
+[`skills/puck-publish/SKILL.md`](skills/puck-publish/SKILL.md) is this
+same flow written step by step for an agent to follow.
+
+### The site
+
+`bun run site:build` (`site/build.ts`) builds the public gallery,
+`site/dist/`: every proven pack+app combination's module, one run page
+each, and the landing page, all derived from `registry.json` and each
+app's `bundle.json`, never hand-listed twice. `site/dist/` is committed
+and served as-is by Cloudflare Pages, so a change here is not live until
+this has actually run and the result has actually been committed.
+`site/demo-media/` holds the recorded, encoded demo loops (GIF, MP4,
+poster) every gallery card links to; `bun run site:record-demos`
+(`site/record-demos.ts`) regenerates them the same way `pack:demo`
+regenerates one pack's own README GIF, by driving the real page in a real
+browser.
+
+`bun run site:verify-flash-ui`, `site:verify-embeds` and `site:verify-web`
+are the built gallery's own headless proofs, run against `site/dist/`
+itself rather than the dev server: that the "Flash to the real device"
+section renders and fails cleanly on an unsupported browser, that every
+card's recorded-loop assets actually exist and the landing/run-page split
+behaves, and that `packs/web`'s own installable `/web/<app>/` pages
+actually instantiate their module, paint pixels, respond to a real tap or
+drag, and register their service worker.
 
 ## Conventions
 
@@ -115,8 +243,25 @@ build command on this machine.
   its own board because it is one board's firmware. The device-specific
   `harness/links/devlinkLink.ts` adapter may import the pack's public USB
   tooling, but shared emulator and harness logic must not.
-- **No em dashes**, anywhere, including code comments and docs. Use
-  commas, colons, parentheses, or periods.
+- **Every executable path a build script needs is env-first.** `ZIG_EXE`,
+  `CHROME_PATH`, `FFMPEG_EXE`, `PICO_SDK_PATH` and `PICO_TOOLCHAIN_PATH`
+  all follow one shape: read the environment variable first, and only
+  then fall back, either to a plain command name assumed on `PATH`
+  (`zig`), or, in a few call sites that run only on this project's own
+  development machine (`tools/verify-bundle.ts`, `test/external/run.ts`),
+  to a personal path baked in as a last resort
+  (`C:\Users\sylve\tools\zig\zig.exe` on Windows). That personal fallback
+  is a convenience for one machine, never a portability guarantee; it is
+  exactly why the environment variable always wins when set, and why
+  anyone running this elsewhere sets it rather than relying on the
+  fallback resolving to anything sensible.
+- **No em dashes**, anywhere, including code comments and docs, with one
+  exception: **vendored reference material is exempt.** A `NOTICE.md`,
+  licence text, or any source or doc copied byte-for-byte from a donor
+  repository (`apps/*/reference/`, a pack's own vendored third-party
+  files, `third_party/`) keeps whatever punctuation its original author
+  used. This rule governs prose this repository writes, not prose it is
+  honestly reproducing from elsewhere.
 - **No ASCII art, no badges** in any markdown file.
 - **`docs/decisions/`** carries the WHY. This file (AGENTS.md) says HOW.
   The README says WHAT. Keep new architectural choices in a decision
@@ -148,13 +293,22 @@ example/        a tiny, self-contained example firmware (firmware/main.c)
                 and its build script (build.ts). Read
                 docs/decisions/0001-example-is-minimal-not-a-shim.md for
                 why it's minimal rather than a full-featured demo.
-harness/        the differential test harness: replay a trace through the
-                emulator (emulatorSide.ts, a thin node:fs wrapper over
-                src/replayCore.ts) and through a pluggable HardwareLink
-                (hardwareSide.ts, types.ts), diff the results (src/compare.ts,
-                diff.ts). fixtures/loopbackLink.ts is a FAKE link for
-                testing the harness itself, not real hardware - see
-                docs/harness.md.
+harness/        the differential test harness. diff.ts (replay one trace
+                against the emulator and a real HardwareLink, then diff),
+                emulatorSide.ts (thin node:fs wrapper over
+                src/replayCore.ts), hardwareSide.ts/types.ts (the
+                pluggable HardwareLink interface), links/devlinkLink.ts
+                (this repo's own USB-serial link, shared by both boards),
+                fixtures/loopbackLink.ts (a FAKE link for testing the
+                harness itself, not real hardware - see docs/harness.md),
+                inputs/ (the trace files harness:hardware replays),
+                hardwarePacing.ts (measures tolerated screenshot rate),
+                png.ts (raw DEFLATE -> zlib-wrapped PNG IDAT, see
+                Gotchas), selftest.ts (harness:selftest), portdiff.ts (the
+                PORT differential harness: two modules, one trace, diffed
+                pixel-exact - a faithful port's proof), and
+                invariantRun.ts (the device-agnostic replay-and-capture
+                runner behind an adaptation port's stated invariants).
 test/regression/ builds two tiny fixture firmwares (one draw call
                 different between them) and proves the hardware-free
                 regression check actually catches the difference - see
@@ -163,25 +317,63 @@ test/wasi/      two fixture firmwares that import wasi_snapshot_preview1
                 deliberately (one supported, one not), and the proof that
                 the WASI-lite shims are deterministic and that anything
                 outside the supported four is refused by name.
+test/hostile/   firmware/*.c: fixtures built on purpose to break the
+                loader and tick path. run.ts drives each one through a
+                real dev server in a real headless Chrome and asserts it
+                is reported loudly (a banner or a named finding), never
+                silently. Grew out of docs/findings-first-adversarial-pass.md.
+test/external/  proves tools/externalBuild.ts (the clone-pin-run step
+                behind an external port's declared build) against
+                test/fixtures/external-bundle/, with no network.
 test/fixtures/  material that stands in for something outside this
                 repository: external-app/ is a whole app in one C file
                 (an external repo), external-bundle/ is the bundle that
                 points at it by local path. Never listed in
                 registry.json: a fixture is test material, not something
-                a gallery advertises. test/external/run.ts drives them.
-tools/          verify-bundle.ts (the listing verifier),
-                externalBuild.ts (clone a repo at a pinned commit, run
-                its own build command, take the artifact - used by the
-                verifier and by anything else that later needs an
-                external module) and ci-verify-registry.ts.
+                a gallery advertises.
+tools/          verify-bundle.ts (the listing verifier and actual
+                publishing gate), externalBuild.ts (clone a repo at a
+                pinned commit, run its own build command, take the
+                artifact - used by the verifier and by test/external/),
+                ci-verify-registry.ts, and pack-lint.ts (bun run
+                pack:lint: every local pack in registry.json checked
+                against docs/convention/device-pack.md's required
+                contents, mechanically).
 docs/           abi.md (the ABI as a page), requirements.md, agent-loop.md
                 (the optional freeze/annotate layer, plus the failed-
                 regression-check export), harness.md (also covers the
-                hardware-free regression check), convention/ (pack and app
-                formats), and decisions/ (the why).
-scripts/        scripts/verify.ts: headless proof the page works and, once
-                a wasm module exists, that it actually renders in response
-                to real input.
+                hardware-free regression check), findings-first-adversarial-pass.md
+                (the audit test/hostile/ proves stays fixed),
+                convention/ (pack and app formats, and publishing), and
+                decisions/ (the why).
+scripts/        headless proofs and small shared utilities, all puppeteer-core
+                against a local Chrome (CHROME_PATH to override):
+                verify.ts (the baseline page-works-and-renders check),
+                verify-embed.ts (the bare ?embed=1 page a run page
+                iframes), verify-tilt.ts (rotation steering the vector
+                tilt sensor), verify-motion.ts (live phone devicemotion
+                and shake), verify-drag.ts (desktop drag-as-accelerometer),
+                verify-gameos-accel.ts (the esp32 gameos port's live raw
+                accelerometer stream), verify-flash-ui.ts (the built
+                gallery's "Flash to the real device" section, including
+                the unsupported-browser path), verify-site-embeds.ts (the
+                built gallery's landing/run-page split and recorded-loop
+                assets), verify-web-apps.ts (packs/web's own installable
+                /web/<app>/ pages: instantiate, paint, tap, drag,
+                register the service worker), staticSite.ts (the small
+                static file server verify-flash-ui.ts and
+                verify-site-embeds.ts share for serving site/dist/),
+                browserClose.ts (works around Bun-on-Windows missing
+                Chrome's final child-process close notification),
+                capture-gameos-esp32-shell-frame.ts and
+                compare-gameos-esp32-shell-vs-donor.ts (this bundle's
+                donor-reference comparison: a captured emulator frame
+                against the donor's own vendored screenshot), and
+                record-gameos-shell-trace.ts /
+                record-gameos-golf-trace.ts (record fresh traces against
+                the esp32 gameos port's real vendored shell and its GOLF
+                card, replacing traces recorded against an earlier,
+                port-authored layout).
 server.ts       the local dev server (127.0.0.1 only, see below). Also
                 serves the hardware-free regression check's own routes
                 (/api/baseline, /api/regression-result), backed by
@@ -194,15 +386,45 @@ baselineStore.ts disk persistence for the regression check: where a saved
                 server and no browser.
 build.ts        static dist/ build, for serving this page from something
                 other than the dev server.
-packs/          self-contained device folders. The reference pack is
-                rp2350-touch-amoled-18, which owns its board firmware,
-                drivers, build, checks, descriptor, gotchas and decisions.
-                `bun run pack:build` writes wasm/dist/emu.wasm.
-apps/           portable app bundles defined by descriptors and traces.
-                chrono is the reference bundle and includes a source
-                snapshot from the reference pack.
+packs/          self-contained device folders, one per target:
+                rp2350-touch-amoled-18/ (the reference pack: real board
+                firmware, drivers, checks, USB tooling,
+                tools/build-native.ts for the native board build and
+                wasm/build.ts for the emulator module, both writing to
+                the pinned puck checkout, plus tools/invariants/ - its
+                Gate section's named equivalent to a gate/ folder),
+                esp32-s3-touch-amoled-18/ (the lower-memory sibling: no
+                framebuffer, 16 bands of 28 rows over its ESP-IDF half,
+                its own gate/), and web/ (the browser as a device: same
+                panel and buttons vendored from the RP2350 pack's app
+                contract, a real accelerometer, its own gate/, and a
+                wasm/build.ts host mode that emits an installable PWA
+                page per app).
+apps/           portable app bundles, one per app: chrono/ (the reference
+                bundle and descriptor, a stopwatch), fluidbox/ (a
+                tilt-driven particle-fluid scene, adapted and
+                invariant-verified where ported), tinydraw/ (a
+                finger-drawing canvas, an external author's own app),
+                gameos/ (a handheld game-console shell vendoring a
+                donor's real engine and, on its esp32 port, the donor's
+                real shell too - see that port's NOTICE.md). Each carries
+                descriptor.md, bundle.json, ports/, traces/, frames/ or
+                invariants.ts, and, where source is vendored rather than
+                original, reference/<donor>/ plus a NOTICE.md.
+site/           the public gallery. build.ts writes dist/ (committed,
+                served as-is by Cloudflare Pages: modules, one run page
+                per pack+app combination, the landing page), flasher/
+                (WebUSB/Web Serial flashing, bundled into dist/flash/ -
+                see NOTICE.md for the vendored esptool-js it ships),
+                demo-media/ (recorded, encoded demo loops every gallery
+                card links to), record-demos.ts (regenerates them),
+                styles.css.
+skills/         skills/puck-publish/SKILL.md: the step-by-step publishing
+                procedure for an agent porting or listing an app -
+                docs/convention/app-bundle.md and publishing.md are the
+                contract this skill walks through.
 registry.json   local pack and app paths, plus the registration point for
-                external bundles by URL.
+                external packs and apps by URL.
 ```
 
 ## Gotchas that bite
