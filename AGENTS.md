@@ -397,32 +397,52 @@ calls `computeVerdict()` in process and runs the two CLIs. See
 this costs" section names the gap in that incremental rule.
 
 `bun run site:build` (`site/build.ts`) builds the public gallery,
-`site/dist/`, **from `ledger.json`**: the landing page is the apps-by-
-devices matrix, one cell per pair, and every cell is either something that
+`site/dist/`, **from `ledger.json`**, as two pages. `/` is a **store**: one
+card per app, a picture, a name, one line and a `Run` button that opens the
+version canonical for the device asking - a desktop gets the app in the
+emulator with the device drawn around it, a phone (`pointer: coarse`, or
+under 700px) gets `packs/web`'s own installable host build, decided by
+viewport and never by a user-agent string. `/matrix/` is the **proof**: the
+apps-by-devices matrix, one cell per pair, every cell either something that
 runs (with a link and a mark per proof), a verdict with its reason, or an
-empty state saying what is missing. It also writes every proven
-combination's module and run page, a run page for every silhouette cell
+empty state saying what is missing. The front page carries no chip, no mark
+and no reason; the header's one link goes to the matrix. See
+`docs/decisions/0014-the-front-door-is-a-store.md`. The build also writes
+every proven combination's module and run page (the web pack's included,
+which is what a desktop `Run` opens), a run page for every silhouette cell
 that runs, and `/puck-publish/`. Run the ledger first or the build stops
 and says so. `site/dist/` is committed and served as-is by Cloudflare
 Pages, so a change here is not live until this has actually run and the
 result has actually been committed. `site/demo-media/` holds the recorded,
-encoded demo loops (GIF, MP4, poster) the matrix cells link to; `bun run
-site:record-demos` (`site/record-demos.ts`) regenerates them the same way
-`pack:demo` regenerates one pack's own README GIF, by driving the real
-page in a real browser.
+encoded demo loops (GIF, MP4, poster) the store cards and the matrix cells
+show; `bun run site:record-demos` (`site/record-demos.ts`) regenerates them
+the same way `pack:demo` regenerates one pack's own README GIF, by driving
+the real page in a real browser.
 
-`bun run site:verify-matrix`, `site:verify-flash-ui`,
+`bun run site:external-modules` (`site/fetch-external-modules.ts`) is the
+one build step that is NOT part of `site:build`, deliberately: an app
+published in its own repository has its module built by that repository's
+own command at its own pin, which wants a toolchain this repository cannot
+vendor (`toolchains.example.json`). It writes `site/external-modules/`,
+**tracked** like `site/flash-artifacts/`, and `site/build.ts` copies from
+there and reads the module's own `emu_device()` for the board it was built
+for. Re-run it when `registry.json`'s pin for that bundle moves.
+
+`bun run site:verify-landing`, `site:verify-matrix`, `site:verify-flash-ui`,
 `site:verify-attest-ui`, `site:verify-embeds` and `site:verify-web` are
 the built gallery's own headless proofs, run against `site/dist/` itself
-rather than the dev server: that the landing page is the ledger's own grid
+rather than the dev server: that the front page is a store whose `Run`
+buttons resolve to the emulator at 1400px and to `/web/<app>/` at 390px
+with a coarse pointer emulated, that `/matrix/` is the ledger's own grid
 with no blank in it and every silhouette cell that claims to run opens at
 that board's declared panel size, that the "Flash to the real device"
 section renders and fails cleanly on an unsupported browser, that the
 attestation section renders and its counter falls back honestly with no
 endpoint and walks a scripted board all the way to a posted result for
 both kinds of check (including an invariant that fails by name, and one a
-board cannot answer at all, which is shown and not posted), that every card's recorded-loop assets actually exist and the
-landing/run-page split behaves, and that `packs/web`'s own installable
+board cannot answer at all, which is shown and not posted), that every
+card's and every matrix cell's recorded-loop assets actually exist and the
+matrix/run-page split behaves, and that `packs/web`'s own installable
 `/web/<app>/` pages actually instantiate their module, paint pixels,
 respond to a real tap or drag, and register their service worker.
 
@@ -678,13 +698,17 @@ apps/           portable app bundles, one per app: chrono/ (the reference
 site/           the public gallery. build.ts writes dist/ (committed,
                 served as-is by Cloudflare Pages: modules, one run page
                 per pack+app combination and per runnable silhouette
-                cell, the landing page as the apps-by-devices matrix read
-                out of ledger.json, and /puck-publish/), flasher/
+                cell, the front page as a store of app cards, /matrix/ as
+                the apps-by-devices matrix read out of ledger.json, and
+                /puck-publish/ - docs/decisions/0014), flasher/
                 (WebUSB/Web Serial flashing, bundled into dist/flash/ -
                 see NOTICE.md for the vendored esptool-js it ships),
-                demo-media/ (recorded, encoded demo loops every gallery
-                card links to), record-demos.ts (regenerates them),
-                styles.css. attest/ makes a freshly flashed board replay
+                demo-media/ (recorded, encoded demo loops every store card
+                and matrix cell shows), record-demos.ts (regenerates
+                them), external-modules/ (tracked: the module an app
+                published in its own repository builds with its own
+                command, written by fetch-external-modules.ts, never by
+                site:build), styles.css. attest/ makes a freshly flashed board replay
                 the port's own trace and then puts the result through the
                 same check verify-bundle uses for that port: a pixel diff
                 against the bundle's recorded frames, or that bundle's own

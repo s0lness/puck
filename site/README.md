@@ -8,8 +8,8 @@ only build, and a change to anything under `site/` is not shipped until
 **It builds from `ledger.json`, not from the bundles.** `bun run ledger`
 (`tools/ledger.ts`) computes every app in `registry.json` against every
 target in it and writes that file at the repository root; `site/build.ts`
-reads it and renders the landing page as the matrix, one cell per app per
-device. Run the ledger first, or the build stops and says so. The one thing
+reads it and renders both pages from it: the store at `/` and the matrix at
+`/matrix/`. Run the ledger first, or the build stops and says so. The one thing
 still read out of a `bundle.json` is an attestable port's own inputs - its
 trace files and either its recorded-frame directory or its checker path and
 capture points - which are what a flash page hands a board rather than
@@ -22,24 +22,70 @@ The tracked sources are `site/build.ts` (the generator), `site/styles.css`,
 "prove it runs" step, including `attest/checkers.ts`, the table of every
 bundle checker this gallery can run in a page), `site/attest-client.ts` (the
 counter every page shares), `site/functions/` (the Pages Functions),
-`site/flash-artifacts/` and `site/demo-media/`. Third-party code that ends up inside `site/dist/` is
+`site/flash-artifacts/`, `site/demo-media/` and `site/external-modules/`.
+Third-party code that ends up inside `site/dist/` is
 attributed in [`NOTICE.md`](NOTICE.md).
 
-Headless checks: `bun run site:verify-matrix`, `bun run site:verify-flash-ui`,
-`bun run site:verify-attest-ui`, `bun run site:verify-embeds`,
-`bun run site:verify-web`. All five drive the built `site/dist/` through a
-real Chrome with no board and no Cloudflare account anywhere.
-`site:verify-matrix` is the one that holds the landing page to the ledger:
-the grid is complete, every cell is exactly one of runs / verdict / empty
-state, every silhouette cell that claims to run opens at that board's own
-panel size, the external row carries its provenance, and the page never
-scrolls sideways on a phone while the table does. `bun run site:test-api`
+Headless checks: `bun run site:verify-landing`, `bun run site:verify-matrix`,
+`bun run site:verify-flash-ui`, `bun run site:verify-attest-ui`,
+`bun run site:verify-embeds`, `bun run site:verify-web`. All six drive the
+built `site/dist/` through a real Chrome with no board and no Cloudflare
+account anywhere. `site:verify-landing` holds the front door to being a
+store (see below); `site:verify-matrix` is the one that holds `/matrix/` to
+the ledger: the grid is complete, every cell is exactly one of runs /
+verdict / empty state, every silhouette cell that claims to run opens at
+that board's own panel size, the external row carries its provenance, and
+the page never scrolls sideways on a phone while the table does.
+`bun run site:test-api`
 runs the Pages Functions' own unit tests against a fake KV namespace, which
 is where the endpoint's validation, rate limit and summary bookkeeping are
 proven (the headless check stubs `/api/attest` on purpose: its job is the
 page, not the function).
 
-## The matrix
+## The front door: a store at `/`
+
+One card per app: a picture (that app's recorded loop, from
+`site/demo-media/`), its name, its one line, and one button, `Run`. No
+chips, no marks, no reasons, no paragraph - all of that is the matrix's, one
+link away behind `all devices` in the header. See
+[`docs/decisions/0014`](../docs/decisions/0014-the-front-door-is-a-store.md)
+for why the matrix stopped being the first thing a stranger meets.
+
+`Run` opens the version that is canonical for the device asking, decided by
+viewport at load and on resize and never by a user-agent string: a desktop
+gets `/run/<app>-web.html` (the app in the emulator, with the device drawn
+around it), a phone (`pointer: coarse`, or under 700px) gets `/web/<app>/`
+(packs/web's own installable host build, real accelerometer, on-screen
+buttons). An app with no web port - `gameos`, and the external bundle - runs
+its closest module in the emulator on both, and its card says which device
+it is running as.
+
+The card loops carry no `autoplay` and no `src`, only a poster and a
+`data-src`: the page mounts each one when it scrolls into view, so five
+cards are five small images until somebody looks at one.
+`bun run site:verify-landing` is what holds all of that.
+
+## An app published in its own repository: `site/external-modules/`
+
+The external bundle's card has to run something, and nothing here compiles
+it. Its module comes out of that repository's own build command at its own
+pin ([`0005`](../docs/decisions/0005-external-ports-are-reproduced.md)), and
+that command wants a toolchain this repository cannot vendor, so
+`site:build` must not depend on it.
+
+`bun run site:external-modules` (`site/fetch-external-modules.ts`) clones at
+the pin, runs their command through `tools/externalBuild.ts`, and writes the
+module plus an `index.json` recording repo, commit, command, artifact path
+and the module's own sha256. Both are **tracked**, exactly like
+`site/flash-artifacts/`. `site/build.ts` copies the module into
+`dist/modules/` and reads its panel, buttons and sensors from the module's
+own `emu_device()` - this repository carries no `device.json` for a pack
+somebody else maintains, and the module is the only thing here that knows
+which board it was built for. Run it on a machine with that toolchain (see
+`toolchains.example.json`) whenever `registry.json`'s pin for that bundle
+moves.
+
+## The matrix, at `/matrix/`
 
 Rows are apps, columns are targets, in three groups that read left to right:
 the device packs this repository carries, then any pack an app's own bundle

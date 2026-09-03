@@ -472,6 +472,54 @@ const DEMOS: DemoSpec[] = [
       await sleep(2200); // watch the spin resolve
     },
   },
+  {
+    // The one app here nothing in this repository compiles: its module is
+    // its author's own build, at their own pin, copied out of
+    // site/external-modules/ (site/fetch-external-modules.ts). It is
+    // recorded exactly like every other combo above - same emulator, same
+    // ?embed=1 URL, same crop - which is the point of an external port
+    // being a reproduction rather than a screenshot somebody sent in.
+    id: "aliceisjustplaying-tinydraw-tinydraw-esp32-s3-touch-amoled-18",
+    panelW: 368,
+    panelH: 448,
+    // The first stroke is PREROLL, not part of the loop, for one reason:
+    // the poster is the clip's own frame 0 and the front page's cards show
+    // it until a card is scrolled into view. Frame 0 of a drawing app that
+    // has not been drawn on yet is a blank white sheet, which is a picture
+    // of nothing. So the sheet already carries ink before the screencast
+    // starts, and the recorded loop is the second stroke landing on it.
+    async preroll(ctx) {
+      // The canvas area alone: this app draws its own toolbar across the
+      // bottom of the panel and its zoom controls and minimap down the
+      // right, so every point here stays in the upper left two thirds,
+      // where the sheet is.
+      await ctx.stroke(
+        [
+          [0.18, 0.5],
+          [0.3, 0.26],
+          [0.44, 0.5],
+          [0.56, 0.26],
+          [0.7, 0.5],
+          [0.82, 0.26],
+        ],
+        45
+      );
+      await sleep(400);
+    },
+    async play(ctx) {
+      await sleep(700); // the first stroke alone, so the loop's seam reads as "about to draw"
+      await ctx.stroke(
+        [
+          [0.24, 0.62],
+          [0.4, 0.68],
+          [0.6, 0.68],
+          [0.76, 0.62],
+        ],
+        60
+      );
+      await sleep(2400); // hold the finished drawing before the loop restarts
+    },
+  },
 ];
 
 const onlyId = process.argv.find((a) => a.startsWith("--only="))?.slice("--only=".length);

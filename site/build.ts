@@ -53,6 +53,11 @@ import { spawnWithRetry } from "../tools/zigSpawn";
 // has nothing to check the result with.
 import { INVARIANT_CHECKERS } from "./attest/checkers";
 import type { DeviceDescriptor } from "../src/wasm";
+// site/external-modules/: the tracked module for every app published in its
+// OWN repository, built by that repository's own command (see
+// site/fetch-external-modules.ts's header for why that is a separate,
+// committed step and not part of this build).
+import { externalComboId, externalModuleSlug, externalModulesDir, readExternalModules, type ExternalModuleRecord } from "./externalModules";
 
 const SITE_DIR = import.meta.dir;
 const REPO_ROOT = resolve(SITE_DIR, "..");
@@ -543,6 +548,84 @@ const REFERENCE_APPS: ReferenceApp[] = [
   },
 ];
 
+// ---- an app published in its own repository ------------------------------
+// Its module is not compiled by anything here: it comes out of that
+// repository's own build command at its own pin, and lives, built, under
+// site/external-modules/ (tracked, like site/flash-artifacts/ - see
+// site/fetch-external-modules.ts's header for why).
+//
+// Registered into the SAME lookup maps every real pack uses, keyed by its
+// combo id as a pseudo-pack (the same trick INSTRUMENT_EXAMPLE already
+// uses), so writeRunPage/embedFrameSize/cardDeviceGeometry treat it as
+// just another target with no special case of their own. The panel, label
+// and buttons come from the MODULE's own emu_device(), because that is the
+// only honest source: this repository carries no device.json for a pack
+// somebody else maintains, and the module is the one thing here that knows
+// which board it was built for.
+interface ExternalCombo {
+  id: string;
+  app: string;
+  pack: string;
+  modulePath: string;
+  label: string;
+  panel: { w: number; h: number };
+  record: ExternalModuleRecord;
+}
+
+/**
+ * The device descriptor a module declares about itself, read the same way
+ * the emulator reads it at runtime (src/wasm.ts): instantiate, `_initialize`,
+ * call `emu_device()`, read the NUL-terminated JSON out of its own memory.
+ * Every import is stubbed with a function returning 0 - nothing here calls a
+ * tick, so nothing can reach one; a module whose descriptor needs its host to
+ * do real work would be a module this repository could not present anyway.
+ */
+function readModuleDevice(modulePath: string): DeviceDescriptor {
+  const mod = new WebAssembly.Module(readFileSync(modulePath));
+  const imports: Record<string, Record<string, unknown>> = {};
+  for (const i of WebAssembly.Module.imports(mod)) {
+    imports[i.module] ??= {};
+    if (i.kind === "function") imports[i.module]![i.name] = () => 0;
+  }
+  const instance = new WebAssembly.Instance(mod, imports as unknown as WebAssembly.Imports);
+  const exports = instance.exports as Record<string, unknown>;
+  (exports._initialize as (() => void) | undefined)?.();
+  const ptr = (exports.emu_device as () => number)();
+  const memory = new Uint8Array((exports.memory as WebAssembly.Memory).buffer);
+  let end = ptr;
+  while (memory[end] !== 0) end++;
+  return JSON.parse(new TextDecoder().decode(memory.subarray(ptr, end))) as DeviceDescriptor;
+}
+
+const externalCombos: ExternalCombo[] = [];
+for (const record of readExternalModules(SITE_DIR)) {
+  const modulePath = join(externalModulesDir(SITE_DIR), record.module);
+  if (!existsSync(modulePath)) {
+    throw new Error(
+      `site/external-modules/index.json names ${record.module}, which is not on disk. Run \`bun run site:external-modules\` on a machine that has the toolchain that bundle's build command needs.`
+    );
+  }
+  const device = readModuleDevice(modulePath);
+  const id = externalComboId(record);
+  // The PACK's name, not the module's own `name` field: this module calls
+  // itself "TinyDraw V2", which is the app, and what a reader needs here is
+  // which device it is running as - the same string the matrix's own column
+  // for that target is headed with.
+  packLabel.set(id, record.pack);
+  if (device.panel) packPanel.set(id, { w: device.panel.w, h: device.panel.h });
+  packHasVectorSensor.set(id, (device.sensors || []).some((s) => s.kind === "vector" || s.kind === "gravity"));
+  packButtons.set(id, (device.buttons || []).map((b) => ({ edge: b.edge, at: b.at })));
+  externalCombos.push({
+    id,
+    app: record.app,
+    pack: record.pack,
+    modulePath,
+    label: record.pack,
+    panel: device.panel ? { w: device.panel.w, h: device.panel.h } : { w: 368, h: 448 },
+    record,
+  });
+}
+
 function comboId(app: string, pack: string): string {
   const short = pack.split("-")[0]; // "rp2350" / "esp32"
   return `${app}-${short}`;
@@ -701,6 +784,15 @@ function buildAllModules(): void {
     if (!existsSync(REPO_WASM_OUT)) throw new Error(`the silhouette build for ${s.id} did not write ${REPO_WASM_OUT}`);
     copyFileSync(REPO_WASM_OUT, join(MODULES_DIR, `${s.id}.wasm`));
     console.log(`copied -> site/dist/modules/${s.id}.wasm`);
+  }
+
+  // Copied, never built: an external port's module came out of its author's
+  // own build command, on a machine that had the toolchain that command
+  // needs (site/fetch-external-modules.ts). Everything downstream treats it
+  // exactly like the modules above.
+  for (const e of externalCombos) {
+    copyFileSync(e.modulePath, join(MODULES_DIR, `${e.id}.wasm`));
+    console.log(`copied -> site/dist/modules/${e.id}.wasm (built by ${e.record.repo}@${e.record.commit.slice(0, 10)})`);
   }
 }
 
@@ -1221,8 +1313,8 @@ const DEMO_MEDIA_DIR = join(SITE_DIR, "demo-media");
 // href when the file is missing (a fresh clone that has not run
 // site:record-demos yet - copyDemoMedia's own warning already covers that
 // case without failing the build, this matches it rather than throwing).
-function demoAssetHref(id: string, ext: string): string {
-  const base = `assets/demos/${id}.${ext}`;
+function demoAssetHref(id: string, ext: string, depth: "" | "../"): string {
+  const base = `${depth}assets/demos/${id}.${ext}`;
   const filePath = join(DIST, "assets", "demos", `${id}.${ext}`);
   return existsSync(filePath) ? withVersion(base, contentHashOf(filePath)) : base;
 }
@@ -1239,18 +1331,18 @@ function demoAssetHref(id: string, ext: string): string {
 // scripts/verify-site-embeds.ts reads to confirm the recorded clip's own
 // intrinsic size actually matches this pack's panel aspect, independent of
 // whatever this function draws around it.
-function demoThumb(id: string, alt: string, href: string, pack: string, rotated: boolean): string {
+function demoThumb(id: string, alt: string, href: string, pack: string, rotated: boolean, depth: "" | "../"): string {
   const g = cardDeviceGeometry(pack, rotated);
   return `<a class="thumb thumb-video" style="aspect-ratio:${g.bezelW} / ${g.bezelH}" href="${href}" aria-label="${escapeHtml(alt)}, open the live run page">
     <span class="card-bezel" style="border-radius:${g.bezelRadius}">
       <span class="card-panel" style="${g.panelStyle}">
-        <video autoplay muted loop playsinline poster="${demoAssetHref(id, "png")}" data-panel-w="${g.panelW}" data-panel-h="${g.panelH}">
-          <source src="${demoAssetHref(id, "mp4")}" type="video/mp4" />
+        <video autoplay muted loop playsinline poster="${demoAssetHref(id, "png", depth)}" data-panel-w="${g.panelW}" data-panel-h="${g.panelH}">
+          <source src="${demoAssetHref(id, "mp4", depth)}" type="video/mp4" />
         </video>
       </span>
       ${g.buttonsHtml}
     </span>
-    <noscript><img src="${demoAssetHref(id, "gif")}" alt="${escapeHtml(alt)}" /></noscript>
+    <noscript><img src="${demoAssetHref(id, "gif", depth)}" alt="${escapeHtml(alt)}" /></noscript>
   </a>`;
 }
 
@@ -1279,6 +1371,10 @@ const APP_BLURB: Record<string, string> = {
   fluidbox: "A particle liquid that sloshes and settles inside the device's own enclosure shape.",
   tinydraw: "A full-panel finger-drawing canvas: variable-width antialiased ink, two-level zoom, one-stroke undo.",
   gameos: "A handheld game console shell: pick a game to launch a thermal gunner, a slot machine, or a swing-driven procedural golf course.",
+  // The one blurb whose descriptor is not in this repository (it is in its
+  // author's, at the pin registry.json names): condensed from that
+  // descriptor's own Essence paragraph, not invented here.
+  "aliceisjustplaying/tinydraw": "A bounded white drawing surface with direct finger ink, a bottom toolbar, zoom and a minimap: an external author's own app, their build.",
 };
 
 // ---- 3 & 4: generate every page --------------------------------------
@@ -1303,10 +1399,10 @@ function hasDemoMedia(id: string): boolean {
 }
 
 /** Where a silhouette cell's proof PNG is served from, mirroring demo media's own assets/ convention. */
-function proofHref(target: string, app: string): string {
+function proofHref(target: string, app: string, depth: "" | "../"): string {
   const name = `${target}-${app.replace(/[\\/]/g, "-")}.png`;
   const filePath = join(DIST, "assets", "proofs", name);
-  const base = `assets/proofs/${name}`;
+  const base = `${depth}assets/proofs/${name}`;
   return existsSync(filePath) ? withVersion(base, contentHashOf(filePath)) : base;
 }
 
@@ -1406,6 +1502,13 @@ function blindMark(cell: LedgerCell): string {
  * because a check that inferred it could never catch the page and the
  * ledger disagreeing.
  */
+// The matrix lives at /matrix/, one directory down from the front door, so
+// every relative href it emits is one level up. Named once here rather than
+// spelled "../" at nine call sites: this is the only page in the build whose
+// depth is not its own directory's, and a missed one is a 404 nobody sees
+// until a cell is clicked. See docs/decisions/0014.
+const MATRIX_DEPTH = "../" as const;
+
 function cellOpen(state: "runs" | "verdict" | "empty" | "void", target: string, extraClass: string, groupStart: boolean): string {
   return `<td class="cell ${extraClass}${groupStart ? " group-start" : ""}" data-cell="${state}" data-target="${escapeHtml(target)}">`;
 }
@@ -1443,10 +1546,10 @@ function matrixCell(app: AppEntry, target: LedgerTarget, groupStart: boolean): s
     const borrowed = s.via && s.via !== WEB_PACK ? ` Compiled from its ${packLabel.get(s.via) || s.via} port's own file: this app has no web-pack port of its own.` : "";
     const id = `${app.name}-${target.name}`;
     const picture = s.proof
-      ? `<img src="${proofHref(target.name, app.name)}" alt="${escapeHtml(`${app.name} running on the ${target.label} silhouette`)}" class="proof-img" loading="lazy" />`
+      ? `<img src="${proofHref(target.name, app.name, MATRIX_DEPTH)}" alt="${escapeHtml(`${app.name} running on the ${target.label} silhouette`)}" class="proof-img" loading="lazy" />`
       : "";
     const thumb = runnable
-      ? `<a class="thumb-proof" href="run/${id}.html" aria-label="${escapeHtml(`open ${app.name} running on the ${target.label} silhouette`)}">${picture}</a>`
+      ? `<a class="thumb-proof" href="${MATRIX_DEPTH}run/${id}.html" aria-label="${escapeHtml(`open ${app.name} running on the ${target.label} silhouette`)}">${picture}</a>`
       : picture
         ? `<span class="thumb-proof thumb-proof-still">${picture}</span>`
         : "";
@@ -1461,9 +1564,9 @@ function matrixCell(app: AppEntry, target: LedgerTarget, groupStart: boolean): s
   // has earned sits under it.
   if (cell.port) {
     const combo = combos.find((c) => c.app === app.name && c.pack === target.name)!;
-    const href = comboHref(combo, "");
+    const href = comboHref(combo, MATRIX_DEPTH);
     const media = hasDemoMedia(combo.id);
-    const thumb = media ? demoThumb(combo.id, `${app.name} on ${target.label}`, href, target.name, app.name === "chrono") : "";
+    const thumb = media ? demoThumb(combo.id, `${app.name} on ${target.label}`, href, target.name, app.name === "chrono", MATRIX_DEPTH) : "";
     const portReason =
       `${modeLabel(cell.port.mode)}, verified by ${cell.port.verification === "pixel-exact" ? "pixel-exact frame diffs" : "stated behavioral invariants"}` +
       (cell.port.declaredVerdict ? `, and its own port notes call it ${cell.port.declaredVerdict}` : "") +
@@ -1489,7 +1592,7 @@ function matrixCell(app: AppEntry, target: LedgerTarget, groupStart: boolean): s
   // procedure is. The reason it came out that way is behind the word.
   return `${cellOpen("empty", target.name, "cell-empty", groupStart)}
         <div class="marks">${verdictMark(cell)}${blindMark(cell)}</div>
-        <a class="cell-publish" href="puck-publish/">no port yet: how to port it</a>
+        <a class="cell-publish" href="${MATRIX_DEPTH}puck-publish/">no port yet: how to port it</a>
       </td>`;
 }
 
@@ -1502,7 +1605,215 @@ const TARGET_GROUPS: { kind: LedgerTarget["kind"]; label: string; note: string }
   { kind: "silhouette", label: "silhouettes", note: "a device.json and nothing else, no firmware anywhere" },
 ];
 
-function buildIndexHtml(): void {
+// ---- the front door: a store, one card per app --------------------------
+// docs/decisions/0014. What used to be here was the matrix, which is the
+// PROOF and reads like one: forty-five cells, nine columns, a row of chips
+// under every picture. It moved to /matrix/ whole. What a visitor meets
+// first is now the shape a phone's app store already taught everybody to
+// read - a grid of cards, each a picture, a name, one line, and a button
+// that runs the thing - and the button opens the version that is canonical
+// for the device asking, decided by viewport at load and on resize, never
+// by a user-agent string.
+//
+// NO CHIPS, NO MARKS, NO REASONS on this page. Every one of them still
+// exists, one link away, on the page built to carry them.
+
+/** How many devices this app is known to run on, counted from the ledger, never typed here. */
+function deviceCountFor(app: string): number {
+  return Object.values(ledger.cells).filter(
+    (c) => c.app === app && (c.targetKind === "silhouette" ? c.silhouette.mark === "runs" : Boolean(c.port))
+  ).length;
+}
+
+interface StoreCard {
+  app: string;
+  essence: string;
+  /** The recorded loop this card shows, or null when nothing has been recorded for this app yet. */
+  demoId: string | null;
+  /** The pack whose device frame is drawn around that loop. */
+  demoPack: string;
+  demoRotated: boolean;
+  /** Where "Run" goes on a desktop: this app in the emulator, device drawn around it. */
+  desktopHref: string;
+  /** Where it goes on a phone: packs/web's own installable host build, when this app has a web port. */
+  phoneHref: string;
+  /** Named only when the app has no web port, so the card says which device it is running as instead. */
+  runsAs: string | null;
+  devices: number;
+}
+
+function storeCards(): StoreCard[] {
+  const cards: StoreCard[] = [];
+  for (const app of apps) {
+    // Every target this page could open this app on, in one shape: its own
+    // ports, plus - for an app published in its own repository - the module
+    // that repository built. `pack` is what sizes the device frame and names
+    // the device on the card, and for an external module it is the combo id
+    // itself, which is registered above as its own pseudo-pack.
+    const external = externalCombos.find((e) => e.app === app.name);
+    const targets = [
+      ...combos.filter((c) => c.app === app.name).map((c) => ({ id: c.id, pack: c.pack })),
+      ...(external ? [{ id: external.id, pack: external.id }] : []),
+    ];
+    const web = targets.find((t) => t.pack === WEB_PACK);
+    // Where Run goes when there is no web port at all: the closest module
+    // this repository can actually open, which is a real device's, and the
+    // card says which one rather than letting a visitor assume.
+    const run = web ?? targets.find((t) => t.pack !== WEB_PACK);
+    if (!run) continue;
+    // The picture: this app's own recorded loop, on whichever of its targets
+    // has one. Never another app's, and never a placeholder.
+    const withMedia = targets.find((t) => hasDemoMedia(t.id));
+    cards.push({
+      app: app.name,
+      essence: APP_BLURB[app.name] || "",
+      demoId: withMedia?.id ?? null,
+      demoPack: withMedia?.pack ?? run.pack,
+      demoRotated: app.name === "chrono",
+      desktopHref: `run/${run.id}.html`,
+      phoneHref: web ? `web/${app.name}/` : `run/${run.id}.html`,
+      runsAs: web ? null : packLabel.get(run.pack) || run.pack,
+      devices: deviceCountFor(app.name),
+    });
+  }
+  return cards;
+}
+
+/**
+ * One card. The picture is a recorded loop inside the same CSS device frame
+ * the matrix's own thumbnails use (cardDeviceGeometry), because a picture of
+ * an app on a device is what this whole repository is about; the video
+ * carries no `src` and no `autoplay`, only a `data-src` and its own poster,
+ * so five cards on a phone cost five small images and nothing else until one
+ * of them is actually on screen (the page's own observer below).
+ */
+function storeCardHtml(card: StoreCard): string {
+  const g = cardDeviceGeometry(card.demoPack, card.demoRotated);
+  const alt = `${card.app} running`;
+  // EVERY CARD'S PICTURE BOX IS THE SAME SQUARE, and the device is fitted
+  // inside it rather than filling it. Chrono is recorded landscape (its
+  // panel is turned a quarter round, site/record-demos.ts) and every other
+  // app is portrait, so a box that took each device's own aspect made the
+  // first card's picture visibly shorter than its neighbours' and pushed
+  // its name up out of line with theirs - a ragged row, in a grid whose
+  // whole job is to be scannable. The fit is computed here, in percentages
+  // of that square, rather than left to `max-width`/`max-height` on an
+  // aspect-ratio box: those two clamp one axis without recomputing the
+  // other, so a portrait device came out stretched.
+  const fit =
+    g.bezelW >= g.bezelH
+      ? `width:100%;height:${((g.bezelH / g.bezelW) * 100).toFixed(3)}%`
+      : `height:100%;width:${((g.bezelW / g.bezelH) * 100).toFixed(3)}%`;
+  const picture = card.demoId
+    ? `<span class="shot-frame" style="${fit}">
+      <span class="card-bezel" style="border-radius:${g.bezelRadius}">
+        <span class="card-panel" style="${g.panelStyle}">
+          <video muted loop playsinline preload="none" poster="${demoAssetHref(card.demoId, "png", "")}" data-src="${demoAssetHref(card.demoId, "mp4", "")}" data-panel-w="${g.panelW}" data-panel-h="${g.panelH}" aria-label="${escapeHtml(alt)}"></video>
+        </span>
+        ${g.buttonsHtml}
+      </span>
+      <noscript><img src="${demoAssetHref(card.demoId, "gif", "")}" alt="${escapeHtml(alt)}" /></noscript>
+    </span>`
+    : "";
+  const devices = `${card.devices} device${card.devices === 1 ? "" : "s"}`;
+  return `<li class="app-card" data-app="${escapeHtml(card.app)}">
+  <a class="shot" href="${card.desktopHref}" data-desktop-href="${card.desktopHref}" data-phone-href="${card.phoneHref}" tabindex="-1" aria-hidden="true">
+    ${picture}
+  </a>
+  <h2 class="card-name">${escapeHtml(card.app)}</h2>
+  <p class="card-essence">${escapeHtml(card.essence)}</p>
+  <a class="run-btn" href="${card.desktopHref}" data-desktop-href="${card.desktopHref}" data-phone-href="${card.phoneHref}">Run</a>
+  ${card.runsAs ? `<p class="card-runs-as">runs as ${escapeHtml(card.runsAs)}</p>` : ""}
+  <a class="card-devices" href="matrix/#app-${escapeHtml(externalModuleSlug(card.app))}">runs on ${devices}</a>
+</li>`;
+}
+
+// One script, inline, doing exactly two things: pick each card's canonical
+// href for the device that is looking, and start a card's loop only once it
+// is on screen. Inline because site/dist/ is served off a plain file server
+// and this is smaller than the request that would fetch it.
+const STORE_SCRIPT = `<script>
+(function () {
+  // POINTER, THEN WIDTH, AND NEVER A USER AGENT. "pointer: coarse" is the
+  // browser telling us what the person is actually touching the page with;
+  // the width test is the fallback for a browser that reports nothing and
+  // for a narrow desktop window, where the phone build is the better answer
+  // anyway.
+  var coarse = window.matchMedia ? window.matchMedia("(pointer: coarse)") : null;
+  function isPhone() {
+    return (coarse && coarse.matches) || window.innerWidth < 700;
+  }
+  var swap = document.querySelectorAll("a[data-phone-href]");
+  function applyHrefs() {
+    var phone = isPhone();
+    for (var i = 0; i < swap.length; i++) {
+      var a = swap[i];
+      var want = phone ? a.getAttribute("data-phone-href") : a.getAttribute("data-desktop-href");
+      if (want && a.getAttribute("href") !== want) a.setAttribute("href", want);
+    }
+    document.documentElement.setAttribute("data-surface", phone ? "phone" : "desktop");
+  }
+  applyHrefs();
+  window.addEventListener("resize", applyHrefs);
+  if (coarse && coarse.addEventListener) coarse.addEventListener("change", applyHrefs);
+
+  var videos = document.querySelectorAll(".app-card video[data-src]");
+  function start(v) {
+    if (!v.getAttribute("src")) v.setAttribute("src", v.getAttribute("data-src"));
+    var p = v.play();
+    if (p && p.catch) p.catch(function () {});
+  }
+  if (window.IntersectionObserver) {
+    var io = new IntersectionObserver(
+      function (entries) {
+        for (var i = 0; i < entries.length; i++) {
+          var v = entries[i].target;
+          if (entries[i].isIntersecting) start(v);
+          else if (!v.paused) v.pause();
+        }
+      },
+      { rootMargin: "200px 0px" }
+    );
+    for (var i = 0; i < videos.length; i++) io.observe(videos[i]);
+  } else {
+    for (var j = 0; j < videos.length; j++) start(videos[j]);
+  }
+})();
+</script>`;
+
+function buildLandingPage(): void {
+  const cards = storeCards();
+  if (cards.length === 0) throw new Error("site/build.ts: the front page has no app to show, which cannot be right");
+  const body = `<div class="wrap">
+  <header class="store-head">
+    <div class="brand">
+      <h1>puck</h1>
+      <p class="tagline">apps that travel between tiny computers.</p>
+    </div>
+    <a class="all-devices" href="matrix/">all devices</a>
+  </header>
+
+  <ul class="store">
+${cards.map(storeCardHtml).join("\n")}
+  </ul>
+
+  ${siteFooter("")}
+</div>
+${STORE_SCRIPT}`;
+
+  writeFileSync(
+    join(DIST, "index.html"),
+    page(
+      "puck: apps that travel between tiny computers",
+      "Every app in this repository, running: on a desktop in the emulator with the device drawn around it, on a phone as an installable app with real tilt and on-screen buttons.",
+      "styles.css",
+      body
+    )
+  );
+  console.log(`wrote -> site/dist/index.html (${cards.length} app card(s))`);
+}
+
+function buildMatrixPage(): void {
   const groups = TARGET_GROUPS.map((g) => ({ ...g, targets: ledger.targets.filter((t) => t.kind === g.kind) })).filter((g) => g.targets.length > 0);
   const orderedTargets = groups.flatMap((g) => g.targets);
 
@@ -1528,7 +1839,7 @@ function buildIndexHtml(): void {
       const docHref = app.path ? gh(`${app.path}/descriptor.md`) : app.url ? app.url.replace(/\.git$/, "") : null;
       const blurb = APP_BLURB[app.name] || "";
       return `        <tr>
-          <th class="app-row" scope="row" data-app="${escapeHtml(app.name)}">
+          <th class="app-row" scope="row" id="app-${escapeHtml(externalModuleSlug(app.name))}" data-app="${escapeHtml(app.name)}">
             <span class="app-name">${escapeHtml(app.name)}</span>
             ${blurb ? `<span class="app-blurb">${escapeHtml(blurb)}</span>` : ""}
             ${docHref ? `<a class="app-doc" href="${docHref}">${escapeHtml(app.path ? "descriptor" : "their repository")}</a>` : ""}
@@ -1562,10 +1873,10 @@ function buildIndexHtml(): void {
   const refCardsHtml = refTiles
     .map(
       (r) => `<div class="ref-card">
-  ${demoThumb(r.id, `${r.title} demo`, `run/${r.id}.html`, r.pack, false)}
+  ${demoThumb(r.id, `${r.title} demo`, `${MATRIX_DEPTH}run/${r.id}.html`, r.pack, false, MATRIX_DEPTH)}
   <h3>${escapeHtml(r.title)}</h3>
   <p>${escapeHtml(r.blurb)}</p>
-  <div class="links"><a href="run/${r.id}.html">open full page</a> <a href="${r.docHref}">source</a></div>
+  <div class="links"><a href="${MATRIX_DEPTH}run/${r.id}.html">open full page</a> <a href="${r.docHref}">source</a></div>
 </div>`
     )
     .join("\n");
@@ -1582,8 +1893,9 @@ function buildIndexHtml(): void {
   // still scrolls inside .matrix-scroll and the page still never does.
   const body = `<div class="wrap">
   <header class="hero">
-    <h1>puck</h1>
-    <p class="tagline">apps that travel between tiny computers.</p>
+    <p class="back"><a href="${MATRIX_DEPTH}">&larr; puck</a></p>
+    <h1>all devices</h1>
+    <p class="tagline">every app in this repository against every device it knows about, one cell each.</p>
     <p class="sub">${apps.length} apps down, ${orderedTargets.length} devices across, ${cellCount} cells. Every one of them either runs that app's own C, one click away, or says plainly what is missing. Nothing below is a mockup and nothing below is a date somebody typed: the whole table is <a href="${gh("ledger.json")}">ledger.json</a>, written by <a href="${gh("tools/ledger.ts")}"><code>bun run ledger</code></a>, which builds and replays every cell it claims. <a href="${gh("README.md")}">puck</a> is a device-agnostic emulator, a set of self-contained device packs, and a set of portable app bundles.</p>
   </header>
 </div>
@@ -1649,16 +1961,17 @@ ${refCardsHtml}
     </div>
   </section>
 
-  ${siteFooter("")}
+  ${siteFooter(MATRIX_DEPTH)}
 </div>
-<script type="module" src="${withVersion("attest-counters.js", ATTEST_COUNTERS_JS_VERSION)}"></script>`;
+<script type="module" src="${withVersion(`${MATRIX_DEPTH}attest-counters.js`, ATTEST_COUNTERS_JS_VERSION)}"></script>`;
 
+  mkdirSync(join(DIST, "matrix"), { recursive: true });
   writeFileSync(
-    join(DIST, "index.html"),
+    join(DIST, "matrix", "index.html"),
     page(
-      "puck: apps that travel between tiny computers",
+      "puck: all devices",
       "Every app in this repository against every device it knows about, one cell each: a build that ran, or a plain statement of what is missing.",
-      "styles.css",
+      `${MATRIX_DEPTH}styles.css`,
       body
     )
   );
@@ -1983,11 +2296,13 @@ ${attestSection}${siteFooter("../")}
     writeFileSync(join(runDir, `${opts.id}.html`), page(`${opts.title}: puck`, opts.blurb, "../styles.css", body));
   }
 
+  // EVERY combo, the web pack included. /web/<app>/ is still the canonical
+  // web-pack surface on a phone - it is the pack's own host build, and the
+  // browser showing it IS the device - but a desktop visitor asking to run
+  // an app wants the device drawn around it, which is what a run page is.
+  // The landing page picks between the two by viewport; the matrix cell
+  // still links to the host build, which is what a phone gets there too.
   for (const c of combos) {
-    // The web pack writes its own page, whole, at /web/<app>/ (see
-    // buildWebApps above): there is no emulator to embed when the device
-    // is the browser already displaying the page.
-    if (c.pack === WEB_PACK) continue;
     const entry = c.proven;
     writeRunPage({
       id: c.id,
@@ -2060,6 +2375,30 @@ ${attestSection}${siteFooter("../")}
         ...(s.appPath ? [{ label: "descriptor", href: gh(`${s.appPath}/descriptor.md`) }] : []),
         { label: "the board", href: gh(`packs/silhouettes/${s.silhouette}/AGENTS.md`) },
         { label: "device.json", href: gh(`packs/silhouettes/${s.silhouette}/device.json`) },
+      ],
+      autoRotate: false,
+    });
+  }
+
+  // An external bundle's own page, through the same generator: the module
+  // was built somewhere else, and everything about presenting it is the
+  // same. No flash section (this repository has no artifact for a board it
+  // does not carry a pack for) and no attest section (no plan), both of
+  // which fall out of the existing conditions rather than a special case.
+  for (const e of externalCombos) {
+    writeRunPage({
+      id: e.id,
+      title: `${e.app} on ${e.label}`,
+      pack: e.id,
+      packLabelStr: `${e.label}, its author's own board`,
+      modeStr: "external",
+      verifStr: `${e.panel.w}x${e.panel.h}`,
+      blurb:
+        `Not compiled here. This module is the one ${e.record.repo.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "")}@${e.record.commit.slice(0, 10)} builds with its own \`${e.record.command}\`, ` +
+        `reproduced at that pin and run against the same emulator every other page here uses.`,
+      docLinks: [
+        { label: "their repository", href: e.record.repo.replace(/\.git$/, "") },
+        { label: "the matrix row", href: `../matrix/#app-${externalModuleSlug(e.app)}` },
       ],
       autoRotate: false,
     });
@@ -2149,7 +2488,9 @@ for an adaptation.
 
 This site (puck.sylve.org) is the gallery: every proven combination runs
 live in the browser, compiled to WebAssembly, and the reference RP2350
-firmware also flashes onto real hardware over WebUSB.
+firmware also flashes onto real hardware over WebUSB. The front page is one
+card per app; /matrix/ is every app against every device it knows about,
+one cell each, computed rather than claimed.
 
 A browser is one of the target devices, not only the thing the others are
 shown in. The "web" pack (Web-Touch) is a device pack like any other: it
@@ -2161,6 +2502,7 @@ a phone's home screen, and offline once installed.
 
 ## Machine-readable surfaces on this domain
 
+- /matrix/: every app against every device, one cell each, with the mark and the reason behind each one.
 - /registry.json: local paths and external URLs for every device pack and app bundle this repo knows about.
 - /docs/convention/device-pack.md: what a device pack must contain.
 - /docs/convention/app-bundle.md: what an app bundle (descriptor + traces) must contain, including how an affordance carries its intent.
@@ -2243,7 +2585,12 @@ copyFlashArtifacts();
 // Filtered by what site/record-demos.ts has actually recorded, since a
 // missing loop is a cell that reads fine without a picture, not a build
 // failure (copyDemoMedia's own warning covers the fresh-clone case).
-const DEMO_IDS = [...combos.map((c) => c.id).filter(hasDemoMedia), ...REFERENCE_APPS.map((r) => r.id), INSTRUMENT_EXAMPLE.id];
+const DEMO_IDS = [
+  ...combos.map((c) => c.id).filter(hasDemoMedia),
+  ...externalCombos.map((e) => e.id).filter(hasDemoMedia),
+  ...REFERENCE_APPS.map((r) => r.id),
+  INSTRUMENT_EXAMPLE.id,
+];
 copyDemoMedia(DEMO_IDS);
 copyProofs();
 // After copyFlashArtifacts (it reads which combos actually have a flashable
@@ -2252,7 +2599,8 @@ buildAttestPlans();
 await buildFlashUi();
 buildAgentSurfaces();
 buildRunDir();
-buildIndexHtml();
+buildMatrixPage();
+buildLandingPage();
 
 function totalSize(dir: string): number {
   let total = 0;

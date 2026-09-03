@@ -59,8 +59,93 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 
 .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
 
+/* ---- the front door: a store ----
+   docs/decisions/0014. One card per app, the way a phone's app store lists
+   apps: a picture, a name, one line, a button. Every token below is the
+   same palette the rest of the site uses; what changes is the density.
+   Nothing on this page carries a chip, a mark or a reason - those live on
+   /matrix/, which is one link away in the header. */
+.store-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 64px 0 44px;
+}
+.store-head h1 { font-size: 2.4rem; margin: 0 0 8px; letter-spacing: -0.02em; }
+.store-head .tagline { margin: 0; color: var(--text-soft); font-size: 1.05rem; }
+.store-head .all-devices { font-size: 0.95rem; font-weight: 600; white-space: nowrap; }
+
+/* auto-fill, not auto-fit: at 1040px this is four columns, at a narrow
+   desktop three, and on a phone one - the card is never stretched to fill a
+   row it is alone in, which is what auto-fit would do to the last row. */
+.store {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(228px, 1fr));
+  gap: 28px 24px;
+  align-items: stretch;
+}
+.app-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+/* The picture, and it is the biggest thing on the card. No border, no
+   surface behind it: the device frame the build draws (site/build.ts's
+   cardDeviceGeometry) already IS the object, and a panel around a device
+   would be a box around a box. Its own aspect-ratio is inline, per pack. */
+.app-card .shot {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  margin-bottom: 14px;
+}
+.app-card .shot:hover { text-decoration: none; }
+/* inset:0 + margin:auto with a definite width AND height is the centring:
+   the device's own size inside the square comes from site/build.ts, which
+   knows each pack's real bezel aspect. */
+.app-card .shot-frame { position: absolute; inset: 0; margin: auto; }
+.app-card .card-name { margin: 0 0 4px; font-size: 1.05rem; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+/* flex: 1, so every card's Run button sits on the same line whatever the
+   essence's length: equal-height cards are the whole reason this is a grid
+   and not a list. */
+.app-card .card-essence { margin: 0 0 14px; color: var(--text-soft); font-size: 0.88rem; flex: 1; }
+.run-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 0 26px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 1px solid var(--accent);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.run-btn:hover { opacity: 0.92; text-decoration: none; }
+.card-runs-as { margin: 10px 0 0; color: var(--text-soft); font-size: 0.78rem; }
+.card-devices { display: block; margin-top: 8px; color: var(--text-soft); font-size: 0.78rem; text-decoration: underline; }
+.card-devices:hover { color: var(--accent); }
+
+@media (max-width: 700px) {
+  .store-head { padding: 40px 0 28px; }
+  .store-head h1 { font-size: 2rem; }
+  /* One column, picture dominant, and a button a thumb can hit without
+     aiming: a card at this width is the app, not a tile in a table. */
+  .store { grid-template-columns: 1fr; gap: 36px; }
+  .run-btn { align-self: stretch; min-height: 48px; font-size: 1rem; }
+}
+
 /* ---- hero ---- */
 .hero { padding: 72px 0 40px; }
+.hero .back { margin: 0 0 12px; font-size: 0.88rem; color: var(--text-soft); }
 .hero h1 { font-size: 2.4rem; margin: 0 0 10px; letter-spacing: -0.02em; }
 .hero .tagline { font-size: 1.15rem; color: var(--text-soft); margin: 0; max-width: 620px; }
 .hero .sub { margin-top: 18px; color: var(--text-soft); font-size: 0.95rem; }
