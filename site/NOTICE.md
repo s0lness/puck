@@ -29,6 +29,23 @@ that would have to be reproduced.
 `pako` (MIT, Vitaly Puzrin and Andrei Tuputcyn) comes in as esptool-js's own
 dependency and is bundled with it.
 
+## `modules/aliceisjustplaying-tinydraw-*.wasm` - TinyDraw, alice
+
+The front page's card for `aliceisjustplaying/tinydraw` runs that app's own
+module, and none of it was compiled here: `bun run site:external-modules`
+clones [aliceisjustplaying/tinydraw](https://github.com/aliceisjustplaying/tinydraw)
+at the commit its own `bundle.json` pins and runs that repository's own
+`./scripts/build-puck-wasm`. The result is committed under
+`site/external-modules/` (with `index.json` recording the repo, the commit,
+the command, the artifact path and the module's sha256) and copied into
+`site/dist/modules/` by `site/build.ts`, so it is redistributed by this
+deploy exactly like the bundles above.
+
+**Licence: MIT.** Copyright (c) 2026 alice; the full text is in that
+repository's own `LICENSE` at the pinned commit. `site/demo-media/` also
+carries a recorded loop of that module running, captured here through the
+same emulator every other clip is.
+
 ## `flash/flash.js` - none
 
 The RP2350 flasher is this repository's own code end to end

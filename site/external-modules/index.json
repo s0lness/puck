@@ -1,0 +1,12 @@
+[
+  {
+    "app": "aliceisjustplaying/tinydraw",
+    "pack": "tinydraw-esp32-s3-touch-amoled-18",
+    "repo": "https://github.com/aliceisjustplaying/tinydraw.git",
+    "commit": "000de0aa746108d20eb70279c71e7a97b679e956",
+    "command": "./scripts/build-puck-wasm",
+    "artifact": "out/build/puck-package/puck/emu.wasm",
+    "module": "aliceisjustplaying-tinydraw-tinydraw-esp32-s3-touch-amoled-18.wasm",
+    "sha256": "cedc12f285e6177576fd9feb2f507a7b642b1e3fd15d5e5ef5b7141e9ce82543"
+  }
+]

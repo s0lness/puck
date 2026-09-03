@@ -45,6 +45,7 @@
     "test:wasi": "bun run test/wasi/run.ts",
     "test:external": "bun run test/external/run.ts",
     "site:build": "bun run site/build.ts",
+    "site:external-modules": "bun run site/fetch-external-modules.ts",
     "site:record-demos": "bun run site/record-demos.ts",
     "site:verify-flash-ui": "bun run scripts/verify-flash-ui.ts",
     "site:verify-attest-ui": "bun run scripts/verify-attest-ui.ts",
