@@ -9,14 +9,14 @@
 <meta property="og:description" content="What this site is, its machine-readable surfaces (registry.json, convention docs, app descriptors), and how an agent consumes a pack or app." />
 <meta property="og:type" content="website" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2214%22%20fill%3D%22%232f6feb%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23fafafa%22%2F%3E%3C%2Fsvg%3E" />
-<link rel="stylesheet" href="styles.css?v=b9e70567d7" />
+<link rel="stylesheet" href="styles.css?v=d597fc0854" />
 </head>
 <body>
 <div class="wrap">
   <div class="run-header">
     <div class="back"><a href="index.html">&larr; puck</a></div>
     <h1>puck, for an agent</h1>
-    <p class="meta">the same content as <a href="llms.txt?v=cf41e686fb">/llms.txt</a>, in HTML</p>
+    <p class="meta">the same content as <a href="llms.txt?v=9a282fd375">/llms.txt</a>, in HTML</p>
   </div>
   <section>
     <div class="wrap" style="padding:0">
@@ -42,7 +42,9 @@ for an adaptation.
 
 This site (puck.sylve.org) is the gallery: every proven combination runs
 live in the browser, compiled to WebAssembly, and the reference RP2350
-firmware also flashes onto real hardware over WebUSB.
+firmware also flashes onto real hardware over WebUSB. The front page is one
+card per app; /matrix/ is every app against every device it knows about,
+one cell each, computed rather than claimed.
 
 A browser is one of the target devices, not only the thing the others are
 shown in. The &quot;web&quot; pack (Web-Touch) is a device pack like any other: it
@@ -54,6 +56,7 @@ a phone&#39;s home screen, and offline once installed.
 
 ## Machine-readable surfaces on this domain
 
+- /matrix/: every app against every device, one cell each, with the mark and the reason behind each one.
 - /registry.json: local paths and external URLs for every device pack and app bundle this repo knows about.
 - /docs/convention/device-pack.md: what a device pack must contain.
 - /docs/convention/app-bundle.md: what an app bundle (descriptor + traces) must contain, including how an affordance carries its intent.

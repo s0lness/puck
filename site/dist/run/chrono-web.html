@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>puck-example: puck</title>
-<meta name="description" content="The instrument&#39;s own minimal reference firmware: a 240x240 panel, two buttons (one with a long-press verdict), a shake sensor, and a scripted two-button chord. Not a device pack, not a ported app - the smallest complete emu_device() implementation, and where a new firmware author starts." />
-<meta property="og:title" content="puck-example: puck" />
-<meta property="og:description" content="The instrument&#39;s own minimal reference firmware: a 240x240 panel, two buttons (one with a long-press verdict), a shake sensor, and a scripted two-button chord. Not a device pack, not a ported app - the smallest complete emu_device() implementation, and where a new firmware author starts." />
+<title>chrono on Web-Touch: puck</title>
+<meta name="description" content="The same source as the RP2350 reference, minus its app_t: pixel-identical to the board on both traces, running on the browser as a target device." />
+<meta property="og:title" content="chrono on Web-Touch: puck" />
+<meta property="og:description" content="The same source as the RP2350 reference, minus its app_t: pixel-identical to the board on both traces, running on the browser as a target device." />
 <meta property="og:type" content="website" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2214%22%20fill%3D%22%232f6feb%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23fafafa%22%2F%3E%3C%2Fsvg%3E" />
 <link rel="stylesheet" href="../styles.css?v=d597fc0854" />
@@ -15,21 +15,22 @@
 <div class="wrap">
   <div class="run-header">
     <div class="back"><a href="../index.html">&larr; puck</a></div>
-    <h1>puck-example</h1>
-    <p class="meta">running on the instrument itself, no device pack</p>
-    <div class="badges"></div>
-    <p>The instrument&#39;s own minimal reference firmware: a 240x240 panel, two buttons (one with a long-press verdict), a shake sensor, and a scripted two-button chord. Not a device pack, not a ported app - the smallest complete emu_device() implementation, and where a new firmware author starts.</p>
+    <h1>chrono on Web-Touch</h1>
+    <p class="meta">running on Web-Touch</p>
+    <div class="badges"><span class="badge accent">faithful port</span> <span class="badge accent">pixel-exact</span></div>
+    <p>The same source as the RP2350 reference, minus its app_t: pixel-identical to the board on both traces, running on the browser as a target device.</p>
     <div class="links">
-      <a href="https://github.com/s0lness/puck/blob/master/example/firmware/main.c">source</a>
+      <a href="https://github.com/s0lness/puck/blob/master/apps/chrono/descriptor.md">descriptor</a>
+      <a href="https://github.com/s0lness/puck/blob/master/apps/chrono/ports/web/README.md">port notes</a>
     </div>
   </div>
 
   <div class="emu-stage" id="stage">
-    <div class="emu-frame" id="frame" style="width:320px;height:410px">
-      <iframe id="emu" allowtransparency="true" src="../emu/index.html?embed=1&module=%2Fmodules%2Fexample.wasm&v=44abe3129c" width="320" height="410" title="puck-example running live" allow="autoplay"></iframe>
+    <div class="emu-frame" id="frame" style="width:448px;height:618px">
+      <iframe id="emu" allowtransparency="true" src="../emu/index.html?embed=1&module=%2Fmodules%2Fchrono-web.wasm&v=44abe3129c" width="448" height="618" title="chrono on Web-Touch running live" allow="autoplay"></iframe>
     </div>
   </div>
-  <p class="embed-hint">touch the screen</p>
+  <p class="embed-hint">touch the screen &middot; tilt with your phone</p>
 
   <div class="run-footer"></div>
 
@@ -43,7 +44,7 @@
 </div>
 <script>
 (function () {
-  var NATIVE_W = 320, NATIVE_H = 410;
+  var NATIVE_W = 448, NATIVE_H = 618;
   var stage = document.getElementById("stage");
   var frame = document.getElementById("frame");
   function fit() {
@@ -53,7 +54,20 @@
   }
   window.addEventListener("resize", fit);
   fit();
-  
+  // Chrono renders landscape into a portrait-native panel; this clicks
+  // the emulator's own "-90deg" quick-rotate button once the page loads,
+  // the same control a person would click by hand (or the "r" keyboard
+  // shortcut would cycle to), rather than defaulting to a sideways view.
+  var emu = document.getElementById("emu");
+  emu.addEventListener("load", function () {
+    setTimeout(function () {
+      try {
+        var doc = emu.contentDocument;
+        var btn = doc && doc.querySelector('#rotQuick button[data-deg="-90"]');
+        if (btn) btn.click();
+      } catch (e) {}
+    }, 400);
+  });
 })();
 </script>
 <script>/* markup: visual-feedback overlay, only for a browser holding the key */(function(){if(!(/[?&](markup|edit)([=&]|$)/.test(location.search)||sessionStorage.getItem("markup-on")))return;var m=/[#&]k=([A-Za-z0-9_-]+)/.exec(location.hash),k=null;try{if(m)localStorage.setItem("markup-key",m[1]);k=localStorage.getItem("markup-key")}catch(e){}var local=location.hostname==="localhost"||location.hostname==="127.0.0.1";if(!k&&!local)return;document.head.appendChild(Object.assign(document.createElement("script"),{src:"https://markup.sylve.org/markup.js"}))})()</script>

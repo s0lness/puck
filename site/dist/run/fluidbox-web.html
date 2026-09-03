@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>puck-example: puck</title>
-<meta name="description" content="The instrument&#39;s own minimal reference firmware: a 240x240 panel, two buttons (one with a long-press verdict), a shake sensor, and a scripted two-button chord. Not a device pack, not a ported app - the smallest complete emu_device() implementation, and where a new firmware author starts." />
-<meta property="og:title" content="puck-example: puck" />
-<meta property="og:description" content="The instrument&#39;s own minimal reference firmware: a 240x240 panel, two buttons (one with a long-press verdict), a shake sensor, and a scripted two-button chord. Not a device pack, not a ported app - the smallest complete emu_device() implementation, and where a new firmware author starts." />
+<title>fluidbox on Web-Touch: puck</title>
+<meta name="description" content="The RP2350 port&#39;s file, byte for byte, on a device that finally has the accelerometer the app asks for: tilt the phone and the liquid pours." />
+<meta property="og:title" content="fluidbox on Web-Touch: puck" />
+<meta property="og:description" content="The RP2350 port&#39;s file, byte for byte, on a device that finally has the accelerometer the app asks for: tilt the phone and the liquid pours." />
 <meta property="og:type" content="website" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2214%22%20fill%3D%22%232f6feb%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23fafafa%22%2F%3E%3C%2Fsvg%3E" />
 <link rel="stylesheet" href="../styles.css?v=d597fc0854" />
@@ -15,21 +15,22 @@
 <div class="wrap">
   <div class="run-header">
     <div class="back"><a href="../index.html">&larr; puck</a></div>
-    <h1>puck-example</h1>
-    <p class="meta">running on the instrument itself, no device pack</p>
-    <div class="badges"></div>
-    <p>The instrument&#39;s own minimal reference firmware: a 240x240 panel, two buttons (one with a long-press verdict), a shake sensor, and a scripted two-button chord. Not a device pack, not a ported app - the smallest complete emu_device() implementation, and where a new firmware author starts.</p>
+    <h1>fluidbox on Web-Touch</h1>
+    <p class="meta">running on Web-Touch</p>
+    <div class="badges"><span class="badge accent">adaptation</span> <span class="badge accent">invariants</span></div>
+    <p>The RP2350 port&#39;s file, byte for byte, on a device that finally has the accelerometer the app asks for: tilt the phone and the liquid pours.</p>
     <div class="links">
-      <a href="https://github.com/s0lness/puck/blob/master/example/firmware/main.c">source</a>
+      <a href="https://github.com/s0lness/puck/blob/master/apps/fluidbox/descriptor.md">descriptor</a>
+      <a href="https://github.com/s0lness/puck/blob/master/apps/fluidbox/ports/web/README.md">port notes</a>
     </div>
   </div>
 
   <div class="emu-stage" id="stage">
-    <div class="emu-frame" id="frame" style="width:320px;height:410px">
-      <iframe id="emu" allowtransparency="true" src="../emu/index.html?embed=1&module=%2Fmodules%2Fexample.wasm&v=44abe3129c" width="320" height="410" title="puck-example running live" allow="autoplay"></iframe>
+    <div class="emu-frame" id="frame" style="width:448px;height:618px">
+      <iframe id="emu" allowtransparency="true" src="../emu/index.html?embed=1&module=%2Fmodules%2Ffluidbox-web.wasm&v=44abe3129c" width="448" height="618" title="fluidbox on Web-Touch running live" allow="autoplay"></iframe>
     </div>
   </div>
-  <p class="embed-hint">touch the screen</p>
+  <p class="embed-hint">touch the screen &middot; tilt with your phone</p>
 
   <div class="run-footer"></div>
 
@@ -43,7 +44,7 @@
 </div>
 <script>
 (function () {
-  var NATIVE_W = 320, NATIVE_H = 410;
+  var NATIVE_W = 448, NATIVE_H = 618;
   var stage = document.getElementById("stage");
   var frame = document.getElementById("frame");
   function fit() {

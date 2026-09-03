@@ -9,7 +9,9 @@ for an adaptation.
 
 This site (puck.sylve.org) is the gallery: every proven combination runs
 live in the browser, compiled to WebAssembly, and the reference RP2350
-firmware also flashes onto real hardware over WebUSB.
+firmware also flashes onto real hardware over WebUSB. The front page is one
+card per app; /matrix/ is every app against every device it knows about,
+one cell each, computed rather than claimed.
 
 A browser is one of the target devices, not only the thing the others are
 shown in. The "web" pack (Web-Touch) is a device pack like any other: it
@@ -21,6 +23,7 @@ a phone's home screen, and offline once installed.
 
 ## Machine-readable surfaces on this domain
 
+- /matrix/: every app against every device, one cell each, with the mark and the reason behind each one.
 - /registry.json: local paths and external URLs for every device pack and app bundle this repo knows about.
 - /docs/convention/device-pack.md: what a device pack must contain.
 - /docs/convention/app-bundle.md: what an app bundle (descriptor + traces) must contain, including how an affordance carries its intent.
