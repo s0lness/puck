@@ -130,7 +130,16 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
   font-weight: 600;
 }
 .run-btn:hover { opacity: 0.92; text-decoration: none; }
-.card-runs-as { margin: 10px 0 0; color: var(--text-soft); font-size: 0.78rem; }
+/* Order, not markup: the "runs as" line sits ABOVE the button so the Run
+   buttons of one row land on one line whatever a card carries under its
+   essence. The essence takes the slack (flex: 1), the button and the
+   devices line are the card's fixed footer. */
+.card-runs-as { order: 3; margin: 0 0 12px; color: var(--text-soft); font-size: 0.78rem; }
+.app-card .shot { order: 0; }
+.app-card .card-name { order: 1; }
+.app-card .card-essence { order: 2; }
+.app-card .run-btn { order: 4; }
+.app-card .card-devices { order: 5; }
 .card-devices { display: block; margin-top: 8px; color: var(--text-soft); font-size: 0.78rem; text-decoration: underline; }
 .card-devices:hover { color: var(--accent); }
 
