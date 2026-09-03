@@ -5,11 +5,14 @@
 //
 // Two halves, matching this task's own landing/run-page split:
 //
-//   1. THE LANDING PAGE (site/dist/index.html) no longer embeds a live
-//      emulator per card (see site/build.ts's demoThumb, this task's own
-//      "recorded loops, not live emulators" pass): it links to a recorded
-//      <video>, poster, and gif fallback for every app card and reference
-//      tile. This checks every one of those assets actually exists in the
+//   1. THE MATRIX PAGE (site/dist/matrix/index.html) does not embed a live
+//      emulator per cell (see site/build.ts's demoThumb, the "recorded
+//      loops, not live emulators" pass): it links to a recorded <video>,
+//      poster, and gif fallback for every cell that runs and every
+//      reference tile. That page was the landing page until
+//      docs/decisions/0014 moved it here and put a store of app cards at
+//      the front door; the front door has its own check
+//      (scripts/verify-landing.ts) and its own rules. This checks every one of those assets actually exists in the
 //      build output and that the thumbnail's own link resolves to a real
 //      run page - the regression this guards against is a build that
 //      silently ships a landing page pointing at demo media nobody
@@ -66,9 +69,12 @@ function failFatal(msg: string): never {
 
 if (!existsSync(DIST)) failFatal(`site/dist/ does not exist. Run \`bun run site:build\` first.`);
 
-async function fetchOk(path: string): Promise<boolean> {
+// `base` is the document the href came out of: a matrix cell's link is
+// relative to /matrix/, one directory down, and reading it against the site
+// root would silently "pass" a link that 404s in a browser.
+async function fetchOk(path: string, base = `http://127.0.0.1:${PORT}/`): Promise<boolean> {
   try {
-    const r = await fetch(`http://127.0.0.1:${PORT}/${path.replace(/^\/+/, "")}`);
+    const r = await fetch(new URL(path.replace(/^\/+/, "./"), base).toString());
     return r.ok;
   } catch {
     return false;
@@ -90,13 +96,14 @@ let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
 try {
   browser = await puppeteer.launch({ executablePath: CHROME, headless: true });
 
-  // ---- 1. the landing page: every thumbnail's media + link resolves ----
+  // ---- 1. the matrix page: every thumbnail's media + link resolves ----
+  const MATRIX_URL = `http://127.0.0.1:${PORT}/matrix/`;
   {
     const page = await browser.newPage();
     await page.setViewport({ width: 1400, height: 4200 });
-    page.on("pageerror", (e) => console.error("index.html page error:", e));
-    await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "domcontentloaded" });
-    console.log("index.html loaded");
+    page.on("pageerror", (e) => console.error("matrix/index.html page error:", e));
+    await page.goto(MATRIX_URL, { waitUntil: "domcontentloaded" });
+    console.log("matrix/index.html loaded");
 
     const thumbs = await page.evaluate(() => {
       return Array.from(document.querySelectorAll("a.thumb-video")).map((a) => {
@@ -115,30 +122,30 @@ try {
         };
       });
     });
-    console.log(`found ${thumbs.length} demo thumbnail(s) on the landing page`);
-    if (thumbs.length < 4) fail(`expected at least 4 demo thumbnails on the landing page (site/build.ts's cardsHtml + refTiles), found ${thumbs.length}`);
+    console.log(`found ${thumbs.length} demo thumbnail(s) on the matrix page`);
+    if (thumbs.length < 4) fail(`expected at least 4 demo thumbnails on the matrix page (site/build.ts's matrix cells + refTiles), found ${thumbs.length}`);
 
     for (const t of thumbs) {
       const label = t.mp4 || t.href || "(unknown thumbnail)";
       if (!t.href) { fail(`thumbnail has no href to a run page: ${label}`); continue; }
-      if (!(await fetchOk(t.href))) fail(`thumbnail's run-page link 404s: ${t.href}`);
+      if (!(await fetchOk(t.href, MATRIX_URL))) fail(`thumbnail's run-page link 404s: ${t.href}`);
       if (!t.mp4) fail(`thumbnail has no <source> mp4: ${label}`);
-      else if (!(await fetchOk(t.mp4))) fail(`thumbnail's mp4 404s: ${t.mp4}`);
+      else if (!(await fetchOk(t.mp4, MATRIX_URL))) fail(`thumbnail's mp4 404s: ${t.mp4}`);
       else if (!hasVersion(t.mp4)) fail(`thumbnail's mp4 has no ?v= cache-buster: ${t.mp4}`);
       if (!t.poster) fail(`thumbnail has no poster image: ${label}`);
-      else if (!(await fetchOk(t.poster))) fail(`thumbnail's poster 404s: ${t.poster}`);
+      else if (!(await fetchOk(t.poster, MATRIX_URL))) fail(`thumbnail's poster 404s: ${t.poster}`);
       else if (!hasVersion(t.poster)) fail(`thumbnail's poster has no ?v= cache-buster: ${t.poster}`);
       const gifSrcMatch = t.gifHtml?.match(/src="([^"]+)"/);
       if (!gifSrcMatch) fail(`thumbnail has no <noscript> gif fallback: ${label}`);
-      else if (!(await fetchOk(gifSrcMatch[1]!))) fail(`thumbnail's gif fallback 404s: ${gifSrcMatch[1]}`);
+      else if (!(await fetchOk(gifSrcMatch[1]!, MATRIX_URL))) fail(`thumbnail's gif fallback 404s: ${gifSrcMatch[1]}`);
       else if (!hasVersion(gifSrcMatch[1]!)) fail(`thumbnail's gif fallback has no ?v= cache-buster: ${gifSrcMatch[1]}`);
     }
-    if (failures === 0) console.log("PASS: every landing-page thumbnail has a working, cache-busted video, poster, gif fallback, and run-page link");
+    if (failures === 0) console.log("PASS: every matrix thumbnail has a working, cache-busted video, poster, gif fallback, and run-page link");
 
     const stylesHref = await page.$eval('link[rel="stylesheet"]', (el) => el.getAttribute("href"));
-    if (!stylesHref || !hasVersion(stylesHref)) fail(`index.html: styles.css link has no ?v= cache-buster (${stylesHref})`);
-    else if (!(await fetchOk(stylesHref))) fail(`index.html: styles.css?v= 404s: ${stylesHref}`);
-    else console.log(`PASS: index.html's styles.css link is cache-busted (${stylesHref})`);
+    if (!stylesHref || !hasVersion(stylesHref)) fail(`matrix/index.html: styles.css link has no ?v= cache-buster (${stylesHref})`);
+    else if (!(await fetchOk(stylesHref, MATRIX_URL))) fail(`matrix/index.html: styles.css?v= 404s: ${stylesHref}`);
+    else console.log(`PASS: matrix/index.html's styles.css link is cache-busted (${stylesHref})`);
 
     // Each card's own recorded video must actually match its PACK's own
     // panel aspect (368:448, or whatever a device.json declares) - proof
@@ -437,7 +444,7 @@ try {
   // call", the same way this repo's own harness insists on a real proof
   // over a claim in a comment. --------------------------------------------
   {
-    const allPages = ["index.html", "agents.html", ...runPages.map((f) => `run/${f}`)];
+    const allPages = ["index.html", "matrix/", "agents.html", ...runPages.map((f) => `run/${f}`)];
     for (const p of allPages) {
       const html = await (await fetch(`http://127.0.0.1:${PORT}/${p}`)).text();
       if (!html.includes("markup.sylve.org/markup.js")) fail(`${p}: no markup loader found in the served HTML`);

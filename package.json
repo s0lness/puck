@@ -52,7 +52,8 @@
     "site:test-api": "bun test site/functions",
     "site:verify-embeds": "bun run scripts/verify-site-embeds.ts",
     "site:verify-web": "bun run scripts/verify-web-apps.ts",
-    "site:verify-matrix": "bun run scripts/verify-matrix.ts"
+    "site:verify-matrix": "bun run scripts/verify-matrix.ts",
+    "site:verify-landing": "bun run scripts/verify-landing.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

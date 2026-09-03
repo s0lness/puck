@@ -1,6 +1,14 @@
-// scripts/verify-matrix.ts: headless proof that the BUILT landing page
-// (site/dist/index.html) really is the apps-by-devices matrix ledger.json
-// says it is, and that no cell in it is a blank.
+// scripts/verify-matrix.ts: headless proof that the BUILT matrix page
+// (site/dist/matrix/index.html) really is the apps-by-devices matrix
+// ledger.json says it is, and that no cell in it is a blank.
+//
+// It used to be the landing page. docs/decisions/0014 moved it, whole, to
+// /matrix/, and put a store of app cards at the front door instead: the
+// matrix is the PROOF, and a proof is not a front door. Nothing about what
+// this file asserts changed with the move - only where the page is, and the
+// fact that every href it emits is now one directory up (site/build.ts's
+// MATRIX_DEPTH), which is why fetchOk below resolves against /matrix/ and
+// not against the site root.
 //
 // This is the check the whole "the gallery is built from a ledger" change
 // stands or falls on (docs/decisions/0012). The failure it exists to catch
@@ -52,6 +60,8 @@ import type { Ledger } from "../tools/ledger";
 const ROOT = join(import.meta.dir, "..");
 const DIST = join(ROOT, "site", "dist");
 const PORT = 53418;
+/** Where the matrix lives now, and what every relative href on it resolves against. */
+const MATRIX_URL = `http://127.0.0.1:${PORT}/matrix/`;
 
 function findChrome(): string {
   const candidates = [
@@ -87,9 +97,12 @@ const LEDGER_PATH = join(ROOT, "ledger.json");
 if (!existsSync(LEDGER_PATH)) failFatal("no ledger.json at the repository root. Run `bun run ledger` first.");
 const ledger = JSON.parse(readFileSync(LEDGER_PATH, "utf8")) as Ledger;
 
+// Resolved against the matrix page's own URL, not against the site root: a
+// cell's href is relative to the document that carries it, and reading it as
+// root-relative would silently "pass" a link one directory off.
 async function fetchOk(path: string): Promise<boolean> {
   try {
-    const r = await fetch(`http://127.0.0.1:${PORT}/${path.replace(/^\/+/, "").split("#")[0]}`);
+    const r = await fetch(new URL(path.split("#")[0]!, MATRIX_URL).toString());
     return r.ok;
   } catch {
     return false;
@@ -119,8 +132,8 @@ try {
   // ---- 1 & 2: the grid, and what every cell in it is ---------------------
   const page: Page = await browser.newPage();
   await page.setViewport({ width: 1700, height: 1200, deviceScaleFactor: 1 });
-  page.on("pageerror", (e) => fail(`index.html page error: ${e instanceof Error ? e.message : String(e)}`));
-  await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "domcontentloaded" });
+  page.on("pageerror", (e) => fail(`matrix/index.html page error: ${e instanceof Error ? e.message : String(e)}`));
+  await page.goto(MATRIX_URL, { waitUntil: "domcontentloaded" });
 
   const scraped = await page.evaluate(() => {
     const rows = Array.from(document.querySelectorAll("table.matrix tbody tr"));
@@ -137,8 +150,8 @@ try {
           return {
             target: el.dataset.target ?? "",
             state: el.dataset.cell ?? null,
-            runLinks: links.filter((h) => !h.startsWith("puck-publish")),
-            publishLinks: links.filter((h) => h.startsWith("puck-publish")),
+            runLinks: links.filter((h) => !h.includes("puck-publish")),
+            publishLinks: links.filter((h) => h.includes("puck-publish")),
             chips: Array.from(el.querySelectorAll(".chip")).map((c) => (c.textContent ?? "").trim()),
             // getClientRects() rather than a style read: a <details> that is
             // closed lays its own content out nowhere at all, which is
@@ -351,7 +364,7 @@ try {
   for (const c of silhouetteCells) {
     const target = ledger.targets.find((t) => t.name === c.target)!;
     const panel = target.panel;
-    const href = c.runLinks.find((h) => h.startsWith("run/")) ?? c.runLinks[0];
+    const href = c.runLinks.find((h) => h.includes("run/")) ?? c.runLinks[0];
     if (!href || !panel) {
       fail(`${c.app} x ${c.target}: no run-page link, or the ledger's target declares no panel`);
       continue;
@@ -360,7 +373,7 @@ try {
     const errors: string[] = [];
     runPage.on("pageerror", (e) => errors.push(e instanceof Error ? e.message : String(e)));
     await runPage.setViewport({ width: 1200, height: 1000, deviceScaleFactor: 1 });
-    await runPage.goto(`http://127.0.0.1:${PORT}/${href}`, { waitUntil: "domcontentloaded" });
+    await runPage.goto(new URL(href, MATRIX_URL).toString(), { waitUntil: "domcontentloaded" });
     await wait(2500);
 
     // The emulator runs inside the run page's own iframe, and #panel is the
@@ -397,4 +410,4 @@ if (failures > 0) {
   console.error(`\nFAIL: ${failures} check(s) failed - see above`);
   process.exit(1);
 }
-console.log(`\nPASS: the landing page is ledger.json's matrix, every cell says what it is, and every silhouette cell that claims to run opens at that board's own panel size`);
+console.log(`\nPASS: /matrix/ is ledger.json's matrix, every cell says what it is, and every silhouette cell that claims to run opens at that board's own panel size`);
