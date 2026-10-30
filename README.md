@@ -1,3 +1,5 @@
+> **Archivé le 30/10/2026.** puck.sylve.org est supprimé (projet Pages et KV `ATTEST` vide). Toutes les branches étaient fusionnées dans master. Dépôt en lecture seule.
+
 # puck
 
 Apps that travel between tiny computers.
